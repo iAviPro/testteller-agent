@@ -1,0 +1,16 @@
+google-generativeai
+chromadb
+langchain
+langchain-google-genai
+python-docx
+PyMuPDF
+openpyxl
+GitPython
+typer[all]
+python-dotenv
+pydantic
+pydantic-settings
+tenacity
+python-json-logger
+tiktoken
+aiofiles

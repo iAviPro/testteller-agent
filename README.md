@@ -197,31 +197,15 @@ Refer to `config.py` for all available settings (e.g., chunk size, model names, 
 *   **ChromaDB Issues**:
     *   Ensure the `CHROMA_DB_PATH` is writable.
     *   If you encounter persistent issues, try deleting the ChromaDB storage directory and re-ingesting.
-
-# License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) [2025] [Your Name or Organization Name]
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+*   **Gemini API Errors**:
+    *   Check your API key and ensure it has the necessary permissions.
+    *   If you hit rate limits, consider implementing exponential backoff or retry logic in your calls.
+    *   Ensure the `google_genai` package is up-to-date.
+*   **Document Ingestion Issues**:
+    *   Ensure the file formats are supported and not corrupted.
+    *   For large documents, consider increasing the `CHUNK_SIZE` in `config.py`.
+    *   If you encounter memory issues, try processing smaller batches of files.
+*   **Code Ingestion Issues**:
+    *   Ensure the local folder or GitHub repository is accessible.
+    *   For large codebases, consider increasing the `CHUNK_SIZE` or processing files in smaller batches.
+    *   If cloning a GitHub repo fails, check your network connection and GitHub access permissions.

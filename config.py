@@ -162,4 +162,21 @@ class AppSettings(BaseSettings):
 # Instantiate settings.
 # Pydantic will load from .env, environment variables, apply defaults, and run validators.
 # If any required setting is missing or validation fails, Pydantic raises a ValidationError.
-settings = AppSettings()
+
+_cached_settings: Optional[AppSettings] = None
+
+def load_app_settings() -> AppSettings:
+    """Loads and returns the application settings, caching the result."""
+    global _cached_settings
+    if _cached_settings is None:
+        _cached_settings = AppSettings()
+    return _cached_settings
+
+# For convenience, you can still offer a global accessor, but it calls the loader.
+# This helps minimize changes in other parts of the application that might use `config.settings`.
+def get_settings() -> AppSettings:
+    return load_app_settings()
+
+# Example of how settings might be accessed in your app:
+# from config import get_settings
+# settings = get_settings()

@@ -1,6 +1,6 @@
 import logging
 import sys
-from config import settings
+from config import get_settings # Changed from 'settings'
 from pythonjsonlogger import jsonlogger
 
 
@@ -18,7 +18,8 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
 
 def setup_logging():
     """Configures logging based on settings."""
-    log_level_str = str(settings.log_level).upper()
+    app_settings = get_settings() # Get the AppSettings instance
+    log_level_str = str(app_settings.logging.log_level).upper() # Access via app_settings.logging
     log_level = getattr(logging, log_level_str, logging.INFO)
 
     # Remove all handlers associated with the root logger object.
@@ -32,7 +33,7 @@ def setup_logging():
     # Create a handler (console for CLI)
     handler = logging.StreamHandler(sys.stdout)
 
-    if str(settings.log_format).lower() == "json":
+    if str(app_settings.logging.log_format).lower() == "json": # Access via app_settings.logging
         formatter = CustomJsonFormatter(
             '%(timestamp)s %(level)s %(name)s %(module)s %(funcName)s %(lineno)d %(message)s')
     else:  # text format
@@ -54,7 +55,7 @@ def setup_logging():
     # Initial log to confirm setup
     initial_logger = logging.getLogger(__name__)
     initial_logger.info(
-        f"Logging initialized. Level: {log_level_str}, Format: {settings.log_format}")
+        f"Logging initialized. Level: {log_level_str}, Format: {app_settings.logging.log_format}") # Access via app_settings.logging
 
 # Call setup_logging when this module is imported so it's configured early
 # setup_logging() # Or call explicitly in main.py before anything else

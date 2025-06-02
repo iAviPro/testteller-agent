@@ -14,3 +14,7 @@ tenacity
 python-json-logger
 tiktoken
 aiofiles
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock

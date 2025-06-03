@@ -1,15 +1,16 @@
-# Moved import after potential env var set
-from utils.retry_helpers import api_retry_async, api_retry_sync
-import google.generativeai as genai
-import os
-from config import settings  # Ensure settings is imported
 import logging
 import asyncio
 import functools
+import os
+import google.generativeai as genai
+from utils.retry_helpers import api_retry_async, api_retry_sync
+
+
+from config import settings  # Ensure settings is imported
+
 
 logger = logging.getLogger(__name__)
 
-# --- STRATEGY: EXPLICITLY SET ENV VAR AS STRING BEFORE GENAI IMPORT/CONFIG ---
 print("-" * 50)
 print("DEBUG: In llm/gemini_client.py - Top Level (Strategy: Set Env Var)")
 
@@ -29,13 +30,11 @@ else:
     raise ValueError(
         "CRITICAL: GOOGLE_API_KEY could not be resolved to a string from Pydantic settings.")
 
-# 3. Now import and configure genai
 
 print(f"DEBUG: Configuring genai with API key: '{API_KEY_STR_VALUE[:5]}...'")
 print("-" * 50)
 
 try:
-    # Still explicitly pass the string value to configure, just in case.
     genai.configure(api_key=API_KEY_STR_VALUE)
 except Exception as e:
     print(f"CRITICAL ERROR during genai.configure(): {e}")
@@ -59,7 +58,6 @@ class GeminiClient:
                 "Failed to initialize Gemini client: %s", e, exc_info=True)
             raise
 
-    # ... (rest of GeminiClient methods - get_embedding_async, get_embedding_sync, etc. - REMAIN THE SAME as the last correct version)
     @api_retry_async
     async def get_embedding_async(self, text: str) -> list[float] | None:
         if not text or not text.strip():

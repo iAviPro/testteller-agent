@@ -7,18 +7,16 @@ ChromaDB settings, and other parameters.
 import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class CommonSettings(BaseSettings):
     """Common application settings."""
     APP_NAME: str = "TestTeller RAG Agent"
-    APP_VERSION: str = "0.0.1"
-    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    BASE_DIR: str = BASE_DIR
+    APP_VERSION: str = "0.1.0-alpha"
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(BASE_DIR, '.env'),
@@ -128,7 +126,7 @@ class LoggingSettings(BaseSettings):
         allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in allowed_levels:
             raise ValueError(
-                f"Invalid log level '{v}'. Must be one of {allowed_levels}")
+                f"Invalid log level '{v}'. Must be one of {allowed_levels}.")
         return v.upper()
 
     @field_validator("log_format")
@@ -149,8 +147,13 @@ class AppSettings(BaseSettings):
     Main application settings, composing settings from different modules.
     All settings can be configured via environment variables or a .env file.
     """
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8',
-                                      extra='ignore', case_sensitive=False)
+
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(BASE_DIR, '.env'),
+        env_file_encoding='utf-8',
+        extra='ignore',  # Ignore extra fields from .env
+        case_sensitive=False
+    )
 
     api_keys: ApiKeysSettings = Field(default_factory=ApiKeysSettings)
     chroma_db: ChromaDbSettings = Field(default_factory=ChromaDbSettings)

@@ -4,8 +4,6 @@ import functools
 import os
 import google.generativeai as genai
 from utils.retry_helpers import api_retry_async, api_retry_sync
-
-
 from config import settings  # Ensure settings is imported
 
 
@@ -14,7 +12,7 @@ logger = logging.getLogger(__name__)
 print("-" * 50)
 print("DEBUG: In llm/gemini_client.py - Top Level (Strategy: Set Env Var)")
 
-api_key_from_settings_secretstr = settings.google_api_key
+api_key_from_settings_secretstr = settings.api_keys.google_api_key
 API_KEY_STR_VALUE = None
 
 if api_key_from_settings_secretstr:
@@ -46,8 +44,8 @@ except Exception as e:
 class GeminiClient:
     def __init__(self):
         try:
-            self.embedding_model_name = settings.gemini_embedding_model
-            self.generation_model_name = settings.gemini_generation_model
+            self.embedding_model_name = settings.gemini_model.gemini_embedding_model
+            self.generation_model_name = settings.gemini_model.gemini_generation_model
             self.generation_model = genai.GenerativeModel(
                 self.generation_model_name)
             logger.info(

@@ -27,19 +27,20 @@ def log_retry_attempt(retry_state):
 
 # Generic retry decorator for API calls
 api_retry_async = retry(
-    stop=stop_after_attempt(settings.api_retry_attempts),
-    # Exponential backoff
+    stop=stop_after_attempt(settings.api_retry.api_retry_attempts),
     wait=wait_exponential(
-        multiplier=settings.api_retry_wait_seconds, min=1, max=10),
+        multiplier=settings.api_retry.api_retry_wait_seconds, min=1, max=10
+    ),
     retry=retry_if_exception_type(TRANSIENT_EXCEPTIONS),
     before_sleep=log_retry_attempt,
     reraise=True  # Reraise the exception if all retries fail
 )
 
 api_retry_sync = retry(
-    stop=stop_after_attempt(settings.api_retry_attempts),
+    stop=stop_after_attempt(settings.api_retry.api_retry_attempts),
     wait=wait_exponential(
-        multiplier=settings.api_retry_wait_seconds, min=1, max=10),
+        multiplier=settings.api_retry.api_retry_wait_seconds, min=1, max=10
+    ),
     retry=retry_if_exception_type(TRANSIENT_EXCEPTIONS),
     before_sleep=log_retry_attempt,
     reraise=True

@@ -25,16 +25,19 @@ setup(
     install_requires=[
         "aiofiles>=23.1.0",
         "aiohttp>=3.8.1",
+        "gitpython>=3.1.29",
         "asyncio>=3.4.3",
         "docx2txt>=0.8",
-        "fitz>=1.18.19",
+        "PyMuPDF>=1.18.19",
         "openpyxl>=3.0.9",
         "typer>=0.4.0",
         "pydantic>=1.10.2",
         "requests>=2.26.0",
         "python-dotenv>=0.19.2",
-        "styling==0.1.0-alpha",  # Ensure this matches your local version
-        "constants==0.1.0-alpha"  # Ensure this matches your local version
+        "chromadb>=0.3.21",
+        "langchain>=0.0.200",
+        "langchain-openai>=0.0.200",
+        "google-generative-ai>=0.1.0",
     ],
     entry_points={
         "console_scripts": [
@@ -42,6 +45,6 @@ setup(
         ]
     },
     include_package_data=True,
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     license="MIT",  # Specify your license
 )

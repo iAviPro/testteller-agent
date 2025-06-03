@@ -116,6 +116,7 @@ Desktop.ini
 # If your CHROMA_DB_PATH in config.py or .env points elsewhere, add that pattern.
 chroma_data/
 chroma_data_prod/
+chroma_data_db_persistent/
 my_vector_data/ # Example if you used this in .env
 *.chroma_data # General pattern if names vary
 

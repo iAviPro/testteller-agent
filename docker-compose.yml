@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build: .
@@ -15,7 +13,7 @@ services:
       - DEFAULT_COLLECTION_NAME=${DEFAULT_COLLECTION_NAME:-test_documents_prod_docker}
       # Add other necessary environment variables from config.py, using .env file defaults
       - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-models/embedding-001}
-      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-gemini-1.5-flash} # Changed from 2.0 to 1.5 to match current Gemini offerings
+      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-gemini-2.0-flash} # Changed from 2.0 to 1.5 to match current Gemini offerings
       - CHUNK_SIZE=${CHUNK_SIZE:-1000}
       - CHUNK_OVERLAP=${CHUNK_OVERLAP:-150}
       - TEMP_CLONE_DIR_BASE=/app/temp_cloned_repos_prod_docker # Ensure this is writable or map volume if state needs to persist beyond container life

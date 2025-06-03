@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class CodeLoader:
     def __init__(self):
-        self.clone_dir_base = Path(settings.temp_clone_dir_base)
+        self.clone_dir_base = Path(settings.code_loader.temp_clone_dir_base)
         self.clone_dir_base.mkdir(parents=True, exist_ok=True)
         logger.info(
             "CodeLoader initialized. "

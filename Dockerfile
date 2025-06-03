@@ -2,14 +2,14 @@
 FROM python:3.10-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container
 WORKDIR /app
 
 # Install system dependencies that might be needed by Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends     gcc     libpoppler-cpp-dev     pkg-config     tesseract-ocr  && apt-get clean  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends     gcc     libpoppler-cpp-dev     pkg-config     tesseract-ocr     git  && apt-get clean  && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the container
 COPY requirements.txt .

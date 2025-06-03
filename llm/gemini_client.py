@@ -10,19 +10,15 @@ from config import settings  # Ensure settings is imported
 logger = logging.getLogger(__name__)
 
 print("-" * 50)
-print("DEBUG: In llm/gemini_client.py - Top Level (Strategy: Set Env Var)")
 
-api_key_from_settings_secretstr = settings.api_keys.google_api_key
+api_key_from_settings_secretstr = settings.api_keys.google_api_key.get_secret_value()
+
 API_KEY_STR_VALUE = None
 
 if api_key_from_settings_secretstr:
     API_KEY_STR_VALUE = str(api_key_from_settings_secretstr)
     print(
         f"DEBUG: API key from settings (as str): '{API_KEY_STR_VALUE[:5]}...' (type: {type(API_KEY_STR_VALUE)})")
-
-    os.environ["GOOGLE_API_KEY_PLAINTEXT_DEBUG"] = API_KEY_STR_VALUE
-    print(
-        f"DEBUG: Set os.environ['GOOGLE_API_KEY_PLAINTEXT_DEBUG'] = '{os.environ['GOOGLE_API_KEY_PLAINTEXT_DEBUG'][:5]}...'")
 else:
     print("CRITICAL DEBUG: Could not get string value from settings.google_api_key.")
     raise ValueError(

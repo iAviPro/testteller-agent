@@ -13,8 +13,8 @@ from config import ApiRetrySettings, settings as global_settings
 @pytest.fixture(autouse=True)
 def mock_global_retry_settings(monkeypatch):
     """Mocks global retry settings for consistent tests."""
-    monkeypatch.setattr(global_settings, "api_retry_attempts", 3)
-    monkeypatch.setattr(global_settings, "api_retry_wait_seconds", 0.1) # Use short wait for tests
+    monkeypatch.setattr(global_settings.api_retry, "api_retry_attempts", 3)
+    monkeypatch.setattr(global_settings.api_retry, "api_retry_wait_seconds", 1) # Use 1s for faster tests
 
 
 class NonTransientError(Exception):

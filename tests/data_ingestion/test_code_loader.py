@@ -387,4 +387,3 @@ async def test_cleanup_all_repos(code_loader, monkeypatch):
         called_paths_str = sorted([str(call_arg[0][0]) for call_arg in mock_rmtree.call_args_list])
         assert called_paths_str == sorted([path1_str_resolved, path2_str_resolved])
         assert not CodeLoader.cloned_repos
-```

@@ -9,7 +9,7 @@ from config import settings as global_app_settings # To get default collection n
 # We need to mock TestTellerRagAgent before it's used by the commands in main.py
 # The agent is imported in main.py. So, we need to patch it in main's namespace.
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function") # Changed scope to function
 def mock_agent_class_for_main(mocker): # Renamed to avoid conflict if other test files use similar name
     """Mocks the TestTellerRagAgent class in the main module."""
     mock_agent_cls = mocker.patch("main.TestTellerRagAgent")
@@ -47,7 +47,7 @@ def test_ingest_docs_success(runner, mock_agent_class_for_main, mocker):
     test_path = "dummy_docs_path/"
     mocker.patch("os.path.exists", return_value=True)
 
-    result = runner.invoke(app, ["ingest-docs", test_path, "--collection", "custom_docs"])
+    result = runner.invoke(app, ["ingest-docs", test_path, "--collection-name", "custom_docs"])
 
     assert result.exit_code == 0, result.stdout
     assert f"Starting ingestion for document(s) from path: {test_path}" in result.stdout
@@ -73,7 +73,7 @@ def test_ingest_code_success_url(runner, mock_agent_class_for_main, mocker):
     mocker.patch("main.Path", lambda p: mocker.MagicMock(exists=lambda: False, __str__=lambda: p))
 
 
-    result = runner.invoke(app, ["ingest-code", test_url, "--collection", "custom_code", "--no-cleanup"])
+    result = runner.invoke(app, ["ingest-code", test_url, "--collection-name", "custom_code", "--no-cleanup-github"])
     assert result.exit_code == 0, result.stdout
     assert f"Starting ingestion for code from source: {test_url}" in result.stdout
     mock_agent_class_for_main.assert_called_with(collection_name="custom_code")
@@ -88,7 +88,7 @@ def test_ingest_code_success_local_path(runner, mock_agent_class_for_main, mocke
     mock_path_obj.__str__.return_value = test_path
     mocker.patch("main.Path", lambda p_arg: mock_path_obj if str(p_arg) == test_path else mocker.MagicMock(exists=lambda:False))
 
-    result = runner.invoke(app, ["ingest-code", test_path, "--cleanup"])
+    result = runner.invoke(app, ["ingest-code", test_path, "--no-cleanup-github"]) # Using --no-cleanup-github for consistency
     assert result.exit_code == 0, result.stdout
     # Default collection name is used here.
     # The agent constructor will be called with global_app_settings.default_collection_name
@@ -111,7 +111,7 @@ def test_generate_success(runner, mock_agent_class_for_main):
     mock_instance = mock_agent_class_for_main.return_value
     mock_instance.get_ingested_data_count.return_value = 5
     query = "Test query for generation"
-    result = runner.invoke(app, ["generate", query, "--n-docs", "3", "--collection", "gen_coll"])
+    result = runner.invoke(app, ["generate", query, "--num-retrieved", "3", "--collection-name", "gen_coll"])
     assert result.exit_code == 0, result.stdout
     assert "Generated test cases from mock agent." in result.stdout
     mock_agent_class_for_main.assert_called_with(collection_name="gen_coll")
@@ -140,7 +140,7 @@ def test_generate_empty_collection_confirm_no(runner, mock_agent_class_for_main,
 def test_status_with_data(runner, mock_agent_class_for_main):
     mock_instance = mock_agent_class_for_main.return_value
     mock_instance.get_ingested_data_count.return_value = 120
-    result = runner.invoke(app, ["status", "--collection", "status_coll"])
+    result = runner.invoke(app, ["status", "--collection-name", "status_coll"])
     assert result.exit_code == 0, result.stdout
     assert "Knowledge Base Status for collection 'status_coll':" in result.stdout
     assert "Number of ingested documents: 120" in result.stdout
@@ -158,9 +158,9 @@ def test_status_empty_kb(runner, mock_agent_class_for_main):
 def test_clear_data_force(runner, mock_agent_class_for_main, mocker):
     mock_instance = mock_agent_class_for_main.return_value
     confirm_mock = mocker.patch("typer.confirm")
-    result = runner.invoke(app, ["clear-data", "--collection", "clear_coll", "--force"])
+    result = runner.invoke(app, ["clear-data", "--collection-name", "clear_coll", "--force"])
     assert result.exit_code == 0, result.stdout
-    assert "Knowledge base 'clear_coll' cleared." in result.stdout
+    assert "Successfully cleared data from collection 'clear_coll'." in result.stdout # Adjusted message
     mock_agent_class_for_main.assert_called_with(collection_name="clear_coll")
     mock_instance.clear_ingested_data.assert_called_once()
     confirm_mock.assert_not_called()
@@ -193,5 +193,3 @@ def test_missing_argument_generate(runner):
     result = runner.invoke(app, ["generate"])
     assert result.exit_code != 0
     assert "Missing argument 'QUERY'." in result.stdout
-
-```

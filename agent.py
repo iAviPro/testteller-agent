@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class TestTellerRagAgent:
-    def __init__(self, collection_name: str = settings.default_collection_name):
+    def __init__(self, collection_name: str = settings.chroma_db.default_collection_name):
         self.gemini_client = GeminiClient()
         self.vector_store = ChromaDBManager(
             gemini_client=self.gemini_client, collection_name=collection_name)
@@ -67,7 +67,7 @@ class TestTellerRagAgent:
 
             for chunk_idx, chunk in enumerate(chunks):
                 # Generate ID based on the unique source path of the file and the chunk content
-                unique_id = self.vector_store._generate_id_from_text_and_source(
+                unique_id = self.vector_store.generate_id_from_text_and_source( # Changed to public method
                     chunk, item_path)
                 metadata = {
                     "source": item_path,  # This is the full unique path to the source file

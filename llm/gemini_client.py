@@ -9,54 +9,35 @@ import functools
 
 logger = logging.getLogger(__name__)
 
-# --- STRATEGY: EXPLICITLY SET ENV VAR AS STRING BEFORE GENAI IMPORT/CONFIG ---
-print("-" * 50)
-print("DEBUG: In llm/gemini_client.py - Top Level (Strategy: Set Env Var)")
-
-api_key_from_settings_secretstr = settings.google_api_key
-API_KEY_STR_VALUE = None
-
-if api_key_from_settings_secretstr:
-    API_KEY_STR_VALUE = str(api_key_from_settings_secretstr)
-    print(
-        f"DEBUG: API key from settings (as str): '{API_KEY_STR_VALUE[:5]}...' (type: {type(API_KEY_STR_VALUE)})")
-
-    os.environ["GOOGLE_API_KEY_PLAINTEXT_DEBUG"] = API_KEY_STR_VALUE
-    print(
-        f"DEBUG: Set os.environ['GOOGLE_API_KEY_PLAINTEXT_DEBUG'] = '{os.environ['GOOGLE_API_KEY_PLAINTEXT_DEBUG'][:5]}...'")
-else:
-    print("CRITICAL DEBUG: Could not get string value from settings.google_api_key.")
-    raise ValueError(
-        "CRITICAL: GOOGLE_API_KEY could not be resolved to a string from Pydantic settings.")
-
-# 3. Now import and configure genai
-
-print(f"DEBUG: Configuring genai with API key: '{API_KEY_STR_VALUE[:5]}...'")
-print("-" * 50)
-
-try:
-    # Still explicitly pass the string value to configure, just in case.
-    genai.configure(api_key=API_KEY_STR_VALUE)
-except Exception as e:
-    print(f"CRITICAL ERROR during genai.configure(): {e}")
-    logger.critical(
-        "CRITICAL ERROR during genai.configure(): %s", e, exc_info=True)
-    raise
-
+# Module-level configuration and debug prints removed.
+# Configuration will now happen in GeminiClient.__init__
 
 class GeminiClient:
     def __init__(self):
         try:
-            self.embedding_model_name = settings.gemini_embedding_model
-            self.generation_model_name = settings.gemini_generation_model
+            # Configure genai here, ensuring it's done after mocks can be applied for tests
+            # and only when a client is instantiated.
+            api_key_value = settings.api_keys.google_api_key.get_secret_value()
+            if not api_key_value: # Check if the key is empty after getting secret
+                logger.error("Google API Key is not set or is empty.")
+                raise ValueError("Google API Key is not set or is empty.")
+
+            genai.configure(api_key=api_key_value)
+            logger.info("Google Generative AI client configured successfully.")
+
+            self.embedding_model_name = settings.gemini_model.gemini_embedding_model
+            self.generation_model_name = settings.gemini_model.gemini_generation_model
             self.generation_model = genai.GenerativeModel(
                 self.generation_model_name)
             logger.info(
                 "Gemini client initialized with generation model: %s and embedding model: %s",
                 self.generation_model_name, self.embedding_model_name)
-        except Exception as e:
+        except ValueError as ve: # Catch specific ValueError for API key
+            logger.error("Failed to initialize Gemini client due to API key issue: %s", ve, exc_info=True)
+            raise
+        except Exception as e: # Catch other potential errors during init
             logger.error(
-                "Failed to initialize Gemini client: %s", e, exc_info=True)
+                "Failed to initialize Gemini client with models: %s", e, exc_info=True)
             raise
 
     # ... (rest of GeminiClient methods - get_embedding_async, get_embedding_sync, etc. - REMAIN THE SAME as the last correct version)

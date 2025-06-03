@@ -14,14 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 class CodeLoader:
+    cloned_repos = set()  # Added class attribute
+
     def __init__(self):
-        self.clone_dir_base = Path(settings.temp_clone_dir_base)
-        self.clone_dir_base.mkdir(parents=True, exist_ok=True)
+        self.code_extensions = settings.code_loader.code_extensions # Store extensions
+        self.temp_clone_dir_base = Path(settings.code_loader.temp_clone_dir_base) # Corrected attribute name
+        self.temp_clone_dir_base.mkdir(parents=True, exist_ok=True) # Use corrected attribute
         logger.info(
             "CodeLoader initialized. "
             "GitHub repos cloned to: %s. "
             "Local paths processed directly.",
-            self.clone_dir_base
+            self.temp_clone_dir_base # Corrected attribute name
         )
 
     def _get_repo_name_from_url(self, repo_url: str) -> str:
@@ -34,7 +37,7 @@ class CodeLoader:
 
     async def clone_or_pull_repo(self, repo_url: str) -> Path | None:
         repo_name = self._get_repo_name_from_url(repo_url)
-        local_repo_path = self.clone_dir_base / repo_name
+        local_repo_path = self.temp_clone_dir_base / repo_name # Corrected attribute
 
         try:
             if local_repo_path.exists():
@@ -47,8 +50,8 @@ class CodeLoader:
                 logger.info(
                     "Cloning repository %s to %s.", repo_url, local_repo_path)
                 clone_url = repo_url
-                if settings.github_token and "github.com" in repo_url and not repo_url.startswith("git@"):
-                    token = settings.github_token
+                if settings.api_keys.github_token and "github.com" in repo_url and not repo_url.startswith("git@"): # Corrected path
+                    token = settings.api_keys.github_token.get_secret_value() # Get secret value
                     # ensure token is not already in URL
                     if "@" not in repo_url.split("://")[1]:
                         protocol, rest = repo_url.split("://")
@@ -81,11 +84,11 @@ class CodeLoader:
         """
         code_files_content = []
         logger.info(
-            "Loading code files from %s with extensions: %s", base_path, settings.code_extensions)
+            "Loading code files from %s with extensions: %s", base_path, settings.code_loader.code_extensions) # Corrected path
 
         file_paths_to_read = []
         for item in base_path.rglob('*'):  # rglob for recursive search
-            if item.is_file() and item.suffix.lower() in settings.code_extensions:
+            if item.is_file() and item.suffix.lower() in settings.code_loader.code_extensions: # Corrected path
                 file_paths_to_read.append(item)
 
         async def read_file_content(item_path: Path):
@@ -143,7 +146,7 @@ class CodeLoader:
 
     async def cleanup_repo(self, repo_url: str):
         repo_name = self._get_repo_name_from_url(repo_url)
-        local_repo_path = self.clone_dir_base / repo_name
+        local_repo_path = self.temp_clone_dir_base / repo_name # Corrected attribute
         if local_repo_path.exists():
             try:
                 await asyncio.to_thread(shutil.rmtree, local_repo_path)
@@ -156,13 +159,17 @@ class CodeLoader:
     async def cleanup_all_repos(self):
         # This method primarily cleans up the temp_clone_dir_base, so it's fine as is.
         # It doesn't affect local folders that were read directly.
-        if self.clone_dir_base.exists():
+        if self.temp_clone_dir_base.exists(): # Use corrected attribute
             try:
-                await asyncio.to_thread(shutil.rmtree, self.clone_dir_base)
+                await asyncio.to_thread(shutil.rmtree, self.temp_clone_dir_base) # Use corrected attribute
                 logger.info(
-                    "Cleaned up all cloned repositories in: %s", self.clone_dir_base)
+                    "Cleaned up all cloned repositories in: %s", self.temp_clone_dir_base) # Use corrected attribute
                 # Recreate base dir (sync, fast)
-                self.clone_dir_base.mkdir(parents=True, exist_ok=True)
+                self.temp_clone_dir_base.mkdir(parents=True, exist_ok=True) # Use corrected attribute
             except Exception as e:
                 logger.error(
                     "Error cleaning up all repositories: %s", e, exc_info=True)
+
+    def _is_supported_file(self, filepath: str) -> bool:
+        """Checks if a file is supported based on its extension."""
+        return Path(filepath).suffix.lower() in self.code_extensions

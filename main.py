@@ -100,7 +100,7 @@ async def clear_data_async(collection_name: str, force: bool):
 def ingest_docs(
     path: Annotated[str, typer.Argument(help="Path to a document file or a directory.")],
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = settings.default_collection_name
+        help="ChromaDB collection name.")] = settings.chroma_db.default_collection_name
 ):
     """Ingests documents into the knowledge base."""
     logger.info(
@@ -122,7 +122,7 @@ def ingest_docs(
 def ingest_code(
     source_path: Annotated[str, typer.Argument(help="URL of the GitHub repository OR path to a local code folder.")],
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = settings.default_collection_name,
+        help="ChromaDB collection name.")] = settings.chroma_db.default_collection_name,
     no_cleanup_github: Annotated[bool, typer.Option(
         help="Do not delete cloned GitHub repo after ingestion (no effect for local folders).")] = False
 ):
@@ -152,7 +152,7 @@ def ingest_code(
 def generate(
     query: Annotated[str, typer.Argument(help="Query for test case generation.")],
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = settings.default_collection_name,
+        help="ChromaDB collection name.")] = settings.chroma_db.default_collection_name,
     num_retrieved: Annotated[int, typer.Option(
         min=0, max=20, help="Number of docs for context.")] = 5,
     output_file: Annotated[str, typer.Option(
@@ -174,7 +174,7 @@ def generate(
 @app.command()
 def status(
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = settings.default_collection_name
+        help="ChromaDB collection name.")] = settings.chroma_db.default_collection_name
 ):
     """Checks status of a collection."""
     logger.info("CLI: Checking status for collection: %s", collection_name)
@@ -190,7 +190,7 @@ def status(
 @app.command()
 def clear_data(
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection to clear.")] = settings.default_collection_name,
+        help="ChromaDB collection to clear.")] = settings.chroma_db.default_collection_name,
     force: Annotated[bool, typer.Option(
         help="Force clear without confirmation.")] = False
 ):

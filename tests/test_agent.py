@@ -289,5 +289,3 @@ async def test_generate_test_cases_n_retrieved_docs_zero(agent_fixt, caplog):
     agent_fixt.vector_store.query_collection_async.assert_called_once_with(query_text=query, n_results=0)
     prompt_arg = agent_fixt.gemini_client.generate_text_async.call_args[0][0]
     assert "No relevant context documents were found" in prompt_arg
-
-```

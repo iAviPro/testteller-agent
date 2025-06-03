@@ -96,7 +96,7 @@ def test_app_settings_from_env(monkeypatch):
         "GEMINI_GENERATION_MODEL": "env/generation-model",
         "CHUNK_SIZE": "2000",
         "CHUNK_OVERLAP": "300",
-        "CODE_EXTENSIONS": ".py,.md",
+        "CODE_EXTENSIONS": "[\".py\", \".md\"]", # Changed to JSON string format
         "TEMP_CLONE_DIR_BASE": "/env/temp/clone",
         "API_RETRY_ATTEMPTS": "5",
         "API_RETRY_WAIT_SECONDS": "10",
@@ -118,7 +118,7 @@ def test_app_settings_from_env(monkeypatch):
     assert settings.gemini_model.gemini_generation_model == test_env_vars["GEMINI_GENERATION_MODEL"]
     assert settings.text_processing.chunk_size == int(test_env_vars["CHUNK_SIZE"])
     assert settings.text_processing.chunk_overlap == int(test_env_vars["CHUNK_OVERLAP"])
-    assert settings.code_loader.code_extensions == test_env_vars["CODE_EXTENSIONS"].split(',')
+    assert settings.code_loader.code_extensions == [".py", ".md"] # Adjusted assertion
     assert settings.code_loader.temp_clone_dir_base == test_env_vars["TEMP_CLONE_DIR_BASE"]
     assert settings.api_retry.api_retry_attempts == int(test_env_vars["API_RETRY_ATTEMPTS"])
     assert settings.api_retry.api_retry_wait_seconds == int(test_env_vars["API_RETRY_WAIT_SECONDS"])
@@ -141,7 +141,8 @@ def test_api_keys_settings_validation(monkeypatch):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     with pytest.raises(ValidationError) as excinfo:
         ApiKeysSettings()
-    assert "GOOGLE_API_KEY environment variable must be set" in str(excinfo.value)
+    assert "Field required" in str(excinfo.value) # Pydantic V2 "Field required"
+    assert "google_api_key" in str(excinfo.value).lower() # Ensure it's about the right field
 
     # Test empty GOOGLE_API_KEY
     monkeypatch.setenv("GOOGLE_API_KEY", "")

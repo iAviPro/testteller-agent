@@ -364,5 +364,3 @@ async def test_load_pdf_sync_mocked_directly(mock_os_exists, doc_loader, mock_as
         assert content == "Directly Mocked PDF Content"
         mock_asyncio_to_thread.assert_called_once_with(DocumentLoader._load_pdf_sync, filepath)
         sync_loader_mock.assert_called_once_with(filepath)
-
-```

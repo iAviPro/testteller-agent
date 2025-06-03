@@ -11,11 +11,47 @@ from llm.gemini_client import GeminiClient
 logger = logging.getLogger(__name__)
 
 
+# Define GeminiChromaEmbeddingFunction at the module level
+class GeminiChromaEmbeddingFunction(embedding_functions.EmbeddingFunction):
+    def __init__(self, gem_client: GeminiClient):
+        self.gem_client = gem_client
+
+    def __call__(self, input_texts: List[str]) -> List[List[float]]:
+        if not input_texts:
+            return [] # Return empty list early if no input texts
+
+        raw_embeddings = self.gem_client.get_embeddings_sync(input_texts)
+        valid_embeddings: List[List[float]] = []
+        # TODO: Make embedding_dim configurable or fetch from model info
+        # For "models/embedding-001", the dimension is 768.
+        embedding_dim = 768
+
+        for i, emb in enumerate(raw_embeddings):
+            if emb is None:
+                logger.warning(
+                    "Sync embedding for input text at index %d ('%s...') was None. Using zero vector.",
+                    i, input_texts[i][:30])
+                valid_embeddings.append([0.0] * embedding_dim)
+            else:
+                if len(emb) != embedding_dim:
+                    logger.error(
+                        "Embedding for input text at index %d has incorrect dimension %d, expected %d. Using zero vector.",
+                        i, len(emb), embedding_dim)
+                    valid_embeddings.append([0.0] * embedding_dim)
+                else:
+                    valid_embeddings.append(emb)
+
+        if not valid_embeddings and input_texts:  # Should not happen if we use zero vectors
+            logger.error(
+                "No valid embeddings generated for any input texts, even with zero vector fallback.")
+        return valid_embeddings
+
+
 class ChromaDBManager:
-    def __init__(self, gemini_client: GeminiClient, collection_name: str = settings.default_collection_name):
+    def __init__(self, gemini_client: GeminiClient, collection_name: str = settings.chroma_db.default_collection_name):
         self.gemini_client = gemini_client
         self.collection_name = collection_name
-        self.db_path = settings.chroma_db_path
+        self.db_path = settings.chroma_db.chroma_db_path
 
         try:
             self.client = chromadb.PersistentClient(path=self.db_path)
@@ -24,40 +60,7 @@ class ChromaDBManager:
                 "Failed to initialize ChromaDB PersistentClient at %s: %s", self.db_path, e, exc_info=True)
             raise
 
-        class GeminiChromaEmbeddingFunction(embedding_functions.EmbeddingFunction):
-            def __init__(self, gem_client: GeminiClient):
-                self.gem_client = gem_client
-
-            def __call__(self, input_texts: List[str]) -> List[List[float]]:
-                raw_embeddings = self.gem_client.get_embeddings_sync(
-                    input_texts)
-                valid_embeddings: List[List[float]] = []
-                # TODO: Make embedding_dim configurable or fetch from model info
-                # For "models/embedding-001", the dimension is 768.
-                embedding_dim = 768
-
-                for i, emb in enumerate(raw_embeddings):
-                    if emb is None:
-                        logger.warning(
-                            "Sync embedding for input text at index %d ('%s...') was None. Using zero vector.",
-                            i, input_texts[i][:30])
-                        valid_embeddings.append([0.0] * embedding_dim)
-                    else:
-                        if len(emb) != embedding_dim:
-                            logger.error(
-                                "Embedding for input text at index %d has incorrect dimension %d, expected %d. Using zero vector.",
-                                i, len(emb), embedding_dim)
-                            valid_embeddings.append([0.0] * embedding_dim)
-                        else:
-                            valid_embeddings.append(emb)
-
-                if not valid_embeddings and input_texts:  # Should not happen if we use zero vectors
-                    logger.error(
-                        "No valid embeddings generated for any input texts, even with zero vector fallback.")
-                return valid_embeddings
-
-        self.embedding_function = GeminiChromaEmbeddingFunction(
-            self.gemini_client)
+        self.embedding_function = GeminiChromaEmbeddingFunction(self.gemini_client)
 
         try:
             self.collection = self.client.get_or_create_collection(
@@ -117,8 +120,21 @@ class ChromaDBManager:
             logger.error(
                 "Error adding documents to ChromaDB: %s", e, exc_info=True)
 
-    async def query_collection(self, query_text: str, n_results: int = 5) -> List[Dict[str, Any]]:
-        if not query_text or not query_text.strip():
+    async def query_collection(self, query_texts: List[str] | str, n_results: int = 5) -> List[Dict[str, Any]]: # Allow List or str
+        # Determine the actual query text to use
+        if isinstance(query_texts, list):
+            if not query_texts:
+                logger.warning("Empty query texts list provided, returning empty list.")
+                return []
+            # For now, processing only the first query text if a list is provided
+            # TODO: Decide if method should support batch queries and update logic accordingly
+            current_query_text = query_texts[0]
+            if len(query_texts) > 1:
+                logger.warning("Multiple query texts provided, but only processing the first one: '%s'", current_query_text)
+        else: # query_texts is a string
+            current_query_text = query_texts
+
+        if not current_query_text or not current_query_text.strip():
             logger.warning("Empty query text provided, returning empty list.")
             return []
 
@@ -143,7 +159,7 @@ class ChromaDBManager:
             results = await self._run_collection_method(
                 'query',  # method_name
                 # No positional arguments for collection.query, all are keyword.
-                query_texts=[query_text],
+                query_texts=[current_query_text], # Pass as list to ChromaDB
                 n_results=actual_n_results,
                 include=['documents', 'metadatas', 'distances']
             )
@@ -164,7 +180,7 @@ class ChromaDBManager:
 
             logger.info(
                 "Query '%.50s...' returned %d results in %.2fs.",
-                query_text, len(formatted_results), duration)
+                current_query_text, len(formatted_results), duration)
             return formatted_results
         except Exception as e:
             logger.error(

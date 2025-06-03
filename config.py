@@ -98,6 +98,13 @@ class CodeLoaderSettings(BaseSettings):
     temp_clone_dir_base: str = Field(
         default="./temp_cloned_repos_prod", env="TEMP_CLONE_DIR_BASE", description="Base directory for cloning GitHub repos")
 
+    @field_validator("code_extensions", mode="before")
+    @classmethod
+    def parse_code_extensions(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(',')]
+        return v
+
 
 class ApiRetrySettings(BaseSettings):
     """API call retry configurations."""

@@ -71,7 +71,7 @@ class GeminiModelSettings(BaseSettings):
     model_config = SettingsConfigDict(extra='ignore', case_sensitive=False)
 
     gemini_embedding_model: str = Field(
-        default="models/embedding-001", env="GEMINI_EMBEDDING_MODEL", description="Gemini model for embeddings")
+        default="text-embedding-004", env="GEMINI_EMBEDDING_MODEL", description="Gemini model for embeddings")
     gemini_generation_model: str = Field(
         default="gemini-2.0-flash", env="GEMINI_GENERATION_MODEL", description="Gemini model for generation")
 

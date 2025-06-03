@@ -1,0 +1,53 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv
+venv/
+env/
+
+# IDE and editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Secrets and environment files (should be passed as environment variables)
+.env
+*.env.*
+!.env.example # Keep .env.example
+
+# Local data and temporary files
+chroma_data_prod/
+chroma_data_prod_docker/ # Volume mount point for app data
+chroma_data_db_persistent/ # Volume mount point for chromadb server data
+temp_cloned_repos_prod/
+temp_cloned_repos_prod_docker/ # App container's temp clone dir
+
+# Test reports and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+pytestdebug.log
+
+# Docker files (if they are not needed inside the image itself)
+# Dockerfile # Usually not needed inside the image
+# docker-compose.yml # Usually not needed inside the image
+
+# Other
+*.log

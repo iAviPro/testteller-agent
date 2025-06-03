@@ -62,6 +62,10 @@ class ChromaDbSettings(BaseSettings):
         default="./chroma_data_prod", env="CHROMA_DB_PATH", description="Path to ChromaDB persistent storage")
     default_collection_name: str = Field(
         default="test_documents_prod", env="DEFAULT_COLLECTION_NAME", description="Default ChromaDB collection name")
+    chroma_db_host: Optional[str] = Field(
+        default=None, env="CHROMA_DB_HOST", description="ChromaDB server host (for HttpClient)")
+    chroma_db_port: Optional[int] = Field(
+        default=None, env="CHROMA_DB_PORT", description="ChromaDB server port (for HttpClient)")
 
 
 class GeminiModelSettings(BaseSettings):

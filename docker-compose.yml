@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: testteller_app
+    restart: unless-stopped
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY} # Passed from .env file
+      - CHROMA_DB_HOST=chromadb
+      - CHROMA_DB_PORT=8000
+      - CHROMA_DB_PATH=/app/chroma_data_prod # Path inside the app container if still used by PersistentClient fallback
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEFAULT_COLLECTION_NAME=${DEFAULT_COLLECTION_NAME:-test_documents_prod_docker}
+      # Add other necessary environment variables from config.py, using .env file defaults
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-models/embedding-001}
+      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-gemini-1.5-flash} # Changed from 2.0 to 1.5 to match current Gemini offerings
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-150}
+      - TEMP_CLONE_DIR_BASE=/app/temp_cloned_repos_prod_docker # Ensure this is writable or map volume if state needs to persist beyond container life
+    volumes:
+      - ./chroma_data_prod_docker:/app/chroma_data_app_persistent # Volume for app's own persistent data if any (e.g. if it writes files other than Chroma)
+      # The main ChromaDB data will be handled by the chromadb service volume.
+      # The app container will connect to the chromadb service as a client.
+      # If the app still needs its own CHROMA_DB_PATH for some reason when acting as a client,
+      # it should point to a path within its own container, not the chromadb service's volume directly.
+      # However, with HttpClient, CHROMA_DB_PATH for the app service becomes less relevant.
+    depends_on:
+      - chromadb
+    networks:
+      - testteller_network
+
+  chromadb:
+    image: chromadb/chroma:0.5.0 # Using a specific version
+    container_name: testteller_chromadb
+    restart: unless-stopped
+    ports:
+      - "8000:8000" # Expose ChromaDB port to the host
+    volumes:
+      - ./chroma_data_db_persistent:/chroma/chroma # Persist ChromaDB data
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0 # Listen on all interfaces within its container network
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - CHROMA_PERSIST_PATH=/chroma/chroma # Path inside the container where data is persisted
+      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-False}
+    networks:
+      - testteller_network
+
+volumes:
+  chroma_data_app_persistent: # Named volume for app's persistent data (if any)
+  chroma_data_db_persistent:  # Named volume for ChromaDB server data
+
+networks:
+  testteller_network:
+    driver: bridge

@@ -4,7 +4,10 @@ import functools
 import hashlib
 import asyncio
 import chromadb
+import os # Added
 from chromadb.utils import embedding_functions
+from chromadb.config import Settings # Added
+from chromadb import HttpClient # Added
 from config import settings
 from llm.gemini_client import GeminiClient
 
@@ -15,14 +18,55 @@ class ChromaDBManager:
     def __init__(self, gemini_client: GeminiClient, collection_name: str = settings.default_collection_name):
         self.gemini_client = gemini_client
         self.collection_name = collection_name
-        self.db_path = settings.chroma_db_path
+        self.db_path = settings.chroma_db_path # db_path is still defined
 
-        try:
-            self.client = chromadb.PersistentClient(path=self.db_path)
-        except Exception as e:
-            logger.error(
-                "Failed to initialize ChromaDB PersistentClient at %s: %s", self.db_path, e, exc_info=True)
-            raise
+        chroma_host = os.getenv("CHROMA_DB_HOST")
+        chroma_port_str = os.getenv("CHROMA_DB_PORT")
+
+        if chroma_host and chroma_port_str:
+            try:
+                chroma_port = int(chroma_port_str)
+                logger.info(f"Connecting to ChromaDB server at {chroma_host}:{chroma_port}")
+                self.client = HttpClient(
+                    host=chroma_host,
+                    port=chroma_port,
+                    settings=Settings(anonymized_telemetry=False)
+                )
+            except ValueError:
+                logger.error(f"Invalid CHROMA_DB_PORT: {chroma_port_str}. Falling back to PersistentClient.")
+                try:
+                    self.client = chromadb.PersistentClient(path=self.db_path, settings=Settings(anonymized_telemetry=False))
+                except Exception as e:
+                    logger.error(
+                        "Failed to initialize ChromaDB PersistentClient (fallback) at %s: %s", self.db_path, e, exc_info=True)
+                    raise
+            except Exception as e: # Catch other HttpClient connection errors
+                logger.error(
+                    "Failed to connect to ChromaDB HttpClient at %s:%s: %s. Falling back to PersistentClient.", chroma_host, chroma_port_str, e, exc_info=True)
+                try:
+                    self.client = chromadb.PersistentClient(path=self.db_path, settings=Settings(anonymized_telemetry=False))
+                except Exception as e_fallback:
+                    logger.error(
+                        "Failed to initialize ChromaDB PersistentClient (fallback after HttpClient error) at %s: %s", self.db_path, e_fallback, exc_info=True)
+                    raise
+        else:
+            logger.info(f"CHROMA_DB_HOST or CHROMA_DB_PORT not set. Using PersistentClient with path: {self.db_path}")
+            try:
+                self.client = chromadb.PersistentClient(path=self.db_path, settings=Settings(anonymized_telemetry=False))
+            except Exception as e:
+                logger.error(
+                    "Failed to initialize ChromaDB PersistentClient at %s: %s", self.db_path, e, exc_info=True)
+                raise
+
+        # Ensure client is set before proceeding
+        if not hasattr(self, 'client') or self.client is None:
+            # This case should ideally be prevented by the raise statements above,
+            # but as a safeguard:
+            logger.critical("ChromaDB client could not be initialized. Aborting initialization.")
+            # Depending on application structure, might want to raise a specific error here
+            # or ensure that later code handles a None client gracefully (though raising is better).
+            raise ConnectionError("Failed to initialize any ChromaDB client.")
+
 
         class GeminiChromaEmbeddingFunction(embedding_functions.EmbeddingFunction):
             def __init__(self, gem_client: GeminiClient):
@@ -65,11 +109,12 @@ class ChromaDBManager:
                 embedding_function=self.embedding_function
             )
             logger.info(
-                "ChromaDBManager initialized. Collection: '%s' at path: '%s'. Count: %d",
-                self.collection_name, self.db_path, self.collection.count())
+                "ChromaDBManager initialized. Collection: '%s'. Path: '%s'. Client: %s. Count: %d",
+                self.collection_name, self.db_path, type(self.client).__name__, self.collection.count())
         except Exception as e:
             logger.error(
-                "Error getting or creating Chroma collection '%s': %s", self.collection_name, e, exc_info=True)
+                "Error getting or creating Chroma collection '%s' with client %s: %s",
+                self.collection_name, type(self.client).__name__, e, exc_info=True)
             raise
 
     async def _run_collection_method(self, method_name: str, *pos_args, **kw_args) -> Any:

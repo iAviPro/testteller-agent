@@ -27,4 +27,4 @@ COPY . .
 # This will depend on how main.py is typically invoked.
 # Assuming it's a CLI application, we might not need a default CMD
 # or we can set it to run a basic command like "python main.py --help"
-CMD ["python", "main.py", "--help"]
+CMD ["python", "-m",  "testteller.main", "--help"]

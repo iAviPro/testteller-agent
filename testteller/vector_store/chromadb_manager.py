@@ -1,15 +1,15 @@
 import logging
+import os
 from typing import List, Dict, Any
 import functools
 import hashlib
 import asyncio
 import chromadb
-import os  # Added
 from chromadb.utils import embedding_functions
 from chromadb.config import Settings  # Added
 from chromadb import HttpClient  # Added
-from config import settings
-from llm.gemini_client import GeminiClient
+from testteller.config import settings
+from testteller.llm.gemini_client import GeminiClient
 
 logger = logging.getLogger(__name__)
 

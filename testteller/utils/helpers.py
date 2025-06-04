@@ -1,7 +1,7 @@
 import logging
 import sys
-from config import settings
 from pythonjsonlogger import jsonlogger
+from testteller.config import settings
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):

@@ -7,7 +7,7 @@ ChromaDB settings, and other parameters.
 import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

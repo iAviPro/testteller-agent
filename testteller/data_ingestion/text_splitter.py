@@ -1,22 +1,41 @@
 import logging
 import os
-import time  # For performance metrics logging
-from pathlib import Path  # For checking if path is likely a URL
-from prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
-from llm.gemini_client import GeminiClient
-from vector_store.chromadb_manager import ChromaDBManager
-from data_ingestion.document_loader import DocumentLoader
-from data_ingestion.code_loader import CodeLoader
-from data_ingestion.text_splitter import TextSplitter
+import time
+from testteller.llm.gemini_client import GeminiClient
+from testteller.vector_store.chromadb_manager import ChromaDBManager
+from testteller.data_ingestion.document_loader import DocumentLoader
+from testteller.data_ingestion.code_loader import CodeLoader
+from testteller.prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
+from testteller.config import settings
 
-from config import settings
+
+class TextSplitter:
+    def __init__(self, chunk_size: int = 500, overlap: int = 50):
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+
+    def split_text(self, text: str):
+        if not text:
+            return []
+        chunks = []
+        start = 0
+        text_length = len(text)
+        while start < text_length:
+            end = min(start + self.chunk_size, text_length)
+            chunks.append(text[start:end])
+            if end == text_length:
+                break
+            start = end - self.overlap
+        return chunks
 
 
 logger = logging.getLogger(__name__)
 
 
-class TestTellerRagAgent:
+class TestTellerAgent:
     def __init__(self, collection_name: str = settings.chroma_db.default_collection_name):
+        # Initialize clients. These are lightweight and can be created per agent instance.
+        # For a long-running service, you might make them singletons or manage them differently.
         self.gemini_client = GeminiClient()
         self.vector_store = ChromaDBManager(
             gemini_client=self.gemini_client, collection_name=collection_name)
@@ -25,7 +44,7 @@ class TestTellerRagAgent:
         self.text_splitter = TextSplitter()
         self.collection_name = collection_name
         logger.info(
-            "TestCaseAgent initialized for collection: %s", collection_name)
+            "TestTellerRAGAgent initialized for collection: %s", collection_name)
 
     async def _ingest_content(self, contents_with_paths: list[tuple[str, str]], source_type: str):
         if not contents_with_paths:
@@ -41,7 +60,7 @@ class TestTellerRagAgent:
         processed_count = 0
         start_time_ingestion_prep = time.monotonic()
 
-        for item_path, item_content in contents_with_paths:  # item_path is the full source_identifier here
+        for item_path, item_content in contents_with_paths:
             processed_count += 1
             log_prefix = f"[{processed_count}/{total_content_items}]"
             if not item_content or not item_content.strip():
@@ -59,22 +78,18 @@ class TestTellerRagAgent:
                     "%s No chunks generated for %s (split_duration: %.3fs).", log_prefix, item_path, splitting_duration)
                 continue
 
-            # The item_path here is already the unique identifier like "https://github.com/user/repo/file.py"
-            # or "local:/abs/path/to/folder/file.py" which comes from CodeLoader._read_code_files_from_path
             logger.debug(
-                "%s Processed source '%s' into %d chunks (split_duration: %.3fs).",
+                "%s Processed %s into %d chunks (split_duration: %.3fs).",
                 log_prefix, item_path, len(chunks), splitting_duration)
 
             for chunk_idx, chunk in enumerate(chunks):
-                # Generate ID based on the unique source path of the file and the chunk content
                 unique_id = self.vector_store.generate_id_from_text_and_source(
                     chunk, item_path)
                 metadata = {
-                    "source": item_path,  # This is the full unique path to the source file
+                    "source": item_path,
                     "type": source_type,
                     "original_length": len(item_content),
                     "chunk_index": chunk_idx,
-                    # Number of chunks from this specific file
                     "total_chunks_for_source": len(chunks)
                 }
                 all_chunks.append(chunk)
@@ -83,21 +98,21 @@ class TestTellerRagAgent:
 
         ingestion_prep_duration = time.monotonic() - start_time_ingestion_prep
         logger.info(
-            "Content preparation for %d chunks from %d original source files took %.2fs.",
+            "Content preparation for %d chunks from %d sources took %.2fs.",
             len(all_chunks), total_content_items, ingestion_prep_duration)
 
         if all_chunks:
             await self.vector_store.add_documents(documents=all_chunks, metadatas=all_metadatas, ids=all_ids)
+            # Final count logged by vector_store.add_documents
         else:
             logger.info("No valid chunks to ingest from %s.", source_type)
 
     async def ingest_documents_from_path(self, path: str):
         logger.info("Starting ingestion of documents from path: %s", path)
         start_time = time.monotonic()
-        if os.path.isfile(path):
+        if os.path.isfile(path):  # Sync check, acceptable for CLI startup
             content = await self.document_loader.load_document(path)
             if content:
-                # For single doc, item_path is the file path, source_type is 'document_file'
                 await self._ingest_content([(path, content)], source_type="document_file")
             else:
                 logger.warning(
@@ -105,7 +120,6 @@ class TestTellerRagAgent:
         elif os.path.isdir(path):
             docs_with_content = await self.document_loader.load_from_directory(path)
             if docs_with_content:
-                # docs_with_content is list of (file_path, content)
                 await self._ingest_content(docs_with_content, source_type="document_directory")
             else:
                 logger.warning("No documents loaded from directory: %s", path)
@@ -116,52 +130,21 @@ class TestTellerRagAgent:
         logger.info(
             "Document ingestion from path '%s' completed in %.2fs.", path, duration)
 
-    async def ingest_code_from_source(self, source_path: str, cleanup_github_after: bool = True):
-        """
-        Ingests code from either a GitHub repository URL or a local folder path.
-        """
-        logger.info("Starting ingestion of code from source: %s", source_path)
+    async def ingest_code_from_github(self, repo_url: str, cleanup_after: bool = True):
+        logger.info("Starting ingestion of code from GitHub repo: %s", repo_url)
         start_time = time.monotonic()
-        # This will be list of (full_source_path_identifier, content)
-        code_files_content = []
-
-        is_url = "://" in source_path or source_path.startswith("git@")
-
-        if is_url:
-            logger.info(
-                "Source '%s' identified as a remote repository URL.", source_path)
-            code_files_content = await self.code_loader.load_code_from_repo(source_path)
-            if cleanup_github_after:
-                await self.code_loader.cleanup_repo(source_path)
-            source_type_log = "github_code"
-        else:
-            local_path = Path(source_path)
-            if not local_path.exists():
-                logger.error("Local code path does not exist: %s", source_path)
-                print(f"Error: Local code path '{source_path}' not found.")
-                return
-            if not local_path.is_dir():
-                logger.error(
-                    "Local code path is not a directory: %s", source_path)
-                print(
-                    f"Error: Local code path '{source_path}' is not a directory.")
-                return
-
-            logger.info(
-                "Source '%s' identified as a local folder path.", source_path)
-            # Pass the original source_path, CodeLoader will resolve and use absolute path for its identifier
-            code_files_content = await self.code_loader.load_code_from_local_folder(source_path)
-            source_type_log = "local_folder_code"
-
+        code_files_content = await self.code_loader.load_code_from_repo(repo_url)
         if code_files_content:
-            # code_files_content is already a list of (unique_file_identifier, content)
-            await self._ingest_content(code_files_content, source_type=source_type_log)
+            await self._ingest_content(code_files_content, source_type="github_code")
         else:
-            logger.warning("No code files loaded from source: %s", source_path)
+            logger.warning(
+                "No code files loaded from GitHub repo: %s", repo_url)
 
+        if cleanup_after:
+            await self.code_loader.cleanup_repo(repo_url)
         duration = time.monotonic() - start_time
         logger.info(
-            "Code ingestion from source '%s' completed in %.2fs.", source_path, duration)
+            "Code ingestion from repo '%s' completed in %.2fs.", repo_url, duration)
 
     async def get_ingested_data_count(self) -> int:
         return await self.vector_store.get_collection_count_async()
@@ -203,13 +186,12 @@ class TestTellerRagAgent:
                     source = doc_data.get('metadata', {}).get(
                         'source', 'Unknown source')
                     doc_content = doc_data.get('document', '')
-                    distance = doc_data.get('distance')
-                    distance_str = f"{distance:.4f}" if distance is not None else "N/A"
+                    distance = doc_data.get('distance', 'N/A')
                     context_parts.append(
-                        f"--- Context Document {i+1} (Source: {source}, Distance: {distance_str}) ---\n{doc_content}\n--- End Context Document {i+1} ---")
+                        f"--- Context Document {i+1} (Source: {source}, Distance: {distance:.4f}) ---\n{doc_content}\n--- End Context Document {i+1} ---")
                     logger.debug(
-                        "Retrieved doc %d: Source: %s, Distance: %s, Preview: %s...",
-                        i+1, source, distance_str, doc_content[:100])
+                        "Retrieved doc %d: Source: %s, Distance: %.4f, Preview: %s...",
+                        i+1, source, distance, doc_content[:100])
                 context_str = "\n\n".join(context_parts)
 
         prompt = TEST_CASE_GENERATION_PROMPT_TEMPLATE.format(

@@ -5,9 +5,8 @@ import logging
 import asyncio
 from pathlib import Path
 import aiofiles  # For async file reading
-from git import Repo, exc as GitExc  # Renamed to avoid clash with built-in exc
-# Assuming settings.code_extensions and settings.temp_clone_dir_base are here
-from config import settings
+from git import Repo, exc as GitExc
+from testteller.config import settings
 
 
 logger = logging.getLogger(__name__)

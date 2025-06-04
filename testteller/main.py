@@ -4,9 +4,9 @@ import asyncio
 from pathlib import Path
 from typing_extensions import Annotated
 import typer
-from agent import TestTellerRagAgent
-from utils.helpers import setup_logging
-from config import settings
+from .utils.helpers import setup_logging
+from .agent import TestTellerRagAgent
+from .config import settings
 
 
 setup_logging()
@@ -205,5 +205,16 @@ def clear_data(
         raise typer.Exit(code=1)
 
 
-if __name__ == "__main__":
+def app_runner():
+    """
+    This function is the entry point for the CLI script defined in pyproject.toml.
+    It ensures logging is set up and then runs the Typer application.
+    """
+    # setup_logging() # Called at module level now
     app()
+
+
+if __name__ == "__main__":
+    # This allows running main.py directly for development/testing
+    # (e.g., python -m testteller_rag_agent.main generate "query")
+    app_runner()

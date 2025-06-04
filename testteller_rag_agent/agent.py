@@ -2,14 +2,14 @@ import logging
 import os
 import time  # For performance metrics logging
 from pathlib import Path  # For checking if path is likely a URL
-from prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
-from llm.gemini_client import GeminiClient
-from vector_store.chromadb_manager import ChromaDBManager
-from data_ingestion.document_loader import DocumentLoader
-from data_ingestion.code_loader import CodeLoader
-from data_ingestion.text_splitter import TextSplitter
+from .prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
+from .llm.gemini_client import GeminiClient
+from .vector_store.chromadb_manager import ChromaDBManager
+from .data_ingestion.document_loader import DocumentLoader
+from .data_ingestion.code_loader import CodeLoader
+from .data_ingestion.text_splitter import TextSplitter
 
-from config import settings
+from .config import settings
 
 
 logger = logging.getLogger(__name__)

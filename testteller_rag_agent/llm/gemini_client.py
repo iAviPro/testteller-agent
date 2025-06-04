@@ -3,8 +3,8 @@ import asyncio
 import functools
 import os
 import google.generativeai as genai
-from utils.retry_helpers import api_retry_async, api_retry_sync
-from config import settings  # Ensure settings is imported
+from ..utils.retry_helpers import api_retry_async, api_retry_sync
+from ..config import settings  # Ensure settings is imported
 
 
 logger = logging.getLogger(__name__)

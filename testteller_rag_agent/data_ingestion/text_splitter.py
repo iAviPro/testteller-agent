@@ -1,12 +1,12 @@
 import logging
 import os
 import time
-from llm.gemini_client import GeminiClient
-from vector_store.chromadb_manager import ChromaDBManager
-from data_ingestion.document_loader import DocumentLoader
-from data_ingestion.code_loader import CodeLoader
-from prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
-from config import settings
+from ..llm.gemini_client import GeminiClient
+from ..vector_store.chromadb_manager import ChromaDBManager
+from .document_loader import DocumentLoader
+from .code_loader import CodeLoader
+from ..prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
+from ..config import settings
 
 
 class TextSplitter:

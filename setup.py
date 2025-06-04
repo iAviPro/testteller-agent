@@ -32,12 +32,13 @@ setup(
         "openpyxl>=3.0.9",
         "typer>=0.4.0",
         "pydantic>=1.10.2",
+        "pydantic-settings", # Added for Pydantic V2 settings management
         "requests>=2.26.0",
         "python-dotenv>=0.19.2",
         "chromadb>=0.3.21",
         "langchain>=0.0.200",
         "langchain-openai>=0.0.200",
-        "google-generative-ai>=0.1.0",
+        "google-generativeai",
     ],
     entry_points={
         "console_scripts": [

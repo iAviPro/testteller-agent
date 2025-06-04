@@ -4,9 +4,9 @@ import asyncio
 from pathlib import Path
 from typing_extensions import Annotated
 import typer
-from agent import TestTellerRagAgent
-from utils.helpers import setup_logging
-from config import settings
+from .agent import TestTellerRagAgent
+from .utils.helpers import setup_logging
+from .config import settings
 
 
 setup_logging()

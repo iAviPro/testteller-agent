@@ -83,14 +83,8 @@ class ChromaDBManager:
         loop = asyncio.get_running_loop()
         method_to_call = getattr(self.collection, method_name)
 
-        # Create a partial function that has all arguments (positional and keyword) bound to it.
-        # This partial function will then be called by run_in_executor without any additional arguments.
         func_with_bound_args = functools.partial(
             method_to_call, *pos_args, **kw_args)
-
-        # DEBUG: Print what's being prepared for the executor
-        # logger.debug(f"Executing in thread: {method_name} with pos_args={pos_args}, kw_args={kw_args}")
-        # logger.debug(f"Partial function details: {func_with_bound_args.func}, {func_with_bound_args.args}, {func_with_bound_args.keywords}")
 
         return await loop.run_in_executor(None, func_with_bound_args)
 
@@ -104,10 +98,8 @@ class ChromaDBManager:
 
         start_time = asyncio.get_event_loop().time()
         try:
-            # Call the helper, passing arguments as keyword arguments for `collection.add`
             await self._run_collection_method(
-                'add',  # method_name
-                # No positional arguments for collection.add, all are keyword.
+                'add',
                 documents=documents,
                 metadatas=metadatas,
                 ids=ids
@@ -120,18 +112,15 @@ class ChromaDBManager:
             logger.error(
                 "Error adding documents to ChromaDB: %s", e, exc_info=True)
 
-    async def query_collection(self, query_texts: List[str] | str, n_results: int = 5) -> List[Dict[str, Any]]: # Allow List or str
-        # Determine the actual query text to use
+    async def query_collection(self, query_texts: List[str] | str, n_results: int = 5) -> List[Dict[str, Any]]:
         if isinstance(query_texts, list):
             if not query_texts:
                 logger.warning("Empty query texts list provided, returning empty list.")
                 return []
-            # For now, processing only the first query text if a list is provided
-            # TODO: Decide if method should support batch queries and update logic accordingly
             current_query_text = query_texts[0]
             if len(query_texts) > 1:
                 logger.warning("Multiple query texts provided, but only processing the first one: '%s'", current_query_text)
-        else: # query_texts is a string
+        else:
             current_query_text = query_texts
 
         if not current_query_text or not current_query_text.strip():
@@ -139,6 +128,7 @@ class ChromaDBManager:
             return []
 
         start_time = asyncio.get_event_loop().time()
+        formatted_results = []
         try:
             current_count = await self.get_collection_count_async()
             if current_count == 0:
@@ -148,68 +138,80 @@ class ChromaDBManager:
 
             actual_n_results = min(n_results, current_count)
             if actual_n_results <= 0:
-                # ensure n_results is positive if querying
                 actual_n_results = 1 if current_count > 0 else 0
 
-            if actual_n_results == 0:  # if collection is empty or n_results forced to 0
+            if actual_n_results == 0:
                 logger.info(
-                    "Query for '%.50s...' resulted in 0 n_results. Returning empty list.", query_text)
+                    "Query for '%.50s...' resulted in 0 n_results. Returning empty list.", current_query_text)
                 return []
 
             results = await self._run_collection_method(
-                'query',  # method_name
-                # No positional arguments for collection.query, all are keyword.
-                query_texts=[current_query_text], # Pass as list to ChromaDB
+                'query',
+                query_texts=[current_query_text],
                 n_results=actual_n_results,
                 include=['documents', 'metadatas', 'distances']
             )
-            duration = asyncio.get_event_loop().time() - start_time
 
-            formatted_results = []
-            # ChromaDB query results structure: results['ids'] is list of lists, etc.
-            # Check if the inner list is not None
-            if results and results.get('ids') and results['ids'][0] is not None:
-                for i in range(len(results['ids'][0])):
-                    res = {
-                        'id': results['ids'][0][i],
-                        'document': results['documents'][0][i] if results.get('documents') and results['documents'][0] else None,
-                        'metadata': results['metadatas'][0][i] if results.get('metadatas') and results['metadatas'][0] else None,
-                        'distance': results['distances'][0][i] if results.get('distances') and results['distances'][0] else None,
-                    }
-                    formatted_results.append(res)
+            if results and results.get('ids') and results['ids'] and results['ids'][0] is not None:
+                expected_keys = ['ids', 'documents', 'metadatas', 'distances']
+                valid_structure = True
+                for key in expected_keys:
+                    if not (results.get(key) and isinstance(results[key], list) and len(results[key]) > 0 and isinstance(results[key][0], list)):
+                        logger.warning(f"Query results missing or malformed for key: {key}. Results: {results}")
+                        valid_structure = False
+                        break
 
-            logger.info(
-                "Query '%.50s...' returned %d results in %.2fs.",
-                current_query_text, len(formatted_results), duration)
-            return formatted_results
+                if valid_structure:
+                    num_ids = len(results['ids'][0])
+                    num_docs = len(results['documents'][0])
+                    num_metadatas = len(results['metadatas'][0])
+                    num_distances = len(results['distances'][0])
+
+                    if not (num_ids == num_docs == num_metadatas == num_distances):
+                        logger.warning(
+                            "Query results for query '%s' had mismatched lengths. IDs: %d, Docs: %d, Metadatas: %d, Distances: %d. Skipping result processing.",
+                            current_query_text, num_ids, num_docs, num_metadatas, num_distances
+                        )
+                    else:
+                        for i in range(num_ids):
+                            res = {
+                                'id': results['ids'][0][i],
+                                'document': results['documents'][0][i],
+                                'metadata': results['metadatas'][0][i],
+                                'distance': results['distances'][0][i],
+                            }
+                            formatted_results.append(res)
+            elif results:
+                 logger.warning(f"Query results were present but malformed (missing 'ids'[0] or it was None). Results: {results}")
+
         except Exception as e:
-            logger.error(
-                "Error querying ChromaDB collection: %s", e, exc_info=True)
-            return []
+            logger.error("Error querying ChromaDB collection: %s", e, exc_info=True)
+            # Fall through to return empty formatted_results
+
+        duration = asyncio.get_event_loop().time() - start_time
+        logger.info(
+            "Query '%.50s...' returned %d results in %.2fs.",
+            current_query_text, len(formatted_results), duration)
+        return formatted_results
 
     async def get_collection_count_async(self) -> int:
         try:
-            # collection.count() takes no arguments
             return await self._run_collection_method('count')
         except Exception as e:
-            logger.error("Error getting collection count: %s",
-                         e, exc_info=True)
+            logger.error("Error getting collection count: %s", e, exc_info=True)
             return 0
 
     async def clear_collection_async(self):
         logger.warning(
             "Clearing collection '%s'. This will delete and recreate it.", self.collection_name)
         try:
-            # These client operations are synchronous and not part of the _run_collection_method helper
             await asyncio.to_thread(self.client.delete_collection, name=self.collection_name)
-
             new_collection_instance = await asyncio.to_thread(
                 self.client.get_or_create_collection,
                 name=self.collection_name,
                 embedding_function=self.embedding_function
             )
             self.collection = new_collection_instance
-
             new_count = await self.get_collection_count_async()
             logger.info(
                 "Collection '%s' cleared and recreated. New count: %d", self.collection_name, new_count)

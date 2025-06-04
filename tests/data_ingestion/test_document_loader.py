@@ -169,14 +169,20 @@ async def test_internal_load_text_async_success_aiofiles(doc_loader):
     filepath = "test.txt"
     mock_content = "aiofiles success"
 
-    mock_aio_open = mock.AsyncMock(spec=aiofiles.threadpool.AsyncTextIOWrapper)
-    mock_aio_open.return_value.__aenter__.return_value.read.return_value = mock_content
+    # Correctly configure the async context manager mock for aiofiles.open
+    async_file_mock = mock.AsyncMock() # This is the object the 'async with' yields (the file handle)
+    async_file_mock.read = mock.AsyncMock(return_value=mock_content) # Configure its read method
 
-    with mock.patch("aiofiles.open", mock_aio_open) as mocked_aio_open:
+    # mock_aiofiles_open_cm is what aiofiles.open(...) itself returns.
+    # This object needs to be an async context manager.
+    mock_aiofiles_open_cm = mock.AsyncMock()
+    mock_aiofiles_open_cm.__aenter__.return_value = async_file_mock # __aenter__ returns the file handle mock
+
+    with mock.patch("aiofiles.open", return_value=mock_aiofiles_open_cm) as mocked_aio_open_patch:
         with mock.patch("builtins.open") as mocked_sync_open: # Should not be called
             content = await DocumentLoader._load_text_async(filepath)
             assert content == mock_content
-            mocked_aio_open.assert_called_once_with(filepath, 'r', encoding='utf-8', errors='ignore')
+            mocked_aio_open_patch.assert_called_once_with(filepath, 'r', encoding='utf-8', errors='ignore')
             mocked_sync_open.assert_not_called()
 
 @pytest.mark.asyncio
@@ -286,9 +292,13 @@ async def test_load_from_directory_success(doc_loader, mock_path_is_dir, mock_pa
         mock.call("/testdir/subdir/image.jpg"),
         mock.call("/testdir/subdir/archive.zip"),
     ]
-    # Sort calls for stable comparison
-    mock_ld_method.call_args_list.sort(key=lambda x: x[0][0])
-    assert mock_ld_method.call_args_list == expected_load_doc_calls
+    # Check calls irrespective of order
+    assert len(mock_ld_method.call_args_list) == len(expected_load_doc_calls)
+    for c in expected_load_doc_calls:
+        assert c in mock_ld_method.call_args_list, f"Expected call {c} not found in actual calls."
+    # Ensure all actual calls were expected (handles duplicates if any, though not in this case)
+    for c_actual in mock_ld_method.call_args_list:
+        assert c_actual in expected_load_doc_calls, f"Actual call {c_actual} was not expected."
 
     assert "Loaded 2 documents from directory /testdir" in caplog.text
 
@@ -339,8 +349,12 @@ async def test_load_from_directory_one_file_fails(doc_loader, mock_path_is_dir, 
 
     # Ensure load_document was called for both
     expected_calls = [mock.call(str(file_good)), mock.call(str(file_bad))]
-    mock_ld_method.call_args_list.sort(key=lambda x: x[0][0])
-    assert mock_ld_method.call_args_list == expected_calls
+    # Check calls irrespective of order
+    assert len(mock_ld_method.call_args_list) == len(expected_calls)
+    for c in expected_calls:
+        assert c in mock_ld_method.call_args_list, f"Expected call {c} not found in actual calls."
+    for c_actual in mock_ld_method.call_args_list:
+        assert c_actual in expected_calls, f"Actual call {c_actual} was not expected."
 
 @pytest.mark.asyncio
 async def test_load_from_directory_empty_dir(doc_loader, mock_path_is_dir, mock_path_rglob, caplog):
@@ -364,3 +378,113 @@ async def test_load_pdf_sync_mocked_directly(mock_os_exists, doc_loader, mock_as
         assert content == "Directly Mocked PDF Content"
         mock_asyncio_to_thread.assert_called_once_with(DocumentLoader._load_pdf_sync, filepath)
         sync_loader_mock.assert_called_once_with(filepath)
+
+# --- Tests that execute synchronous loaders ---
+
+# Helper to create temp files for testing actual loaders
+@pytest.fixture
+def temp_file_factory(tmp_path):
+    def _create_temp_file(filename, content_writer_func, *args):
+        file_path = tmp_path / filename
+        content_writer_func(file_path, *args)
+        return str(file_path)
+    return _create_temp_file
+
+# PDF specific writer using PyMuPDF (fitz)
+def write_pdf_content(file_path_obj, text_content):
+    import fitz # PyMuPDF
+    doc = fitz.open() # New empty PDF
+    page = doc.new_page()
+    page.insert_text((50, 72), text_content)
+    doc.save(str(file_path_obj))
+    doc.close()
+
+@pytest.mark.asyncio
+@mock.patch("os.path.exists", return_value=True) # Assume file exists
+async def test_load_document_pdf_actual_loader(mock_os_exists, doc_loader, mock_asyncio_to_thread, temp_file_factory):
+    expected_text = "This is a test PDF content."
+    # Use the factory to create a real PDF file
+    pdf_filepath_str = temp_file_factory("test_actual.pdf", write_pdf_content, expected_text)
+
+    # Ensure _load_pdf_sync is NOT mocked for this test
+    # mock_asyncio_to_thread will still ensure it's called in a thread
+
+    content = await doc_loader.load_document(pdf_filepath_str)
+
+    assert content.strip() == expected_text.strip()
+    # Check that asyncio.to_thread was called with the real _load_pdf_sync
+    # and the correct file path.
+    # The passthrough_to_thread mock for asyncio.to_thread directly executes the function,
+    # so _load_pdf_sync will have been called with pdf_filepath_str.
+    mock_asyncio_to_thread.assert_called_once_with(DocumentLoader._load_pdf_sync, pdf_filepath_str)
+
+# DOCX specific writer
+def write_docx_content(file_path_obj, text_content):
+    from docx import Document as DocxDocument # Alias to avoid confusion with DocumentLoader
+    doc = DocxDocument()
+    doc.add_paragraph(text_content)
+    doc.save(str(file_path_obj))
+
+@pytest.mark.asyncio
+@mock.patch("os.path.exists", return_value=True)
+async def test_load_document_docx_actual_loader(mock_os_exists, doc_loader, mock_asyncio_to_thread, temp_file_factory):
+    expected_text = "This is test DOCX content."
+    docx_filepath_str = temp_file_factory("test_actual.docx", write_docx_content, expected_text)
+
+    content = await doc_loader.load_document(docx_filepath_str)
+
+    assert content.strip() == expected_text.strip()
+    mock_asyncio_to_thread.assert_called_once_with(DocumentLoader._load_docx_sync, docx_filepath_str)
+
+# XLSX specific writer
+def write_xlsx_content(file_path_obj, sheet_data_map):
+    import openpyxl
+    workbook = openpyxl.Workbook()
+    # Remove default sheet if creating specific ones
+    if "Sheet" in workbook.sheetnames and len(sheet_data_map) > 0 :
+        del workbook["Sheet"]
+
+    for sheet_name, rows in sheet_data_map.items():
+        sheet = workbook.create_sheet(title=sheet_name)
+        for row_data in rows:
+            sheet.append(row_data)
+    workbook.save(str(file_path_obj))
+
+@pytest.mark.asyncio
+@mock.patch("os.path.exists", return_value=True)
+async def test_load_document_xlsx_actual_loader(mock_os_exists, doc_loader, mock_asyncio_to_thread, temp_file_factory):
+    # Define content for multiple sheets
+    sheet1_name = "TestSheet1"
+    sheet1_rows = [
+        ["Header1", "Header2"],
+        ["Data1A", "Data1B"],
+        ["Data1C", None], # Test None value
+    ]
+    sheet2_name = "Another Sheet"
+    sheet2_rows = [
+        ["Info"],
+        ["More data"],
+    ]
+    xlsx_data = {
+        sheet1_name: sheet1_rows,
+        sheet2_name: sheet2_rows,
+    }
+
+    # Construct expected text based on _load_xlsx_sync logic
+    temp_parts_for_expected_text = []
+    for sheet_name_key, rows_data in xlsx_data.items():
+        temp_parts_for_expected_text.append(f"Sheet: {sheet_name_key}\n")
+        for row in rows_data:
+            temp_parts_for_expected_text.append(", ".join([str(cell) if cell is not None else "" for cell in row]))
+        temp_parts_for_expected_text.append("\n")
+    expected_text = "\n".join(temp_parts_for_expected_text)
+
+    xlsx_filepath_str = temp_file_factory("test_actual.xlsx", write_xlsx_content, xlsx_data)
+
+    content = await doc_loader.load_document(xlsx_filepath_str)
+
+    # Normalize newlines and strip for comparison.
+    # The actual content might end with \n\n due to the final join, strip() handles this.
+    # Expected text also built to match this structure then stripped.
+    assert content.replace('\r\n', '\n').strip() == expected_text.strip()
+    mock_asyncio_to_thread.assert_called_once_with(DocumentLoader._load_xlsx_sync, xlsx_filepath_str)

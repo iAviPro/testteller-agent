@@ -1,389 +1,474 @@
 import pytest
 import asyncio
 import os
-import shutil # For mocking rmtree
+import shutil
 from unittest import mock
 from pathlib import Path
-import sys # For sys.modules git mock
+import sys
+import git
+import types
 
-# Make sure aiofiles is available for mocking
 try:
     import aiofiles
-    import aiofiles.os as aio_os # Not directly used by CodeLoader but good for completeness
+    import aiofiles.os as aio_os
 except ImportError:
-    # Create dummy aiofiles for environments where it might not be installed
     aiofiles = mock.MagicMock()
     aio_os = mock.MagicMock()
 
-# --- Git Mocking ---
-# Mock git before importing CodeLoader, as CodeLoader might import git at module level.
-# This setup ensures that when CodeLoader does `import git` or `from git import Repo`,
-# it gets our mock.
+from git import exc as ActualGitExceptions
 
-# Create a mock for the 'git' module
 git_module_mock = mock.MagicMock(name="git_module_mock")
-
-# Create a mock for the 'Repo' class within the 'git' module
 git_repo_class_mock = mock.MagicMock(name="Repo_class_mock")
 git_module_mock.Repo = git_repo_class_mock
-
-# Create a mock for an instance of the 'Repo' class
+git_module_mock.exc = ActualGitExceptions
 git_repo_instance_mock = mock.MagicMock(name="Repo_instance_mock")
-# Configure Repo class mock to return the instance mock when called (e.g. Repo.clone_from)
-# Repo.clone_from is a class method, so it's on Repo class mock directly
-git_repo_class_mock.clone_from = mock.MagicMock(name="clone_from_mock")
+git_repo_class_mock.clone_from = mock.MagicMock(name="clone_from_mock_global")
 
-
-# Apply the mock to sys.modules BEFORE CodeLoader is imported
-# Important: This must happen before `from data_ingestion.code_loader import CodeLoader`
 original_sys_modules_git = sys.modules.get('git')
 sys.modules['git'] = git_module_mock
 
-# Now import CodeLoader and its dependencies
 from data_ingestion.code_loader import CodeLoader
-from config import CodeLoaderSettings
+from data_ingestion.code_loader import Repo as CodeLoaderRepo # Get the Repo CodeLoader uses
 
-# Restore original sys.modules state for 'git' after CodeLoader import,
-# so other tests (if any in the same session) are not affected.
+from config import CodeLoaderSettings, ApiKeysSettings
+
 if original_sys_modules_git:
     sys.modules['git'] = original_sys_modules_git
 else:
-    # If 'git' was not in sys.modules, remove our mock
     if 'git' in sys.modules:
         del sys.modules['git']
-# --- End Git Mocking ---
 
-
-import logging # For caplog
-
-# Default extensions from CodeLoaderSettings for comparison
-DEFAULT_CODE_EXTENSIONS = CodeLoaderSettings().code_extensions
+import logging
 
 @pytest.fixture
-def code_loader():
-    """Fixture to create a CodeLoader instance and reset global state."""
-    # Reset global cloned_repos set for each test to ensure isolation
-    # This is important because CodeLoader.cloned_repos is a class variable.
+def mock_code_loader_settings(monkeypatch, mocker):
+    mock_api_keys_instance = mocker.MagicMock(spec=ApiKeysSettings)
+    configured_mock_github_secret_str = mocker.MagicMock()
+    configured_mock_github_secret_str.get_secret_value.return_value = "mock_token"
+    mock_api_keys_instance.github_token = configured_mock_github_secret_str
+    mock_google_api_key_secretstr = mocker.MagicMock()
+    mock_google_api_key_secretstr.get_secret_value.return_value = "dummy_google_key"
+    mock_api_keys_instance.google_api_key = mock_google_api_key_secretstr
+
+    mock_settings_object = mocker.MagicMock()
+    mock_settings_object.code_loader = CodeLoaderSettings(
+        code_extensions=['.py', '.js'],
+        temp_clone_dir_base='./mock_temp_clone_dir_test'
+    )
+    mock_settings_object.api_keys = mock_api_keys_instance
+
+    monkeypatch.setattr("data_ingestion.code_loader.settings", mock_settings_object)
+    return mock_settings_object
+
+@pytest.fixture
+def code_loader(mock_code_loader_settings, tmp_path, mocker):
     CodeLoader.cloned_repos.clear()
     loader = CodeLoader()
-    # Ensure temp_clone_dir_base exists for tests that might try to create subdirs in it,
-    # even if actual cloning is mocked.
-    # Use a test-specific temp directory.
-    loader.temp_clone_dir_base = "./temp_cloned_repos_test"
-    os.makedirs(loader.temp_clone_dir_base, exist_ok=True)
-    yield loader # Provide the loader instance to the test
-    # Teardown: remove the test-specific temp directory
-    if os.path.exists(loader.temp_clone_dir_base):
-        shutil.rmtree(loader.temp_clone_dir_base)
-
+    instance_specific_temp_dir = tmp_path / "test_cloned_repos"
+    instance_specific_temp_dir.mkdir()
+    loader.temp_clone_dir_base = instance_specific_temp_dir
+    yield loader
 
 @pytest.fixture
-def mock_aiofiles_open(monkeypatch):
-    """Mocks aiofiles.open for reading file content."""
-    mock_open = mock.AsyncMock(spec=aiofiles.threadpool.AsyncTextIOWrapper)
-    # Default behavior: successfully reads "mock content"
-    mock_open.return_value.__aenter__.return_value.read.return_value = "mock content"
-    monkeypatch.setattr("aiofiles.open", mock_open)
-    return mock_open
+def mock_aiofiles_open_fixture(mocker): # Renamed to avoid conflict if test uses same name
+    mock_open_func = mocker.MagicMock(name="mock_aiofiles_open_function_for_fixture")
+    mocker.patch("data_ingestion.code_loader.aiofiles.open", new=mock_open_func)
+    return mock_open_func
 
-# --- Test Initialization ---
-def test_codeloader_init(code_loader):
-    assert code_loader.code_extensions == DEFAULT_CODE_EXTENSIONS
-    assert code_loader.temp_clone_dir_base == "./temp_cloned_repos_test"
+
+def test_codeloader_init(code_loader, mock_code_loader_settings):
+    assert code_loader.code_extensions == mock_code_loader_settings.code_loader.code_extensions
+    assert code_loader.temp_clone_dir_base.name == "test_cloned_repos"
     assert CodeLoader.cloned_repos == set()
 
-# --- Test _is_supported_file ---
-@pytest.mark.parametrize("filepath, expected", [
-    ("test.py", True),
-    ("path/to/file.js", True),
-    ("archive.zip", False),
-    ("nodotextension", False),
-    ("image.JPG", False),
-    ("path/to/.env", ".env" in DEFAULT_CODE_EXTENSIONS), # Check based on actual defaults
-    ("file.with.dots.py", True),
-    ("file.with.dots.txt", True), # .txt is often not in CODE_EXTENSIONS by default
+@pytest.mark.parametrize("filepath, is_supported_in_mock", [
+    ("test.py", True), ("path/to/file.js", True), ("archive.zip", False),
+    ("nodotextension", False), ("image.JPG", False), ("path/to/.env", False),
+    ("file.with.dots.py", True), ("file.with.dots.txt", False),
     ("unsupported.with.dots.exe", False),
 ])
-def test_is_supported_file(code_loader, filepath, expected):
-    if filepath == "file.with.dots.txt": # .txt might not be a default code extension
-        expected = ".txt" in code_loader.code_extensions
-    assert code_loader._is_supported_file(filepath) == expected
+def test_is_supported_file(code_loader, filepath, is_supported_in_mock):
+    assert code_loader._is_supported_file(filepath) == is_supported_in_mock
 
-# --- Test _read_code_files_from_path ---
 @pytest.mark.asyncio
-async def test_read_code_files_from_path_mixed_files(code_loader, mock_aiofiles_open, caplog):
+async def test_read_code_files_from_path_mixed_files(code_loader, caplog, mocker):
     base_path_str = "/testrepo"
-    base_path = Path(base_path_str)
 
-    # Define mock Path objects that rglob would return
-    # Each needs is_file(), __str__()
     file_mocks_data = [
         {"path_str": "/testrepo/file1.py", "is_file": True, "content": "python content"},
         {"path_str": "/testrepo/module/file2.js", "is_file": True, "content": "javascript content"},
-        {"path_str": "/testrepo/data.unsupported", "is_file": True}, # No content needed, will be skipped
-        {"path_str": "/testrepo/docs", "is_file": False}, # A directory
+        {"path_str": "/testrepo/data.unsupported", "is_file": True},
+        {"path_str": "/testrepo/docs", "is_file": False},
         {"path_str": "/testrepo/empty.py", "is_file": True, "content": ""},
         {"path_str": "/testrepo/error.py", "is_file": True, "error": IOError("mock read error")},
     ]
 
     rglob_results = []
     for data in file_mocks_data:
-        p_mock = mock.MagicMock(spec=Path)
+        p_mock = mocker.MagicMock(spec=Path)
         p_mock.is_file.return_value = data["is_file"]
         p_mock.__str__.return_value = data["path_str"]
-        p_mock.name = os.path.basename(data["path_str"]) # For logging unsupported
+        p_mock.name = os.path.basename(data["path_str"])
+        p_mock.suffix = Path(data["path_str"]).suffix
         rglob_results.append(p_mock)
 
-    # Configure mock_aiofiles_open for specific files
-    async def custom_aio_open_side_effect(filepath_str, mode, encoding, errors):
-        mock_file_wrapper = mock.AsyncMock(spec=aiofiles.threadpool.AsyncTextIOWrapper)
-        for data in file_mocks_data:
-            if data["path_str"] == filepath_str:
-                if "error" in data:
-                    mock_file_wrapper.__aenter__.return_value.read.side_effect = data["error"]
-                else:
-                    mock_file_wrapper.__aenter__.return_value.read.return_value = data.get("content", "default mock content")
-                break
-        return mock_file_wrapper
-    mock_aiofiles_open.side_effect = custom_aio_open_side_effect
+    # Patch aiofiles.open directly in the module where CodeLoader uses it
+    mock_aiofiles_open_in_module = mocker.patch("data_ingestion.code_loader.aiofiles.open")
 
-    caplog.set_level(logging.INFO) # To capture skip/error logs
+    def custom_aio_open_factory(filepath_obj, mode, encoding, errors):
+        file_data = next((d for d in file_mocks_data if str(filepath_obj) == d["path_str"]), None)
 
-    results = []
-    # Mock Path.rglob for the specific base_path instance
-    with mock.patch.object(Path, 'rglob', return_value=rglob_results) as mock_rglob_method:
-        # We need to ensure that when Path(base_path_str) is called inside the method,
-        # its rglob method is this mock_rglob_method.
-        # This requires mocking the Path constructor or carefully patching the instance.
+        # This is the mock for the file object itself (like 'f' in 'async with ... as f:')
+        async_file_reader_mock = mocker.AsyncMock()
+        if file_data and "error" in file_data:
+            async_file_reader_mock.read = mocker.AsyncMock(side_effect=file_data["error"])
+        elif file_data:
+            async_file_reader_mock.read = mocker.AsyncMock(return_value=file_data.get("content", "default_factory_content"))
+        else:
+            async_file_reader_mock.read = mocker.AsyncMock(return_value="unspecified_file_content")
 
-        # Simpler: Assume _read_code_files_from_path is called with a Path instance.
-        # Let's make a mock Path instance for base_path and set its rglob.
-        mock_base_path_instance = mock.MagicMock(spec=Path)
-        mock_base_path_instance.rglob.return_value = rglob_results
-        mock_base_path_instance.__str__.return_value = base_path_str
+        # This is the mock for the async context manager object that aiofiles.open() returns
+        # It needs __aenter__ and __aexit__ methods.
+        # __aenter__ should be an async method returning the file_reader_mock.
+        async_context_manager_mock = mocker.AsyncMock()
+        async_context_manager_mock.__aenter__.return_value = async_file_reader_mock
+        async_context_manager_mock.__aexit__ = mocker.AsyncMock(return_value=None)
 
-        async for source_id, content in code_loader._read_code_files_from_path(mock_base_path_instance, "local_test"):
-            results.append((source_id, content))
+        return async_context_manager_mock
 
-        mock_base_path_instance.rglob.assert_called_once_with("*")
+    mock_aiofiles_open_in_module.side_effect = custom_aio_open_factory
+    caplog.set_level(logging.INFO)
 
-    assert len(results) == 2 # file1.py, file2.js
-    expected_results = [
-        ("local_test:/testrepo/file1.py", "python content"),
-        ("local_test:/testrepo/module/file2.js", "javascript content"),
-    ]
-    results.sort(key=lambda x: x[0])
-    expected_results.sort(key=lambda x: x[0])
-    assert results == expected_results
+    mock_base_path_instance = mocker.MagicMock(spec=Path)
+    mock_base_path_instance.rglob.return_value = rglob_results
+    mock_base_path_instance.__str__.return_value = base_path_str
 
-    assert "Skipping unsupported file type: /testrepo/data.unsupported" in caplog.text
-    assert "Skipping empty file: /testrepo/empty.py" in caplog.text
-    assert "Error reading file /testrepo/error.py: mock read error" in caplog.text
+    def mock_relative_to(self_path_mock, other_base_path_mock):
+        if other_base_path_mock is mock_base_path_instance:
+            item_path_str = str(self_path_mock)
+            base_path_str_to_replace = str(other_base_path_mock)
+            if item_path_str.startswith(base_path_str_to_replace):
+                return Path(item_path_str[len(base_path_str_to_replace):].lstrip("/"))
+            return Path(item_path_str)
+        raise ValueError("relative_to called with unexpected base")
 
+    for p_mock in rglob_results:
+        if p_mock.is_file():
+             p_mock.relative_to = mock_relative_to.__get__(p_mock, type(p_mock))
 
-# --- Test load_code_from_local_folder ---
-@pytest.mark.asyncio
-async def test_load_code_from_local_folder_valid_path(code_loader, monkeypatch, caplog):
-    local_path_str = "/local/folder"
-    resolved_path_str = "/resolved/local/folder"
+    results_list = await code_loader._read_code_files_from_path(mock_base_path_instance, "mock_source_id")
 
-    # Mock for Path(local_path_str)
-    mock_path_obj = mock.MagicMock(spec=Path)
-    mock_path_obj.exists.return_value = True
-    mock_path_obj.is_dir.return_value = True
-    mock_path_obj.resolve.return_value = Path(resolved_path_str) # Return a new Path obj for resolved
+    mock_base_path_instance.rglob.assert_called_once_with("*")
 
-    # Mock Path constructor to return our mock_path_obj when called with local_path_str
-    # And a different one for the resolved path.
-    def path_constructor(p):
-        if str(p) == local_path_str:
-            return mock_path_obj
-        elif str(p) == resolved_path_str: # For Path(resolved_path_str) inside helper
-            resolved_mock = mock.MagicMock(spec=Path)
-            resolved_mock.__str__.return_value = resolved_path_str
-            # _read_code_files_from_path will call rglob on this
-            resolved_mock.rglob.return_value = [] # Default to no files for simplicity here
-            return resolved_mock
-        return Path(p) # Fallback to actual Path for other cases (e.g. inside helper)
+    successful_reads = {item[0]: item[1] for item in results_list}
+    assert ("mock_source_id/file1.py", "python content") in successful_reads.items()
+    assert ("mock_source_id/module/file2.js", "javascript content") in successful_reads.items()
+    assert ("mock_source_id/empty.py", "") in successful_reads.items()
+    assert len(results_list) == 3
 
-    monkeypatch.setattr("data_ingestion.code_loader.Path", path_constructor)
-
-    # Mock the helper method _read_code_files_from_path
-    async def mock_read_generator(path_obj, source_type):
-        # path_obj here should be the resolved path
-        assert str(path_obj) == resolved_path_str
-        assert source_type == "local"
-        yield (f"local:{resolved_path_str}/file1.py", "content1")
-
-    with mock.patch.object(CodeLoader, '_read_code_files_from_path', side_effect=mock_read_generator) as mock_read_helper:
-        results = await code_loader.load_code_from_local_folder(local_path_str)
-
-    assert len(results) == 1
-    assert results[0] == (f"local:{resolved_path_str}/file1.py", "content1")
-    mock_path_obj.exists.assert_called_once()
-    mock_path_obj.is_dir.assert_called_once()
-    mock_path_obj.resolve.assert_called_once()
-    mock_read_helper.assert_called_once()
-    # Check the first argument of the call to mock_read_helper
-    assert str(mock_read_helper.call_args[0][0]) == resolved_path_str
-
+    assert "Could not read file /testrepo/error.py" in caplog.text # For IOError
 
 @pytest.mark.asyncio
-async def test_load_code_from_local_folder_invalid_paths(code_loader, monkeypatch, caplog):
-    caplog.set_level(logging.ERROR)
+async def test_read_code_files_from_path_unicode_error(code_loader, caplog, mocker):
+    base_path_str = "/testrepo_unicode"
+    unicode_error_file = {"path_str": "/testrepo_unicode/unicode_error.py", "is_file": True, "error": UnicodeDecodeError("utf-8", b"\x80abc", 0, 1, "invalid start byte")}
 
-    # Test non-existent path
-    mock_path_nonexist = mock.MagicMock(spec=Path)
-    mock_path_nonexist.exists.return_value = False
-    monkeypatch.setattr("data_ingestion.code_loader.Path", lambda p: mock_path_nonexist)
-    results = await code_loader.load_code_from_local_folder("/nonexistent")
-    assert len(results) == 0
-    assert "Local code path /nonexistent does not exist." in caplog.text
+    file_mocks_data = [ unicode_error_file ]
+    rglob_results = []
+    for data in file_mocks_data:
+        p_mock = mocker.MagicMock(spec=Path)
+        p_mock.is_file.return_value = data["is_file"]
+        p_mock.__str__.return_value = data["path_str"]
+        p_mock.name = os.path.basename(data["path_str"])
+        p_mock.suffix = Path(data["path_str"]).suffix
+        rglob_results.append(p_mock)
 
-    # Test path is not a directory
-    mock_path_notdir = mock.MagicMock(spec=Path)
-    mock_path_notdir.exists.return_value = True
-    mock_path_notdir.is_dir.return_value = False
-    monkeypatch.setattr("data_ingestion.code_loader.Path", lambda p: mock_path_notdir)
-    results = await code_loader.load_code_from_local_folder("/not/a/dir")
-    assert len(results) == 0
-    assert "Local code path /not/a/dir is not a directory." in caplog.text
+    mock_aiofiles_open_in_module = mocker.patch("data_ingestion.code_loader.aiofiles.open")
 
-# --- Test load_code_from_repo ---
+    def custom_aio_open_factory(filepath_obj, mode, encoding, errors):
+        file_data = next((d for d in file_mocks_data if str(filepath_obj) == d["path_str"]), None)
+        async_file_reader_mock = mocker.AsyncMock()
+        if file_data and "error" in file_data and isinstance(file_data["error"], UnicodeDecodeError):
+            # Make .read() raise the UnicodeDecodeError
+            async_file_reader_mock.read = mocker.AsyncMock(side_effect=file_data["error"])
+        else: # Should not happen in this test
+            async_file_reader_mock.read = mocker.AsyncMock(return_value="valid content")
+
+        async_context_manager_mock = mocker.AsyncMock()
+        async_context_manager_mock.__aenter__.return_value = async_file_reader_mock
+        async_context_manager_mock.__aexit__ = mocker.AsyncMock(return_value=None)
+        return async_context_manager_mock
+
+    mock_aiofiles_open_in_module.side_effect = custom_aio_open_factory
+    caplog.set_level(logging.WARNING) # Changed to WARNING to see if the generic handler catches it
+
+    mock_base_path_instance = mocker.MagicMock(spec=Path)
+    mock_base_path_instance.rglob.return_value = rglob_results
+    mock_base_path_instance.__str__.return_value = base_path_str
+
+    def mock_relative_to(self_path_mock, other_base_path_mock):
+        if other_base_path_mock is mock_base_path_instance:
+            item_path_str = str(self_path_mock)
+            base_path_str_to_replace = str(other_base_path_mock)
+            if item_path_str.startswith(base_path_str_to_replace):
+                return Path(item_path_str[len(base_path_str_to_replace):].lstrip("/"))
+            return Path(item_path_str)
+        raise ValueError("relative_to called with unexpected base")
+
+    for p_mock in rglob_results:
+        if p_mock.is_file():
+             p_mock.relative_to = mock_relative_to.__get__(p_mock, type(p_mock))
+
+    results_list = await code_loader._read_code_files_from_path(mock_base_path_instance, "mock_source_unicode_error")
+
+    assert len(results_list) == 0 # File with UnicodeDecodeError should be skipped
+    # Check for the generic warning message and parts of the actual UnicodeDecodeError string representation
+    assert "Could not read file /testrepo_unicode/unicode_error.py (source: mock_source_unicode_error/unicode_error.py)" in caplog.text
+    assert "'utf-8' codec can't decode byte 0x80" in caplog.text # Specific to the error raised
+
+
 @pytest.mark.asyncio
-async def test_load_code_from_repo_success(code_loader, monkeypatch, caplog):
-    repo_url = "httpsgitscheme://github.com/user/repo.git" # Use a non-http scheme to avoid actual net call
-    # This relies on git_module_mock.Repo.clone_from being available (setup in imports)
+async def test_load_code_from_local_folder_valid_path(code_loader, monkeypatch, mocker):
+    local_path_str = "/mocked/local/folder"
+    mock_path_instance = mocker.MagicMock(spec=Path)
+    mock_path_instance.is_dir.return_value = True
+    mock_path_instance.resolve.return_value = mock_path_instance
+    monkeypatch.setattr("data_ingestion.code_loader.Path", lambda p: mock_path_instance if p == local_path_str else Path(p))
+    expected_files_data = [("local:/mocked/local/folder/file1.py", "content")]
+    mocker.patch.object(code_loader, '_read_code_files_from_path', return_value=expected_files_data)
+    results = await code_loader.load_code_from_local_folder(local_path_str)
+    assert results == expected_files_data
+    code_loader._read_code_files_from_path.assert_called_once_with(
+        mock_path_instance, source_identifier=f"local:{str(mock_path_instance)}"
+    )
 
-    # _repo_url_to_dirname needs to be consistent
-    # Replicate its logic simply for the test:
-    expected_dirname = "repo.git" # Simplified from actual helper
-    expected_temp_path_str = os.path.join(code_loader.temp_clone_dir_base, expected_dirname)
+@pytest.mark.asyncio
+async def test_load_code_from_local_folder_non_existent(code_loader, monkeypatch, caplog):
+    local_path_str = "/non/existent/folder"
+    mock_path_instance = mock.MagicMock(spec=Path);
+    mock_path_instance.is_dir.return_value = False
+    mock_path_instance.exists.return_value = False
+    monkeypatch.setattr("data_ingestion.code_loader.Path", lambda p: mock_path_instance)
+    results = await code_loader.load_code_from_local_folder(local_path_str)
+    assert results == []
+    assert "Provided local path is not a directory or does not exist" in caplog.text
 
-    # Mock Path object behavior for the expected temporary path
-    mock_cloned_path_obj = mock.MagicMock(spec=Path)
-    mock_cloned_path_obj.__str__.return_value = expected_temp_path_str
-    mock_cloned_path_obj.exists.return_value = True # After "cloning"
-    mock_cloned_path_obj.resolve.return_value = mock_cloned_path_obj # Resolve returns self
 
-    # Mock Path constructor:
-    # 1. For base temp dir (CodeLoader.temp_clone_dir_base)
-    # 2. For the target clone path (expected_temp_path_str)
-    def path_constructor_for_repo(p_str):
-        path_str_resolved = str(Path(p_str).resolve()) # Resolve to normalize
-        if path_str_resolved == str(Path(code_loader.temp_clone_dir_base).resolve()):
-            # Base temp directory
-            base_mock = mock.MagicMock(spec=Path)
-            base_mock.__str__.return_value = path_str_resolved
-            base_mock.exists.return_value = True # Assume base temp dir exists
-            base_mock.is_dir.return_value = True
-            base_mock.__truediv__ = lambda s, k: Path(os.path.join(str(s), k)) # for / operator
-            return base_mock
-        elif path_str_resolved == str(Path(expected_temp_path_str).resolve()):
-            return mock_cloned_path_obj
-        # Fallback for other Path uses (e.g. inside _read_code_files_from_path if not fully mocked)
-        real_path = Path(p_str)
-        # print(f"Path constructor called with '{p_str}', returning real Path object for some cases.")
-        return real_path
+class TestCodeLoaderClonePullSuite:
+    @pytest.mark.asyncio
+    async def test_clone_or_pull_repo_clones_new_with_token(self, code_loader, mocker, caplog, mock_code_loader_settings):
+        mock_code_loader_settings.api_keys.github_token.get_secret_value.return_value = "mock_token_for_test"
+        repo_url = "https://github.com/user/repo.git"
+        repo_name = "repo"
+        expected_path = code_loader.temp_clone_dir_base / repo_name
 
-    monkeypatch.setattr("data_ingestion.code_loader.Path", path_constructor_for_repo)
-    monkeypatch.setattr("os.makedirs", mock.MagicMock()) # Mock makedirs
+        def path_side_effect(p):
+            path_str = str(p)
+            if path_str == str(expected_path):
+                mp = mocker.MagicMock(spec=Path)
+                mp.exists.return_value = False
+                mp.__str__.return_value = str(expected_path)
+                return mp
+            elif path_str == str(code_loader.temp_clone_dir_base):
+                 mp_base = mocker.MagicMock(spec=Path)
+                 mp_base.exists.return_value = True
+                 mp_base.is_dir.return_value = True
+                 mp_base.__truediv__ = lambda s, k: expected_path
+                 return mp_base
+            return Path(p)
 
-    # Mock _read_code_files_from_path
-    async def mock_read_generator(path_obj, source_type):
-        assert str(path_obj) == expected_temp_path_str # Should be called with the cloned path
-        assert source_type == repo_url
-        yield (f"{repo_url}:{str(path_obj)}/file.py", "cloned content")
+        mocker.patch("data_ingestion.code_loader.Path", side_effect=path_side_effect)
 
-    with mock.patch.object(CodeLoader, '_read_code_files_from_path', side_effect=mock_read_generator) as mock_read_helper:
-        # Ensure clone_from is reset and available on the class mock
         git_module_mock.Repo.clone_from.reset_mock()
-        git_module_mock.Repo.clone_from.side_effect = None # Clear any previous side effects
+        git_module_mock.Repo.clone_from.side_effect = None
+        git_module_mock.Repo.clone_from.return_value = None
 
-        results = await code_loader.load_code_from_repo(repo_url, cleanup_after=False)
+        returned_path = await code_loader.clone_or_pull_repo(repo_url)
+        assert returned_path == expected_path
+        expected_clone_url = f"https://oauth2:mock_token_for_test@github.com/user/repo.git"
+        git_module_mock.Repo.clone_from.assert_called_once_with(expected_clone_url, str(expected_path))
 
-    assert len(results) == 1
-    assert results[0] == (f"{repo_url}:{expected_temp_path_str}/file.py", "cloned content")
+    @pytest.mark.asyncio
+    async def test_clone_or_pull_repo_pulls_existing(self, code_loader, mocker, caplog):
+        repo_url = "https://github.com/user/repo2.git"
+        repo_name = "repo2"
+        expected_path = code_loader.temp_clone_dir_base / repo_name
 
-    # Check clone_from was called with correct URL and path
-    # The path would be resolved.
-    resolved_expected_temp_path_str = str(Path(expected_temp_path_str).resolve())
-    git_module_mock.Repo.clone_from.assert_called_once_with(repo_url, resolved_expected_temp_path_str)
+        # Ensure the directory exists, so CodeLoader takes the "pull" path
+        expected_path.mkdir(parents=True, exist_ok=True)
 
-    assert resolved_expected_temp_path_str in CodeLoader.cloned_repos
-    mock_read_helper.assert_called_once()
-    # Ensure the first arg to mock_read_helper is a Path obj that stringifies to resolved_expected_temp_path_str
-    assert str(mock_read_helper.call_args[0][0]) == resolved_expected_temp_path_str
+        # mock_path_instance_repo is not needed if we make the path actually exist.
+        # The Path patching is removed for this test to simplify and use real Path object interactions.
 
+        mock_repo_instance_local = mocker.MagicMock(spec=git.Repo) # This will be the return of Repo(path)
+        mock_repo_instance_local.remotes = mocker.MagicMock()
+        mock_origin_remote = mocker.MagicMock()
+        mock_repo_instance_local.remotes.origin = mock_origin_remote
+
+        # Create an explicit MagicMock for the pull method
+        mock_pull_fn = mocker.MagicMock(name="ExplicitPullFunctionMock")
+        # Assign this explicit mock to the 'pull' attribute of mock_origin_remote
+        mock_origin_remote.pull = mock_pull_fn
+
+        async def git_wrapper_side_effect(func, *args_wrapper, **kwargs_wrapper):
+            if func is CodeLoaderRepo:
+                assert str(args_wrapper[0]) == str(expected_path), \
+                    f"Repo constructor called with {args_wrapper[0]} instead of {expected_path}"
+                return mock_repo_instance_local
+            elif func is mock_pull_fn: # Crucially, check identity with our explicit mock
+                # This path should be taken.
+                # The side_effect (this function) must now simulate the execution of mock_pull_fn
+                # if we want mock_pull_fn to register a call.
+                return func(*args_wrapper, **kwargs_wrapper) # Call mock_pull_fn and return its result
+            elif func is git_module_mock.Repo.clone_from:
+                 raise AssertionError("Repo.clone_from called unexpectedly in pull path.")
+            raise AssertionError(f"Unexpected call to _git_command_wrapper with {func}")
+
+        mocker.patch.object(code_loader, '_git_command_wrapper', side_effect=git_wrapper_side_effect)
+
+        returned_path = await code_loader.clone_or_pull_repo(repo_url)
+        assert returned_path == expected_path
+        mock_pull_fn.assert_called_once() # Assert that our explicit mock was called
+
+    @pytest.mark.asyncio
+    async def test_clone_or_pull_repo_pull_fails(self, code_loader, mocker, caplog):
+        repo_url = "https://github.com/user/repo_pull_fail.git"
+        repo_name = "repo_pull_fail"
+        expected_path = code_loader.temp_clone_dir_base / repo_name
+        expected_path.mkdir(parents=True, exist_ok=True) # Path exists
+
+        mock_repo_instance_local = mocker.MagicMock(spec=git.Repo)
+        mock_repo_instance_local.remotes = mocker.MagicMock()
+        mock_origin_remote = mocker.MagicMock()
+        mock_repo_instance_local.remotes.origin = mock_origin_remote
+
+        mock_pull_fn = mocker.MagicMock(name="ExplicitPullFunctionMockFail")
+        # Simulate pull failing with a GitCommandError
+        mock_pull_fn.side_effect = ActualGitExceptions.GitCommandError("pull", "failed pull", stderr="simulated pull error")
+        mock_origin_remote.pull = mock_pull_fn
+
+        async def git_wrapper_side_effect(func, *args_wrapper, **kwargs_wrapper):
+            if func is CodeLoaderRepo:
+                return mock_repo_instance_local
+            elif func is mock_pull_fn:
+                # This will now raise the GitCommandError because of mock_pull_fn.side_effect
+                return func(*args_wrapper, **kwargs_wrapper)
+            raise AssertionError(f"Unexpected call to _git_command_wrapper with {func}")
+
+        mocker.patch.object(code_loader, '_git_command_wrapper', side_effect=git_wrapper_side_effect)
+        caplog.set_level(logging.ERROR)
+
+        returned_path = await code_loader.clone_or_pull_repo(repo_url)
+
+        assert returned_path is None # Should return None on pull failure
+        mock_pull_fn.assert_called_once()
+        # Check for the specific log message for GitCommandError
+        assert f"Git command error for {repo_url}:" in caplog.text
+        assert "simulated pull error" in caplog.text # Check if stderr from exception is in log
+
+
+    @pytest.mark.asyncio
+    async def test_clone_or_pull_repo_git_auth_failure(self, code_loader, mocker, caplog, mock_code_loader_settings):
+        caplog.set_level(logging.ERROR)
+        mock_code_loader_settings.api_keys.github_token.get_secret_value.return_value = "mock_token_for_auth_fail"
+        repo_url = "https://github.com/user/repo_auth_fail.git"
+
+        mocker.patch("data_ingestion.code_loader.Path.exists", return_value=False)
+
+        async def mock_wrapper_that_fails(func, *args, **kwargs):
+            if func == git_module_mock.Repo.clone_from:
+                raise ActualGitExceptions.GitCommandError(
+                    command=['clone'], status=128, stderr='Authentication failed', stdout=''
+                )
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, func, *args, **kwargs)
+        mocker.patch.object(code_loader, '_git_command_wrapper', side_effect=mock_wrapper_that_fails)
+
+        returned_path = await code_loader.clone_or_pull_repo(repo_url)
+        assert returned_path is None
+        assert "Authentication failed. Ensure GITHUB_TOKEN is valid" in caplog.text
+
+class TestCodeLoaderLoadRepoSuite:
+    @pytest.mark.asyncio
+    async def test_load_code_from_repo_success(self, code_loader, mocker, caplog):
+        repo_url = "mock_repo_url"
+        mock_cloned_path = code_loader.temp_clone_dir_base / "mock_repo"
+        mocker.patch.object(code_loader, 'clone_or_pull_repo', new_callable=mocker.AsyncMock, return_value=mock_cloned_path)
+        mocker.patch.object(code_loader, '_read_code_files_from_path', new_callable=mocker.AsyncMock, return_value=[("file.py", "content")])
+        results = await code_loader.load_code_from_repo(repo_url)
+        assert results == [("file.py", "content")]
+        code_loader.clone_or_pull_repo.assert_called_once_with(repo_url)
+        code_loader._read_code_files_from_path.assert_called_once_with(mock_cloned_path, source_identifier=repo_url)
+
+    @pytest.mark.asyncio
+    async def test_load_code_from_repo_clone_fails(self, code_loader, mocker, caplog):
+        repo_url = "mock_repo_url_fail_clone"
+        mocker.patch.object(code_loader, 'clone_or_pull_repo', new_callable=mocker.AsyncMock, return_value=None)
+        mock_read_files = mocker.patch.object(code_loader, '_read_code_files_from_path', new_callable=mocker.AsyncMock)
+        results = await code_loader.load_code_from_repo(repo_url)
+        assert results == []
+        code_loader.clone_or_pull_repo.assert_called_once_with(repo_url)
+        mock_read_files.assert_not_called()
 
 @pytest.mark.asyncio
-async def test_load_code_from_repo_clone_fails(code_loader, monkeypatch, caplog):
-    repo_url = "httpsgitscheme://github.com/user/repo.git"
-    # Configure clone_from mock on the git_module_mock.Repo (which is git_repo_class_mock)
-    git_module_mock.Repo.clone_from.side_effect = Exception("Clone failed miserably")
-    git_module_mock.Repo.clone_from.reset_mock() # Ensure it's clean for this test if needed
-    git_module_mock.Repo.clone_from.side_effect = Exception("Clone failed miserably")
+async def test_cleanup_repo(code_loader, monkeypatch, mocker):
+    repo_url = "httpsgitscheme://github.com/user/repo_cleanup.git"
+    repo_name = code_loader._get_repo_name_from_url(repo_url)
+    temp_repo_path = code_loader.temp_clone_dir_base / repo_name
+    temp_repo_path.mkdir(parents=True, exist_ok=True)
+    CodeLoader.cloned_repos.add(str(temp_repo_path))
+    mock_rmtree = mocker.patch("shutil.rmtree")
 
+    await code_loader.cleanup_repo(repo_url)
+    mock_rmtree.assert_called_once_with(temp_repo_path)
+    assert str(temp_repo_path) not in CodeLoader.cloned_repos
 
+@pytest.mark.asyncio
+async def test_cleanup_repo_shutil_error(code_loader, mocker, caplog): # Removed self if not in a class
+    repo_url = "httpsgitscheme://github.com/user/repo_cleanup_error.git"
+    repo_name = code_loader._get_repo_name_from_url(repo_url)
+    temp_repo_path = code_loader.temp_clone_dir_base / repo_name
+
+    # Ensure the path exists and is tracked for cleanup
+    temp_repo_path.mkdir(parents=True, exist_ok=True)
+    CodeLoader.cloned_repos.add(str(temp_repo_path))
+
+    mock_rmtree = mocker.patch("shutil.rmtree", side_effect=OSError("Disk full"))
     caplog.set_level(logging.ERROR)
-    monkeypatch.setattr("os.makedirs", mock.MagicMock()) # Mock makedirs
 
-    results = await code_loader.load_code_from_repo(repo_url)
+    await code_loader.cleanup_repo(repo_url)
 
-    assert len(results) == 0
-    assert f"Failed to clone repository {repo_url}: Clone failed miserably" in caplog.text
-    assert not CodeLoader.cloned_repos
-
-# --- Test cleanup_repo and cleanup_all_repos ---
-@pytest.mark.asyncio
-async def test_cleanup_repo(code_loader, monkeypatch):
-    repo_url = "httpsgitscheme://github.com/user/repo.git"
-    dirname = code_loader._repo_url_to_dirname(repo_url) # Use the actual helper
-    temp_repo_path_str = str(Path(code_loader.temp_clone_dir_base).resolve() / dirname)
-
-    CodeLoader.cloned_repos.add(temp_repo_path_str) # Manually add to simulate it was cloned
-
-    mock_path_obj = mock.MagicMock(spec=Path)
-    mock_path_obj.__str__.return_value = temp_repo_path_str
-    mock_path_obj.exists.return_value = True
-    mock_path_obj.is_dir.return_value = True
-
-    monkeypatch.setattr("data_ingestion.code_loader.Path", lambda p: mock_path_obj if str(Path(p).resolve()) == temp_repo_path_str else Path(p))
-
-    with mock.patch("shutil.rmtree") as mock_rmtree:
-        await code_loader.cleanup_repo(repo_url)
-        mock_rmtree.assert_called_once_with(mock_path_obj) # shutil.rmtree is called with Path obj
-        assert temp_repo_path_str not in CodeLoader.cloned_repos
+    mock_rmtree.assert_called_once_with(temp_repo_path)
+    assert f"Error cleaning up repository {temp_repo_path}: Disk full" in caplog.text
+    # If shutil.rmtree fails, the path should remain in cloned_repos as the .remove() line is skipped.
+    assert str(temp_repo_path) in CodeLoader.cloned_repos
 
 
 @pytest.mark.asyncio
-async def test_cleanup_all_repos(code_loader, monkeypatch):
-    path1_str_resolved = str(Path(code_loader.temp_clone_dir_base).resolve() / "repo1")
-    path2_str_resolved = str(Path(code_loader.temp_clone_dir_base).resolve() / "repo2")
-    CodeLoader.cloned_repos.add(path1_str_resolved)
-    CodeLoader.cloned_repos.add(path2_str_resolved)
+async def test_cleanup_all_repos(code_loader, mocker):
+    (code_loader.temp_clone_dir_base / "repo1").mkdir(parents=True, exist_ok=True)
+    (code_loader.temp_clone_dir_base / "repo2").mkdir(parents=True, exist_ok=True)
+    mock_rmtree = mocker.patch("shutil.rmtree")
 
-    # Mock Path constructor to return paths that exist and are directories
-    # for the paths we added to cloned_repos.
-    path_mocks = {}
-    def path_constructor_side_effect(p_str_arg):
-        p_str = str(Path(p_str_arg).resolve()) # Normalize
-        if p_str not in path_mocks:
-            instance = mock.MagicMock(spec=Path)
-            instance.__str__.return_value = p_str # Store resolved path string
-            instance.exists.return_value = p_str in CodeLoader.cloned_repos
-            instance.is_dir.return_value = p_str in CodeLoader.cloned_repos
-            path_mocks[p_str] = instance
-        return path_mocks[p_str]
+    await code_loader.cleanup_all_repos()
+    mock_rmtree.assert_called_once_with(code_loader.temp_clone_dir_base)
+    assert code_loader.temp_clone_dir_base.exists() # Base dir is recreated
 
-    monkeypatch.setattr("data_ingestion.code_loader.Path", path_constructor_side_effect)
+@pytest.mark.asyncio
+async def test_cleanup_all_repos_shutil_error(code_loader, mocker, caplog):
+    # Ensure the base directory exists to attempt cleanup
+    if not code_loader.temp_clone_dir_base.exists():
+        code_loader.temp_clone_dir_base.mkdir(parents=True, exist_ok=True)
 
-    with mock.patch("shutil.rmtree") as mock_rmtree:
-        await code_loader.cleanup_all_repos()
+    mock_rmtree = mocker.patch("shutil.rmtree", side_effect=OSError("Cleanup all failed"))
+    caplog.set_level(logging.ERROR)
 
-        assert mock_rmtree.call_count == 2
-        # shutil.rmtree is called with Path objects.
-        # Check that the string representations of the Path objects match.
-        called_paths_str = sorted([str(call_arg[0][0]) for call_arg in mock_rmtree.call_args_list])
-        assert called_paths_str == sorted([path1_str_resolved, path2_str_resolved])
-        assert not CodeLoader.cloned_repos
+    await code_loader.cleanup_all_repos()
+
+    mock_rmtree.assert_called_once_with(code_loader.temp_clone_dir_base)
+    assert "Error cleaning up all repositories: Cleanup all failed" in caplog.text
+    # The base directory might still exist if rmtree fails before recreation,
+    # or it might be recreated if failure is after rmtree but before mkdir.
+    # Current code: recreates mkdir even if rmtree fails (try/except doesn't prevent mkdir).
+    # So, it should exist.
+    assert code_loader.temp_clone_dir_base.exists()

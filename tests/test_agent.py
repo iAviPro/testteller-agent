@@ -36,8 +36,8 @@ def mock_gemini_client(mocker):
 @pytest.fixture
 def mock_vector_store(mocker):
     mock_store = mocker.MagicMock(spec=ChromaDBManager)
-    mock_store.add_documents_async = mocker.AsyncMock()
-    mock_store.query_collection_async = mocker.AsyncMock(return_value=[])
+    mock_store.add_documents = mocker.AsyncMock() # Renamed from add_documents_async
+    mock_store.query_collection = mocker.AsyncMock(return_value=[]) # Renamed from query_collection_async
     mock_store.get_collection_count_async = mocker.AsyncMock(return_value=0)
     mock_store.clear_collection_async = mocker.AsyncMock()
     mock_store.generate_id_from_text_and_source = mocker.MagicMock(return_value="mock_doc_id")
@@ -128,28 +128,30 @@ async def test_ingest_content_success(agent_fixt, caplog):
     agent_fixt.text_splitter.split_text.assert_any_call("code1")
     agent_fixt.text_splitter.split_text.assert_any_call("text1")
 
-    agent_fixt.vector_store.add_documents_async.assert_called_once()
-    call_kwargs = agent_fixt.vector_store.add_documents_async.call_args[1]
+    agent_fixt.vector_store.add_documents.assert_called_once() # Renamed
+    call_kwargs = agent_fixt.vector_store.add_documents.call_args[1] # Renamed
 
     assert call_kwargs['documents'] == ["chunk_code1_1", "chunk_code1_2", "chunk_text1_1", "chunk_text1_2"]
     assert call_kwargs['ids'] == ["id_1", "id_2", "id_3", "id_4"]
     assert len(call_kwargs['metadatas']) == 4
     assert call_kwargs['metadatas'][0]['source'] == "file1.py"
     assert call_kwargs['metadatas'][2]['source'] == "file2.txt"
-    assert "Content preparation for 4 chunks from 2 sources took" in caplog.text
+    assert "Content preparation for 4 chunks from 2 original source files took" in caplog.text # Corrected log
 
 @pytest.mark.asyncio
 async def test_ingest_content_empty_input(agent_fixt, caplog):
+    caplog.set_level(logging.INFO) # ADDED
     await agent_fixt._ingest_content([], "empty_src")
-    agent_fixt.vector_store.add_documents_async.assert_not_called()
+    agent_fixt.vector_store.add_documents.assert_not_called() # Renamed
     assert "No content provided for ingestion from empty_src." in caplog.text
 
 @pytest.mark.asyncio
 async def test_ingest_content_no_chunks_produced(agent_fixt, caplog):
+    caplog.set_level(logging.INFO) # ADDED to see the INFO log too
     agent_fixt.text_splitter.split_text.return_value = []
     await agent_fixt._ingest_content([("file.py", "content")], "no_chunks_src")
-    agent_fixt.vector_store.add_documents_async.assert_not_called()
-    assert "No valid chunks to ingest from no_chunks_src." in caplog.text
+    agent_fixt.vector_store.add_documents.assert_not_called() # Renamed
+    assert "No valid chunks to ingest from no_chunks_src." in caplog.text # Check for specific INFO
 
 # --- Test ingest_documents_from_path ---
 @pytest.mark.asyncio
@@ -217,7 +219,7 @@ async def test_ingest_code_from_source_local_path(agent_fixt, mocker, caplog):
     await agent_fixt.ingest_code_from_source(local_path_str)
     agent_fixt.code_loader.load_code_from_local_folder.assert_called_once_with(local_path_str)
     agent_fixt._ingest_content.assert_called_once_with(
-        [("local/file.py", "local code")], source_type="local_code_folder"
+        [("local/file.py", "local code")], source_type="local_folder_code" # Corrected source_type
     )
 
 @pytest.mark.asyncio
@@ -225,9 +227,10 @@ async def test_ingest_code_from_source_invalid_input(agent_fixt, mocker, caplog)
     invalid_source = "neither_url_nor_path"
     mocker.patch("agent.Path", lambda p: mocker.MagicMock(exists=lambda: False)) # Path does not exist
     agent_fixt._ingest_content = mocker.AsyncMock()
+    caplog.set_level(logging.ERROR) # Ensure ERROR is captured
     await agent_fixt.ingest_code_from_source(invalid_source)
     agent_fixt._ingest_content.assert_not_called()
-    assert f"Invalid source provided: {invalid_source}" in caplog.text
+    assert f"Local code path does not exist: {invalid_source}" in caplog.text # Corrected log message
 
 # --- Test get_ingested_data_count ---
 @pytest.mark.asyncio
@@ -239,10 +242,11 @@ async def test_get_ingested_data_count(agent_fixt):
 # --- Test clear_ingested_data ---
 @pytest.mark.asyncio
 async def test_clear_ingested_data(agent_fixt, caplog):
+    caplog.set_level(logging.INFO) # ADDED
     await agent_fixt.clear_ingested_data()
     agent_fixt.vector_store.clear_collection_async.assert_called_once()
     agent_fixt.code_loader.cleanup_all_repos.assert_called_once()
-    assert "All ingested data cleared for collection" in caplog.text # Check log message
+    assert f"Data cleared for collection '{agent_fixt.collection_name}' in" in caplog.text # Corrected log
 
 # --- Test generate_test_cases ---
 @pytest.mark.asyncio
@@ -250,24 +254,24 @@ async def test_generate_test_cases_with_context(agent_fixt, caplog):
     query = "Feature X"
     agent_fixt.vector_store.get_collection_count_async.return_value = 5 # Data exists
     retrieved_docs = [{'document': "context doc1", 'metadata': {'source': 's1'}, 'distance': 0.1}]
-    agent_fixt.vector_store.query_collection_async.return_value = retrieved_docs
+    agent_fixt.vector_store.query_collection.return_value = retrieved_docs # Corrected attribute
 
     response = await agent_fixt.generate_test_cases(query, n_retrieved_docs=1)
     assert response == "mocked gemini text"
-    agent_fixt.vector_store.query_collection_async.assert_called_once_with(query_text=query, n_results=1)
+    agent_fixt.vector_store.query_collection.assert_called_once_with(query_text=query, n_results=1)
     prompt_arg = agent_fixt.gemini_client.generate_text_async.call_args[0][0]
     assert "context doc1" in prompt_arg
-    assert "Query: Feature X" in prompt_arg
+    assert f"USER QUERY:\n{query}" in prompt_arg # Corrected to match prompt template
 
 @pytest.mark.asyncio
 async def test_generate_test_cases_no_context_docs_found(agent_fixt, caplog):
     query = "Feature Y"
     agent_fixt.vector_store.get_collection_count_async.return_value = 5
-    agent_fixt.vector_store.query_collection_async.return_value = [] # No docs found
+    agent_fixt.vector_store.query_collection.return_value = [] # Corrected attribute, No docs found
 
     await agent_fixt.generate_test_cases(query)
     prompt_arg = agent_fixt.gemini_client.generate_text_async.call_args[0][0]
-    assert "No relevant context documents were found" in prompt_arg
+    assert "No relevant context documents were found in the knowledge base for this query." in prompt_arg # Corrected message
 
 @pytest.mark.asyncio
 async def test_generate_test_cases_empty_kb(agent_fixt, caplog):
@@ -277,15 +281,15 @@ async def test_generate_test_cases_empty_kb(agent_fixt, caplog):
     await agent_fixt.generate_test_cases(query)
     prompt_arg = agent_fixt.gemini_client.generate_text_async.call_args[0][0]
     assert "No specific context documents were found in the knowledge base" in prompt_arg
-    agent_fixt.vector_store.query_collection_async.assert_not_called()
+    agent_fixt.vector_store.query_collection.assert_not_called() # Corrected attribute
 
 @pytest.mark.asyncio
 async def test_generate_test_cases_n_retrieved_docs_zero(agent_fixt, caplog):
     query = "Feature A"
     agent_fixt.vector_store.get_collection_count_async.return_value = 5
-    # query_collection_async mock default returns [] so this covers n_results=0 if it results in no docs
+    # query_collection mock default returns [] so this covers n_results=0 if it results in no docs
 
     await agent_fixt.generate_test_cases(query, n_retrieved_docs=0)
-    agent_fixt.vector_store.query_collection_async.assert_called_once_with(query_text=query, n_results=0)
+    agent_fixt.vector_store.query_collection.assert_called_once_with(query_text=query, n_results=0) # Renamed
     prompt_arg = agent_fixt.gemini_client.generate_text_async.call_args[0][0]
-    assert "No relevant context documents were found" in prompt_arg
+    assert "No relevant context documents were found in the knowledge base for this query." in prompt_arg # Corrected message

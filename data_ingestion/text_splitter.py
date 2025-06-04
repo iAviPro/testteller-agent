@@ -11,6 +11,8 @@ from config import settings
 
 class TextSplitter:
     def __init__(self, chunk_size: int = 500, overlap: int = 50):
+        if overlap >= chunk_size and chunk_size > 0: # chunk_size > 0 to avoid issues if chunk_size is 0 or less
+            raise ValueError("TextSplitter overlap cannot be greater than or equal to chunk_size.")
         self.chunk_size = chunk_size
         self.overlap = overlap
 

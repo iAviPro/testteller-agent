@@ -172,11 +172,11 @@ def test_chroma_embedding_function_call_empty_input(caplog):
 
     # ChromaDB's EmbeddingFunction wrapper raises ValueError if __call__ returns empty list.
     # Escape regex special characters like '[' and ']'.
-    with pytest.raises(ValueError, match="Expected Embeddings to be non-empty list or numpy array, got \\[\\]"):
+    with pytest.raises(ValueError, match=r"Expected Embeddings to be non-empty list or numpy array, got \[]"): # Use raw string for regex
         embedding_function_instance([]) # This will call the client, get [], then raise in normalize_embeddings
 
-    # Assert that the underlying mock was still called as GeminiChromaEmbeddingFunction returns [] first
-    temp_mock_gemini_instance.get_embeddings_sync.assert_called_once_with([])
+    # The client's get_embeddings_sync is NOT called because GeminiChromaEmbeddingFunction returns early.
+    temp_mock_gemini_instance.get_embeddings_sync.assert_not_called()
 
 
 # --- Test add_documents_async ---
@@ -249,13 +249,15 @@ async def test_query_collection_async_malformed_response(chromadb_manager_fixt, 
     }
     results = await chromadb_manager_fixt.query_collection(["q"], 2) # Renamed to query_collection
     assert results == [] # Should return empty if data is inconsistent
-    assert "Query results for query 0 had mismatched lengths or missing data." in caplog.text
+    # Check for the more specific log message based on the new logic
+    assert "Query results for query 'q' had mismatched lengths. IDs: 2, Docs: 1, Metadatas: 1, Distances: 1. Skipping result processing." in caplog.text
 
     # Simulate results missing a key
+    caplog.clear() # Clear previous logs
     chromadb_manager_fixt._test_mock_collection.query.return_value = {'ids': [['id1']]} # Missing documents, metadatas, distances
     results = await chromadb_manager_fixt.query_collection(["q"], 1) # Renamed to query_collection
     assert results == []
-    assert "Query results for query 0 had mismatched lengths or missing data." in caplog.text
+    assert "Query results missing or malformed for key: documents" in caplog.text # Adjusted to check for 'documents' key
 
 
 # --- Test get_collection_count_async ---

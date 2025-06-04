@@ -31,27 +31,24 @@ async def ingest_docs_async(path: str, collection_name: str):
     agent = _get_agent(collection_name)
     await agent.ingest_documents_from_path(path)
     count = await agent.get_ingested_data_count()
-    print(
-        f"Successfully ingested documents. Collection '{collection_name}' now contains {count} items.")
+    print(f"Successfully ingested documents. Collection '{collection_name}' now contains {count} items.") # Updated
 
 
 async def ingest_code_async(source_path: str, collection_name: str, no_cleanup_github: bool):
     agent = _get_agent(collection_name)
     await agent.ingest_code_from_source(source_path, cleanup_github_after=not no_cleanup_github)
     count = await agent.get_ingested_data_count()
-    print(
-        f"Successfully ingested code from '{source_path}'. Collection '{collection_name}' now contains {count} items.")
+    print(f"Successfully ingested code from '{source_path}'. Collection '{collection_name}' now contains {count} items.") # Updated
 
 
 async def generate_async(query: str, collection_name: str, num_retrieved: int, output_file: str | None):
     agent = _get_agent(collection_name)
 
     if await agent.get_ingested_data_count() == 0:
-        print(
-            f"Warning: Collection '{collection_name}' is empty. Generation will rely on LLM's general knowledge.")
+        print(f"Warning: Collection '{collection_name}' is empty. Generation will rely on LLM's general knowledge.") # Updated
         if not typer.confirm("Proceed anyway?", default=True):
-            print("Generation aborted.")
-            raise typer.Exit()
+            # print("Generation aborted.") # Typer.Abort() prints "Aborted." by default.
+            raise typer.Abort()
 
     test_cases = await agent.generate_test_cases(query, n_retrieved_docs=num_retrieved)
     print("\n--- Generated Test Cases ---")
@@ -79,8 +76,8 @@ async def generate_async(query: str, collection_name: str, num_retrieved: int, o
 async def status_async(collection_name: str):
     agent = _get_agent(collection_name)
     count = await agent.get_ingested_data_count()
-    print(f"Collection '{collection_name}' contains {count} ingested items.")
-    print(f"ChromaDB persistent path: {agent.vector_store.db_path}")
+    print(f"Collection '{collection_name}' contains {count} ingested items.") # Updated
+    print(f"ChromaDB persistent path: {agent.vector_store.db_path}") # Updated
 
 
 async def clear_data_async(collection_name: str, force: bool):
@@ -88,12 +85,12 @@ async def clear_data_async(collection_name: str, force: bool):
         confirm = typer.confirm(
             f"Are you sure you want to clear all data from collection '{collection_name}' and remove related cloned repositories?")
         if not confirm:
-            print("Operation cancelled.")
-            raise typer.Exit()
+            # print("Operation cancelled.") # Typer.Abort() prints "Aborted." by default.
+            raise typer.Abort()
 
     agent = _get_agent(collection_name)
     await agent.clear_ingested_data()
-    print(f"Successfully cleared data from collection '{collection_name}'.")
+    print(f"Successfully cleared data from collection '{collection_name}'.") # Updated
 
 
 @app.command()
@@ -105,12 +102,16 @@ def ingest_docs(
     """Ingests documents into the knowledge base."""
     logger.info(
         "CLI: Ingesting documents from: %s, Collection: %s", path, collection_name)
-    if not os.path.exists(path):
+    if not os.path.exists(path): # os.path.exists is fine for CLI startup checks
         logger.error("Path does not exist: %s", path)
-        print(f"Error: Path does not exist: {path}")
+        print(f"Error: Path does not exist: {path}") # Updated
         raise typer.Exit(code=1)
     try:
         asyncio.run(ingest_docs_async(path, collection_name))
+    except typer.Exit as e:
+        raise e
+    except typer.Abort:
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during document ingestion: %s", e, exc_info=True)
@@ -131,16 +132,19 @@ def ingest_code(
         "CLI: Ingesting code from source: %s, Collection: %s", source_path, collection_name)
     is_url_heuristic = "://" in source_path or source_path.startswith("git@")
     # Quick check for local path
-    if not is_url_heuristic and not Path(source_path).exists():
+    if not is_url_heuristic and not Path(source_path).exists(): # Path.exists is fine for CLI startup
         logger.error(
             "Local source path does not exist or is not accessible: %s", source_path)
-        print(
-            f"Error: Local source path '{source_path}' not found or not accessible.")
+        print(f"Error: Local source path '{source_path}' not found or not accessible.") # Updated
         raise typer.Exit(code=1)
 
     try:
         asyncio.run(ingest_code_async(
             source_path, collection_name, no_cleanup_github))
+    except typer.Exit as e:
+        raise e
+    except typer.Abort:
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during code ingestion from '%s': %s", source_path, e, exc_info=True)
@@ -164,6 +168,10 @@ def generate(
     try:
         asyncio.run(generate_async(
             query, collection_name, num_retrieved, output_file))
+    except typer.Exit as e:
+        raise e
+    except typer.Abort:
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during test case generation: %s", e, exc_info=True)
@@ -180,6 +188,10 @@ def status(
     logger.info("CLI: Checking status for collection: %s", collection_name)
     try:
         asyncio.run(status_async(collection_name))
+    except typer.Exit as e:
+        raise e
+    except typer.Abort:
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during status check: %s", e, exc_info=True)
@@ -198,6 +210,10 @@ def clear_data(
     logger.info("CLI: Clearing data for collection: %s", collection_name)
     try:
         asyncio.run(clear_data_async(collection_name, force))
+    except typer.Exit as e:
+        raise e
+    except typer.Abort:
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during data clearing: %s", e, exc_info=True)

@@ -152,6 +152,9 @@ class CodeLoader:
                 await asyncio.to_thread(shutil.rmtree, local_repo_path)
                 logger.info("Cleaned up cloned repository: %s",
                             local_repo_path)
+                # Also remove from the class's tracking set
+                if str(local_repo_path) in CodeLoader.cloned_repos:
+                    CodeLoader.cloned_repos.remove(str(local_repo_path))
             except Exception as e:
                 logger.error(
                     "Error cleaning up repository %s: %s", local_repo_path, e, exc_info=True)

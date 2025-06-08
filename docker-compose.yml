@@ -23,6 +23,7 @@ services:
       # Logging and Debug
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
 
       # LLM Configuration
       - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-text-embedding-004}
@@ -33,7 +34,7 @@ services:
       - CHUNK_OVERLAP=${CHUNK_OVERLAP:-200}
       
       # Code Loading
-      - CODE_EXTENSIONS=${CODE_EXTENSIONS:-".py,.js,.ts,.java,.go,.rs,.cpp,.hpp,.c,.h,.cs,.rb,.php"}
+      - CODE_EXTENSIONS=${CODE_EXTENSIONS:-py,js,ts,java,go,rs,cpp,hpp,c,h,cs,rb,php}
       - TEMP_CLONE_DIR_BASE=/app/temp_cloned_repos
 
       # Output Configuration
@@ -74,7 +75,7 @@ services:
       start_period: 30s
 
   chromadb:
-    image: chromadb/chroma:0.4.15
+    image: chromadb/chroma:0.4.22
     container_name: testteller_chromadb
     restart: unless-stopped
     volumes:

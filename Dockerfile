@@ -1,22 +1,34 @@
 # Build stage
-FROM python:3.11.0-slim AS builder
+FROM ubuntu:22.04 AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive
 
 # Set the working directory
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+# Install Python and build dependencies
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    python3-pip \
     gcc \
     libpoppler-cpp-dev \
     pkg-config \
+    sqlite3 \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && sqlite3 --version
+
+# Create and activate virtual environment
+RUN python3.11 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy only requirements first for better caching
 COPY requirements.txt .
@@ -26,31 +38,34 @@ COPY MANIFEST.in .
 COPY pyproject.toml .
 
 # Install dependencies and package in development mode
-RUN python -m venv /opt/venv && \
-    . /opt/venv/bin/activate && \
-    pip install --no-cache-dir -r requirements.txt && \
+RUN pip install --no-cache-dir -r requirements.txt && \
     pip install -e .
 
 # Final stage
-FROM python:3.11.0-slim 
+FROM ubuntu:22.04
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    python3.11 \
     libpoppler-cpp-dev \
     tesseract-ocr \
     git \
     wget \
     curl \
+    sqlite3 \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && sqlite3 --version
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv

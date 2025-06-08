@@ -1,11 +1,12 @@
-from pathlib import Path
-import logging
 import asyncio
+import logging
 import os
+from pathlib import Path
+
+import aiofiles  # For async file operations
 import docx
 import fitz  # PyMuPDF
 import openpyxl
-import aiofiles  # For async file operations
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,8 @@ class DocumentLoader:
         documents_content = []
         path = Path(directory_path)
         if not path.is_dir():
-            logger.error("Provided path is not a directory: %s", directory_path, exc_info=True)
+            logger.error("Provided path is not a directory: %s",
+                         directory_path, exc_info=True)
             return []
 
         file_paths_to_load = []

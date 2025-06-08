@@ -1,54 +1,115 @@
 services:
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: testteller_app
     restart: unless-stopped
+    # The container will stay running. Use 'docker-compose exec app python -m testteller.main <command>' to run commands
+    command: serve
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY} # Passed from .env file
+      # API Keys (Required)
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:?GOOGLE_API_KEY is required}
+      # Optional: GitHub token for private repos. Leave empty or unset if not needed
+      - GITHUB_TOKEN
+
+      # ChromaDB Configuration
       - CHROMA_DB_HOST=chromadb
       - CHROMA_DB_PORT=8000
-      - CHROMA_DB_PATH=/app/chroma_data_prod # Path inside the app container if still used by PersistentClient fallback
+      - CHROMA_DB_USE_REMOTE=true
+      - CHROMA_DB_PERSIST_DIRECTORY=/app/chroma_data
+      - DEFAULT_COLLECTION_NAME=${DEFAULT_COLLECTION_NAME:-test_documents_non_prod}
+
+      # Logging and Debug
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - DEFAULT_COLLECTION_NAME=${DEFAULT_COLLECTION_NAME:-test_documents_prod_docker}
-      # Add other necessary environment variables from config.py, using .env file defaults
-      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-models/embedding-001}
-      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-gemini-2.0-flash} # Changed from 2.0 to 1.5 to match current Gemini offerings
+
+      # LLM Configuration
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-text-embedding-004}
+      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-gemini-2.0-flash}
+
+      # Document Processing
       - CHUNK_SIZE=${CHUNK_SIZE:-1000}
-      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-150}
-      - TEMP_CLONE_DIR_BASE=/app/temp_cloned_repos_prod_docker # Ensure this is writable or map volume if state needs to persist beyond container life
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-200}
+      
+      # Code Loading
+      - CODE_EXTENSIONS=${CODE_EXTENSIONS:-".py,.js,.ts,.java,.go,.rs,.cpp,.hpp,.c,.h,.cs,.rb,.php"}
+      - TEMP_CLONE_DIR_BASE=/app/temp_cloned_repos
+
+      # Output Configuration
+      - OUTPUT_FILE_PATH=${OUTPUT_FILE_PATH:-testteller_output.md}
+
     volumes:
-      - ./chroma_data_prod_docker:/app/chroma_data_app_persistent # Volume for app's own persistent data if any (e.g. if it writes files other than Chroma)
-      # The main ChromaDB data will be handled by the chromadb service volume.
-      # The app container will connect to the chromadb service as a client.
-      # If the app still needs its own CHROMA_DB_PATH for some reason when acting as a client,
-      # it should point to a path within its own container, not the chromadb service's volume directly.
-      # However, with HttpClient, CHROMA_DB_PATH for the app service becomes less relevant.
+      # Persistent storage for app data
+      - chroma_data:/app/chroma_data
+      - ./temp_cloned_repos:/app/temp_cloned_repos
+      
+      # Optional: Mount local code/docs for testing
+      # - ./local_code:/app/local_code:ro
+      # - ./local_docs:/app/local_docs:ro
+
     depends_on:
-      - chromadb
+      chromadb:
+        condition: service_healthy
     networks:
       - testteller_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://chromadb:8000/api/v1/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   chromadb:
-    image: chromadb/chroma:0.5.0 # Using a specific version
+    image: chromadb/chroma:0.4.15
     container_name: testteller_chromadb
     restart: unless-stopped
-    ports:
-      - "8000:8000" # Expose ChromaDB port to the host
     volumes:
-      - ./chroma_data_db_persistent:/chroma/chroma # Persist ChromaDB data
+      - ./chroma_data_prod:/chroma/chroma
     environment:
-      - CHROMA_SERVER_HOST=0.0.0.0 # Listen on all interfaces within its container network
+      - CHROMA_SERVER_HOST=0.0.0.0
       - CHROMA_SERVER_HTTP_PORT=8000
-      - CHROMA_PERSIST_PATH=/chroma/chroma # Path inside the container where data is persisted
-      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-False}
+      - CHROMA_PERSIST_DIRECTORY=/chroma/chroma
+    ports:
+      - "127.0.0.1:8000:8000"  # Only expose to localhost
     networks:
       - testteller_network
+    command: >
+      bash -c "apt-get update && apt-get install -y curl &&
+      uvicorn chromadb.app:app --reload --workers 1 --host 0.0.0.0 --port 8000 --log-level warning"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
 
 volumes:
-  chroma_data_app_persistent: # Named volume for app's persistent data (if any)
-  chroma_data_db_persistent:  # Named volume for ChromaDB server data
+  chroma_data:
+    name: testteller_chroma_data
 
 networks:
   testteller_network:
     driver: bridge
+    name: testteller_network

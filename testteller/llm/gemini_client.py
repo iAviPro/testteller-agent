@@ -1,58 +1,78 @@
-import logging
+"""
+Google Gemini API client implementation.
+"""
 import asyncio
 import functools
-import google.generativeai as genai
-from testteller.utils.retry_helpers import api_retry_async, api_retry_sync
-from testteller.config import settings  # Ensure settings is imported
+import logging
+import os
+from typing import List
 
+import google.generativeai as genai
+from pydantic import SecretStr
+
+from testteller.config import settings  # Ensure settings is imported
+from testteller.utils.retry_helpers import api_retry_async, api_retry_sync
 
 logger = logging.getLogger(__name__)
 
-print("-" * 50)
-
-api_key_from_settings_secretstr = settings.api_keys.google_api_key.get_secret_value()
-
-API_KEY_STR_VALUE = None
-
-if api_key_from_settings_secretstr:
-    API_KEY_STR_VALUE = str(api_key_from_settings_secretstr)
-    print(
-        f"DEBUG: API key from settings (as str): '{API_KEY_STR_VALUE[:5]}...' (type: {type(API_KEY_STR_VALUE)})")
-else:
-    print("CRITICAL DEBUG: Could not get string value from settings.google_api_key.")
-    raise ValueError(
-        "CRITICAL: GOOGLE_API_KEY could not be resolved to a string from Pydantic settings.")
-
-
-print(f"DEBUG: Configuring genai with API key: '{API_KEY_STR_VALUE[:5]}...'")
-print("-" * 50)
-
-try:
-    genai.configure(api_key=API_KEY_STR_VALUE)
-except Exception as e:
-    print(f"CRITICAL ERROR during genai.configure(): {e}")
-    logger.critical(
-        "CRITICAL ERROR during genai.configure(): %s", e, exc_info=True)
-    raise
-
 
 class GeminiClient:
+    """Client for interacting with Google's Gemini API."""
+
     def __init__(self):
+        """Initialize the Gemini client with API key from settings or environment."""
+        self.api_key = self._get_api_key()
+        genai.configure(api_key=self.api_key)
+
+        # Get model names from settings
         try:
-            self.embedding_model_name = settings.gemini_model.gemini_embedding_model
-            self.generation_model_name = settings.gemini_model.gemini_generation_model
-            self.generation_model = genai.GenerativeModel(
-                self.generation_model_name)
-            logger.info(
-                "Gemini client initialized with generation model: %s and embedding model: %s",
-                self.generation_model_name, self.embedding_model_name)
+            if settings and settings.gemini_model:
+                self.generation_model = settings.gemini_model.__dict__.get(
+                    'gemini_generation_model', 'gemini-2.0-flash')
+                self.embedding_model = settings.gemini_model.__dict__.get(
+                    'gemini_embedding_model', 'text-embedding-004')
+            else:
+                self.generation_model = 'gemini-2.0-flash'
+                self.embedding_model = 'text-embedding-004'
         except Exception as e:
-            logger.error(
-                "Failed to initialize Gemini client: %s", e, exc_info=True)
-            raise
+            logger.warning(
+                "Could not get model names from settings: %s. Using defaults.", e)
+            self.generation_model = 'gemini-2.0-flash'
+            self.embedding_model = 'text-embedding-004'
+
+        self.model = genai.GenerativeModel(self.generation_model)
+        logger.info("Initialized Gemini client with generation model '%s' and embedding model '%s'",
+                    self.generation_model, self.embedding_model)
+
+    def _get_api_key(self) -> str:
+        """Get API key from settings or environment variables."""
+        try:
+            if settings and settings.api_keys:
+                api_key = settings.api_keys.__dict__.get('google_api_key')
+                if api_key and isinstance(api_key, SecretStr):
+                    return api_key.get_secret_value()
+        except Exception as e:
+            logger.debug("Could not get API key from settings: %s", e)
+
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Google API key not found. Please set it in .env file as GOOGLE_API_KEY "
+                "or provide it through settings configuration."
+            )
+        return api_key
 
     @api_retry_async
-    async def get_embedding_async(self, text: str) -> list[float] | None:
+    async def get_embedding_async(self, text: str) -> List[float]:
+        """
+        Get embeddings for text asynchronously.
+
+        Args:
+            text: Text to get embeddings for
+
+        Returns:
+            List of embedding values
+        """
         if not text or not text.strip():
             logger.warning(
                 "Empty text provided for embedding, returning None.")
@@ -61,9 +81,9 @@ class GeminiClient:
             loop = asyncio.get_running_loop()
             func_to_run = functools.partial(
                 genai.embed_content,
-                model=self.embedding_model_name,
+                model=self.embedding_model,
                 content=text,
-                task_type="RETRIEVAL_DOCUMENT"
+                task_type="retrieval_document"
             )
             result = await loop.run_in_executor(None, func_to_run)
             return result['embedding']
@@ -73,16 +93,25 @@ class GeminiClient:
             return None
 
     @api_retry_sync
-    def get_embedding_sync(self, text: str) -> list[float] | None:
+    def get_embedding_sync(self, text: str) -> List[float]:
+        """
+        Get embeddings for text synchronously.
+
+        Args:
+            text: Text to get embeddings for
+
+        Returns:
+            List of embedding values
+        """
         if not text or not text.strip():
             logger.warning(
                 "Empty text provided for sync embedding, returning None.")
             return None
         try:
             result = genai.embed_content(
-                model=self.embedding_model_name,
+                model=self.embedding_model,
                 content=text,
-                task_type="RETRIEVAL_DOCUMENT"
+                task_type="retrieval_document"
             )
             return result['embedding']
         except Exception as e:
@@ -106,55 +135,43 @@ class GeminiClient:
 
     def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
         embeddings = []
-        for i, text_chunk in enumerate(texts):
+        for text_chunk in texts:
             emb = self.get_embedding_sync(text_chunk)
             embeddings.append(emb)
         return embeddings
 
     @api_retry_async
-    async def generate_text_async(self, prompt: str, safety_settings=None, generation_config=None) -> str:
+    async def generate_text_async(self, prompt: str) -> str:
+        """
+        Generate text using the Gemini model asynchronously.
+
+        Args:
+            prompt: The input prompt for text generation
+
+        Returns:
+            Generated text response
+        """
         try:
-            if safety_settings is None:
-                safety_settings = [
-                    {"category": "HARM_CATEGORY_HARASSMENT",
-                        "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH",
-                        "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        "threshold": "BLOCK_NONE"},
-                ]
-            if generation_config is None:
-                generation_config = genai.types.GenerationConfig(
-                    max_output_tokens=8000, temperature=0.7)
-
-            loop = asyncio.get_running_loop()
-
-            func_to_run = functools.partial(
-                self.generation_model.generate_content,
-                prompt,
-                generation_config=generation_config,
-                safety_settings=safety_settings
-            )
-            response = await loop.run_in_executor(None, func_to_run)
-
-            if not response.parts:
-                if response.prompt_feedback and response.prompt_feedback.block_reason:
-                    msg = f"Content generation blocked. Reason: {response.prompt_feedback.block_reason_message or response.prompt_feedback.block_reason}"
-                    logger.error(msg)
-                    return f"Error: {msg}"
-                else:
-                    logger.error(
-                        "Content generation failed: No parts in response and no block reason provided.")
-                    return "Error: Content generation failed for an unknown reason."
+            response = await self.model.generate_content_async(prompt)
             return response.text
-        except ValueError as ve:
-            logger.error(
-                "ValueError during text generation: %s", ve, exc_info=True)
-            return f"Error: Configuration issue for text generation. {ve}"
         except Exception as e:
-            logger.error("Error generating text: %s", e, exc_info=True)
-            if "API key not valid" in str(e):
-                return "Error: Invalid Google API Key."
-            return f"Error: An unexpected error occurred during text generation. {e}"
+            logger.error("Error generating text with Gemini async: %s", e)
+            raise
+
+    @api_retry_sync
+    def generate_text(self, prompt: str) -> str:
+        """
+        Generate text using the Gemini model.
+
+        Args:
+            prompt: The input prompt for text generation
+
+        Returns:
+            Generated text response
+        """
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            logger.error("Error generating text with Gemini: %s", e)
+            raise

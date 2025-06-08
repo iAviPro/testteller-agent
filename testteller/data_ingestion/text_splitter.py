@@ -1,35 +1,105 @@
+"""
+Text splitting utilities for document ingestion.
+"""
 import logging
 import os
 import time
+from typing import List, Optional
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from testteller.config import settings
+from testteller.data_ingestion.code_loader import CodeLoader
+from testteller.data_ingestion.document_loader import DocumentLoader
 from testteller.llm.gemini_client import GeminiClient
 from testteller.vector_store.chromadb_manager import ChromaDBManager
-from testteller.data_ingestion.document_loader import DocumentLoader
-from testteller.data_ingestion.code_loader import CodeLoader
 from testteller.prompts import TEST_CASE_GENERATION_PROMPT_TEMPLATE
-from testteller.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Default configuration
+DEFAULT_CHUNK_SIZE = 1000
+DEFAULT_CHUNK_OVERLAP = 200
+DEFAULT_LENGTH_FUNCTION = len
+DEFAULT_ADD_START_INDEX = True
 
 
 class TextSplitter:
-    def __init__(self, chunk_size: int = 500, overlap: int = 50):
-        self.chunk_size = chunk_size
-        self.overlap = overlap
+    """Handles text splitting for document ingestion."""
 
-    def split_text(self, text: str):
-        if not text:
-            return []
-        chunks = []
-        start = 0
-        text_length = len(text)
-        while start < text_length:
-            end = min(start + self.chunk_size, text_length)
-            chunks.append(text[start:end])
-            if end == text_length:
-                break
-            start = end - self.overlap
-        return chunks
+    def __init__(
+        self,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        length_function: Optional[callable] = None,
+        add_start_index: Optional[bool] = None
+    ):
+        """
+        Initialize text splitter with configuration.
 
+        Args:
+            chunk_size: Size of text chunks
+            chunk_overlap: Overlap between chunks
+            length_function: Function to measure text length
+            add_start_index: Whether to add start index to chunk metadata
+        """
+        self.chunk_size = chunk_size or DEFAULT_CHUNK_SIZE
+        self.chunk_overlap = chunk_overlap or DEFAULT_CHUNK_OVERLAP
+        self.length_function = length_function or DEFAULT_LENGTH_FUNCTION
+        self.add_start_index = add_start_index if add_start_index is not None else DEFAULT_ADD_START_INDEX
 
-logger = logging.getLogger(__name__)
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            length_function=self.length_function,
+            add_start_index=self.add_start_index
+        )
+
+        logger.info(
+            "Initialized TextSplitter with chunk_size=%d, chunk_overlap=%d",
+            self.chunk_size,
+            self.chunk_overlap
+        )
+
+    def split_text(self, text: str) -> List[str]:
+        """
+        Split text into chunks.
+
+        Args:
+            text: Text to split
+
+        Returns:
+            List of text chunks
+        """
+        try:
+            chunks = self.splitter.split_text(text)
+            logger.info("Split text into %d chunks", len(chunks))
+            return chunks
+        except Exception as e:
+            logger.error("Error splitting text: %s", e)
+            raise
+
+    def split_texts(self, texts: List[str]) -> List[str]:
+        """
+        Split multiple texts into chunks.
+
+        Args:
+            texts: List of texts to split
+
+        Returns:
+            List of text chunks from all texts
+        """
+        try:
+            all_chunks = []
+            for text in texts:
+                chunks = self.split_text(text)
+                all_chunks.extend(chunks)
+            logger.info("Split %d texts into %d total chunks",
+                        len(texts), len(all_chunks))
+            return all_chunks
+        except Exception as e:
+            logger.error("Error splitting texts: %s", e)
+            raise
 
 
 class TestTellerAgent:

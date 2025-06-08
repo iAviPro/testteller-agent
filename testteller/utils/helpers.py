@@ -2,23 +2,35 @@ import logging
 import sys
 from pythonjsonlogger import jsonlogger
 from testteller.config import settings
+from testteller.constants import (
+    DEFAULT_LOG_LEVEL,
+    DEFAULT_LOG_FORMAT
+)
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
         super(CustomJsonFormatter, self).add_fields(
             log_record, record, message_dict)
-        if not log_record.get('timestamp'):
-            log_record['timestamp'] = record.created
-        if log_record.get('level'):
-            log_record['level'] = log_record['level'].upper()
-        else:
-            log_record['level'] = record.levelname
+        log_record['timestamp'] = record.created
+        log_record['level'] = record.levelname
 
 
 def setup_logging():
     """Configures logging based on settings."""
-    log_level_str = str(settings.logging.log_level).upper()
+    # Default settings from constants
+    log_level_str = DEFAULT_LOG_LEVEL
+    log_format = DEFAULT_LOG_FORMAT
+
+    # Try to get settings from config if available
+    if settings is not None:
+        try:
+            log_level_str = str(settings.logging.level).upper()
+            log_format = str(settings.logging.format).lower()
+        except Exception as e:
+            # Fallback to defaults if there's any error
+            pass
+
     log_level = getattr(logging, log_level_str, logging.INFO)
 
     # Remove all handlers associated with the root logger object.
@@ -32,7 +44,7 @@ def setup_logging():
     # Create a handler (console for CLI)
     handler = logging.StreamHandler(sys.stdout)
 
-    if str(settings.logging.log_format).lower() == "json":
+    if log_format == "json":
         formatter = CustomJsonFormatter(
             '%(timestamp)s %(level)s %(name)s %(module)s %(funcName)s %(lineno)d %(message)s')
     else:  # text format
@@ -53,8 +65,6 @@ def setup_logging():
 
     # Initial log to confirm setup
     initial_logger = logging.getLogger(__name__)
-    log_format = getattr(getattr(settings, "logging", {}),
-                         "log_format", "text")
     initial_logger.info(
         "Logging initialized. Level: %s, Format: %s", log_level_str, log_format)
 

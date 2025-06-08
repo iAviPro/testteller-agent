@@ -1,127 +1,274 @@
+"""
+ChromaDB vector store manager implementation.
+"""
 import logging
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import functools
 import hashlib
 import asyncio
 import chromadb
-from chromadb.utils import embedding_functions
-from chromadb.config import Settings  # Added
-from chromadb import HttpClient  # Added
+from chromadb.api.types import (
+    QueryResult,
+    EmbeddingFunction,
+    Documents,
+    Metadatas,
+    IDs,
+    Where,
+    WhereDocument
+)
 from testteller.config import settings
 from testteller.llm.gemini_client import GeminiClient
 
 logger = logging.getLogger(__name__)
 
+# Default configuration values
+DEFAULT_COLLECTION_NAME = "test_documents_prod"
+DEFAULT_PERSIST_DIRECTORY = "chroma_data_prod"
+DEFAULT_HOST = "localhost"
+DEFAULT_PORT = 8000
+
 
 class ChromaDBManager:
-    def __init__(self, gemini_client: GeminiClient, collection_name: str = settings.chroma_db.default_collection_name):
+    """Manager for ChromaDB vector store operations."""
+
+    def __init__(
+        self,
+        gemini_client: GeminiClient,
+        collection_name: Optional[str] = None,
+        persist_directory: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        use_remote: Optional[bool] = None
+    ):
+        """
+        Initialize ChromaDB manager with configuration from settings or parameters.
+
+        Args:
+            gemini_client: Instance of GeminiClient for embeddings
+            collection_name: Name of the ChromaDB collection (optional)
+            persist_directory: Directory for ChromaDB persistence (optional)
+            host: Host for remote ChromaDB (optional)
+            port: Port for remote ChromaDB (optional)
+            use_remote: Whether to use remote ChromaDB (optional)
+        """
         self.gemini_client = gemini_client
-        self.collection_name = collection_name
-        self.db_path = settings.chroma_db.chroma_db_path  # db_path is still defined
 
-        chroma_host = os.getenv("CHROMA_DB_HOST")
-        chroma_port_str = os.getenv("CHROMA_DB_PORT")
-
-        if chroma_host and chroma_port_str:
-            try:
-                chroma_port = int(chroma_port_str)
+        # Get configuration from settings if available, otherwise use defaults/parameters
+        try:
+            if settings and settings.chroma_db:
+                self.collection_name = collection_name or settings.chroma_db.__dict__.get(
+                    'default_collection_name', DEFAULT_COLLECTION_NAME)
+                self.persist_directory = persist_directory or settings.chroma_db.__dict__.get(
+                    'persist_directory', DEFAULT_PERSIST_DIRECTORY)
+                self.host = host or settings.chroma_db.__dict__.get(
+                    'host', DEFAULT_HOST)
+                self.port = port or settings.chroma_db.__dict__.get(
+                    'port', DEFAULT_PORT)
+                self.use_remote = use_remote if use_remote is not None else settings.chroma_db.__dict__.get(
+                    'use_remote', False)
+            else:
                 logger.info(
-                    "Connecting to ChromaDB server at %s:%d", chroma_host, chroma_port)
-                self.client = HttpClient(
-                    host=chroma_host,
-                    port=chroma_port,
-                    settings=Settings(anonymized_telemetry=False)
+                    "ChromaDB settings not found, using defaults and parameters")
+                self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
+                self.persist_directory = persist_directory or DEFAULT_PERSIST_DIRECTORY
+                self.host = host or DEFAULT_HOST
+                self.port = port or DEFAULT_PORT
+                self.use_remote = use_remote if use_remote is not None else False
+        except Exception as e:
+            logger.warning(
+                "Error loading ChromaDB settings: %s. Using defaults.", e)
+            self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
+            self.persist_directory = persist_directory or DEFAULT_PERSIST_DIRECTORY
+            self.host = host or DEFAULT_HOST
+            self.port = port or DEFAULT_PORT
+            self.use_remote = use_remote if use_remote is not None else False
+
+        # Store the actual db_path based on whether we're using remote or local
+        self.db_path = None if self.use_remote else os.path.abspath(
+            self.persist_directory)
+
+        self.client = self._initialize_client()
+        self.embedding_function = self._create_embedding_function()
+        self.collection = self._get_or_create_collection()
+        logger.info(
+            "Initialized ChromaDB manager with collection '%s' %s",
+            self.collection_name,
+            f"at {self.host}:{self.port}" if self.use_remote else f"in {self.persist_directory}"
+        )
+
+    def _initialize_client(self) -> chromadb.Client:
+        """Initialize ChromaDB client based on configuration."""
+        try:
+            if self.use_remote:
+                return chromadb.HttpClient(host=self.host, port=self.port)
+            else:
+                return chromadb.PersistentClient(path=self.persist_directory)
+        except Exception as e:
+            logger.error("Failed to initialize ChromaDB client: %s", e)
+            raise
+
+    def _get_or_create_collection(self) -> chromadb.Collection:
+        """Get existing collection or create new one."""
+        try:
+            return self.client.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"}
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to get or create collection '%s': %s", self.collection_name, e)
+            raise
+
+    def add_documents(
+        self,
+        documents: Documents,
+        metadatas: Optional[Metadatas] = None,
+        ids: Optional[IDs] = None
+    ) -> None:
+        """Add documents to the collection."""
+        try:
+            # Get embeddings for all documents
+            embeddings = [
+                self.gemini_client.get_embedding_sync(doc) for doc in documents
+            ]
+
+            # If no IDs provided, generate unique IDs
+            if not ids:
+                import uuid
+                ids = [str(uuid.uuid4()) for _ in documents]
+
+            # Get existing IDs to check for duplicates
+            existing_docs = self.collection.get()
+            existing_ids = set(
+                existing_docs['ids']) if existing_docs and existing_docs['ids'] else set()
+
+            # Track seen IDs to handle duplicates within the batch
+            seen_ids = set()
+
+            # Filter out duplicates while preserving order
+            docs_to_add = []
+            embeddings_to_add = []
+            metadatas_to_add = []
+            ids_to_add = []
+
+            for i, doc_id in enumerate(ids):
+                # Skip if ID is duplicate within batch or exists in collection
+                if doc_id in seen_ids or doc_id in existing_ids:
+                    logger.warning(
+                        "Document with ID '%s' is duplicate %s, skipping",
+                        doc_id,
+                        "within batch" if doc_id in seen_ids else "in collection"
+                    )
+                    continue
+
+                docs_to_add.append(documents[i])
+                embeddings_to_add.append(embeddings[i])
+                if metadatas:
+                    metadatas_to_add.append(metadatas[i])
+                ids_to_add.append(doc_id)
+                seen_ids.add(doc_id)
+
+            if docs_to_add:
+                self.collection.add(
+                    embeddings=embeddings_to_add,
+                    documents=docs_to_add,
+                    metadatas=metadatas_to_add if metadatas else None,
+                    ids=ids_to_add
                 )
-            except ValueError:
-                logger.error(
-                    "Invalid CHROMA_DB_PORT: %s. Falling back to PersistentClient.", chroma_port_str)
-                try:
-                    self.client = chromadb.PersistentClient(
-                        path=self.db_path, settings=Settings(anonymized_telemetry=False))
-                except Exception as e:
-                    logger.error(
-                        "Failed to initialize ChromaDB PersistentClient (fallback) at %s: %s", self.db_path, e, exc_info=True)
-                    raise
-            except Exception as e:  # Catch other HttpClient connection errors
-                logger.error(
-                    "Failed to connect to ChromaDB HttpClient at %s:%s: %s. Falling back to PersistentClient.", chroma_host, chroma_port_str, e, exc_info=True)
-                try:
-                    self.client = chromadb.PersistentClient(
-                        path=self.db_path, settings=Settings(anonymized_telemetry=False))
-                except Exception as e_fallback:
-                    logger.error(
-                        "Failed to initialize ChromaDB PersistentClient (fallback after HttpClient error) at %s: %s", self.db_path, e_fallback, exc_info=True)
-                    raise
-        else:
+                logger.info(
+                    "Added %d new documents to collection '%s' (skipped %d duplicates)",
+                    len(docs_to_add), self.collection_name, len(
+                        documents) - len(docs_to_add)
+                )
+            else:
+                logger.info(
+                    "No new documents added to collection '%s' (all %d documents were duplicates)",
+                    self.collection_name, len(documents)
+                )
+
+        except Exception as e:
+            logger.error(
+                "Error adding documents to collection '%s': %s", self.collection_name, e)
+            raise
+
+    def query_similar(
+        self,
+        query_text: str,
+        n_results: int = 5,
+        where: Optional[Where] = None,
+        where_document: Optional[WhereDocument] = None
+    ) -> QueryResult:
+        """Query similar documents from the collection."""
+        try:
+            query_embedding = self.gemini_client.get_embedding_sync(query_text)
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results,
+                where=where,
+                where_document=where_document
+            )
             logger.info(
-                "CHROMA_DB_HOST or CHROMA_DB_PORT not set. Using PersistentClient with path: %s", self.db_path)
-            try:
-                self.client = chromadb.PersistentClient(
-                    path=self.db_path, settings=Settings(anonymized_telemetry=False))
-            except Exception as e:
-                logger.error(
-                    "Failed to initialize ChromaDB PersistentClient at %s: %s", self.db_path, e, exc_info=True)
-                raise
+                "Retrieved %d results for query from collection '%s'",
+                len(results.get('documents', [[]])[0]),
+                self.collection_name
+            )
+            return results
+        except Exception as e:
+            logger.error("Error querying collection '%s': %s",
+                         self.collection_name, e)
+            raise
 
-        # Ensure client is set before proceeding
-        if not hasattr(self, 'client') or self.client is None:
-            # This case should ideally be prevented by the raise statements above,
-            # but as a safeguard:
-            logger.critical(
-                "ChromaDB client could not be initialized. Aborting initialization.")
-            # Depending on application structure, might want to raise a specific error here
-            # or ensure that later code handles a None client gracefully (though raising is better).
-            raise ConnectionError("Failed to initialize any ChromaDB client.")
+    def clear_collection(self) -> None:
+        """Clear all documents from the collection."""
+        try:
+            # Get all document IDs
+            all_docs = self.collection.get()
+            if all_docs and all_docs['ids']:
+                # Delete all documents
+                self.collection.delete(ids=all_docs['ids'])
+                logger.info("Cleared %d documents from collection '%s'", len(
+                    all_docs['ids']), self.collection_name)
+            else:
+                logger.info("Collection '%s' is already empty",
+                            self.collection_name)
+        except Exception as e:
+            logger.error("Error clearing collection '%s': %s",
+                         self.collection_name, e)
+            raise
 
-        class GeminiChromaEmbeddingFunction(embedding_functions.EmbeddingFunction):
+    def get_collection_count(self) -> int:
+        """Get the number of documents in the collection."""
+        try:
+            return self.collection.count()
+        except Exception as e:
+            logger.error(
+                "Error getting count for collection '%s': %s", self.collection_name, e)
+            raise
+
+    def _create_embedding_function(self) -> EmbeddingFunction:
+        """Create and return the Gemini embedding function."""
+        class GeminiChromaEmbeddingFunction(EmbeddingFunction):
             def __init__(self, gem_client: GeminiClient):
                 self.gem_client = gem_client
 
             def __call__(self, input_texts: List[str]) -> List[List[float]]:
-                raw_embeddings = self.gem_client.get_embeddings_sync(
+                raw_embeddings = self.gem_client.get_embedding_sync(
                     input_texts)
                 valid_embeddings: List[List[float]] = []
-                # TODO: Make embedding_dim configurable or fetch from model info
-                # For "models/embedding-001", the dimension is 768.
-                embedding_dim = 768
+                embedding_dim = 768  # For "models/embedding-001"
 
                 for i, emb in enumerate(raw_embeddings):
-                    if emb is None:
+                    if emb is None or len(emb) != embedding_dim:
                         logger.warning(
-                            "Sync embedding for input text at index %d ('%s...') was None. Using zero vector.",
-                            i, input_texts[i][:30])
+                            "Invalid embedding for text at index %d. Using zero vector.", i)
                         valid_embeddings.append([0.0] * embedding_dim)
                     else:
-                        if len(emb) != embedding_dim:
-                            logger.error(
-                                "Embedding for input text at index %d has incorrect dimension %d, expected %d. Using zero vector.",
-                                i, len(emb), embedding_dim)
-                            valid_embeddings.append([0.0] * embedding_dim)
-                        else:
-                            valid_embeddings.append(emb)
+                        valid_embeddings.append(emb)
 
-                if not valid_embeddings and input_texts:  # Should not happen if we use zero vectors
-                    logger.error(
-                        "No valid embeddings generated for any input texts, even with zero vector fallback.")
                 return valid_embeddings
 
-        self.embedding_function = GeminiChromaEmbeddingFunction(
-            self.gemini_client)
-
-        try:
-            self.collection = self.client.get_or_create_collection(
-                name=self.collection_name,
-                embedding_function=self.embedding_function
-            )
-            logger.info(
-                "ChromaDBManager initialized. Collection: '%s'. Path: '%s'. Client: %s. Count: %d",
-                self.collection_name, self.db_path, type(self.client).__name__, self.collection.count())
-        except Exception as e:
-            logger.error(
-                "Error getting or creating Chroma collection '%s' with client %s: %s",
-                self.collection_name, type(self.client).__name__, e, exc_info=True)
-            raise
+        return GeminiChromaEmbeddingFunction(self.gemini_client)
 
     async def _run_collection_method(self, method_name: str, *pos_args, **kw_args) -> Any:
         """
@@ -144,29 +291,6 @@ class ChromaDBManager:
 
     def generate_id_from_text_and_source(self, text: str, source: str) -> str:
         return hashlib.md5((text + source).encode('utf-8')).hexdigest()[:16]
-
-    async def add_documents(self, documents: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
-        if not documents:
-            logger.warning("No documents provided to add_documents.")
-            return
-
-        start_time = asyncio.get_event_loop().time()
-        try:
-            # Call the helper, passing arguments as keyword arguments for `collection.add`
-            await self._run_collection_method(
-                'add',  # method_name
-                # No positional arguments for collection.add, all are keyword.
-                documents=documents,
-                metadatas=metadatas,
-                ids=ids
-            )
-            duration = asyncio.get_event_loop().time() - start_time
-            logger.info(
-                "Added/updated %d documents to collection '%s' in %.2fs.",
-                len(documents), self.collection_name, duration)
-        except Exception as e:
-            logger.error(
-                "Error adding documents to ChromaDB: %s", e, exc_info=True)
 
     async def query_collection(self, query_text: str, n_results: int = 5) -> List[Dict[str, Any]]:
         if not query_text or not query_text.strip():

@@ -6,6 +6,44 @@
 
 **TestTeller RAG Agent** TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases. It leverages Google's Gemini LLM and ChromaDB as a vector store. The agent can process various input sources, including PRD documentation, API contracts, technical design documents (HLD/LLD), and code from GitHub repositories or local folders.
 
+## 🚀 Quick Start
+
+1. **Install the Package**
+```bash
+# Install from PyPI
+pip install testteller
+
+# Or clone and install locally
+git clone https://github.com/yourusername/testteller-rag-agent.git
+cd testteller-rag-agent
+pip install -e .
+```
+
+2. **Configure the Agent**
+```bash
+# Run the configuration wizard
+testteller configure
+
+# Or set environment variables manually
+export GOOGLE_API_KEY="your_gemini_api_key"
+export GITHUB_TOKEN="your_github_token"  # Optional, for private repos
+```
+
+3. **Start ChromaDB**
+```bash
+# Using Docker (Optional)
+docker run -d -p 8000:8000 chromadb/chroma:0.4.15
+```
+
+4. **Generate Test Cases**
+```bash
+# Ingest code or documentation
+testteller ingest-code https://github.com/owner/repo.git
+
+# Generate tests
+testteller generate "Create API integration tests for user authentication"
+```
+
 ## ✨ Features
 
 ### 🔄 Intelligent Test Generation
@@ -62,7 +100,7 @@ pip install testteller
 export GOOGLE_API_KEY="your_gemini_api_key"
 export GITHUB_TOKEN="your_github_token"  # Optional, for private repos
 
-# Start ChromaDB (in a separate terminal)
+# Start ChromaDB (in a separate terminal) (Optional)
 docker run -d -p 8000:8000 chromadb/chroma:0.4.15
 ```
 
@@ -91,59 +129,69 @@ EOL
 docker-compose up -d
 ```
 
-## 🎯 Quick Start
+## 📖 Available Commands
 
-### Using pip installation
+### Using pip installation (recommended)
 
-1. Get Help:
+### Configuration
 ```bash
+# Run interactive configuration wizard
+testteller configure
+
 # Show all available commands
-python -m testteller.main --help
+testteller --help
 
 # Show help for specific command
-python -m testteller.main generate --help
+testteller generate --help
 ```
 
-2. Ingest Documentation & Code:
+### Ingest Documentation & Code
 ```bash
 # Ingest a single document or directory
-python -m testteller.main ingest-docs path/to/document.pdf --collection-name my_collection
+testteller ingest-docs path/to/document.pdf --collection-name my_collection
 
 # Ingest a directory of documents
-python -m testteller.main ingest-docs path/to/docs/directory --collection-name my_collection
+testteller ingest-docs path/to/docs/directory --collection-name my_collection
 
 # Ingest code from GitHub repository or local folder
-python -m testteller.main ingest-code https://github.com/owner/repo.git --collection-name my_collection
+testteller ingest-code https://github.com/owner/repo.git --collection-name my_collection
 
 # Ingest code with custom collection name
-python -m testteller.main ingest-code ./local/code/folder --collection-name my_collection
+testteller ingest-code ./local/code/folder --collection-name my_collection
 ```
 
-3. Generate Test Cases:
+### Generate Test Cases
 ```bash
 # Generate tests with default settings
-python -m testteller.main generate "Create API integration tests for user authentication"
+testteller generate "Create API integration tests for user authentication"
 
 # Generate tests with custom output file
-python -m testteller.main generate "Create technical tests for login flow" --output-file tests.md
+testteller generate "Create technical tests for login flow" --output-file tests.md
 
 # Generate tests with specific collection and number of retrieved docs
-python -m testteller.main generate "Create end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
+testteller generate "Create end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
 ```
 
-4. Manage Data:
+### Manage Data
 ```bash
 # Check collection status
-python -m testteller.main status --collection-name my_collection
+testteller status --collection-name my_collection
 
 # Clear collection data
-python -m testteller.main clear-data --collection-name my_collection
-
-# Configure TestTeller
-python -m testteller.main configure
+testteller clear-data --collection-name my_collection --force
 ```
 
-### Using Docker
+### Using Docker or Local Development
+
+When using Docker or running from source, use the module format:
+
+```bash
+# Format for Docker:
+docker-compose exec app python -m testteller.main [command]
+
+# Format for local development:
+python -m testteller.main [command]
+```
 
 First, ensure your environment variables are set in the `.env` file:
 ```bash
@@ -153,7 +201,7 @@ GOOGLE_API_KEY=your_gemini_api_key
 # Only set GITHUB_TOKEN if you need to access private repos
 # GITHUB_TOKEN=your_github_token
 LOG_LEVEL=INFO
-LOG_FORMAT=text
+LOG_FORMAT=json
 DEFAULT_COLLECTION_NAME=my_test_collection
 EOL
 ```
@@ -167,6 +215,9 @@ docker-compose exec app python -m testteller.main --help
 
 # Get command-specific help
 docker-compose exec app python -m testteller.main generate --help
+
+# Run configuration wizard
+docker-compose exec app python -m testteller.main configure
 
 # Ingest documentation
 docker-compose exec app python -m testteller.main ingest-docs /path/to/doc.pdf --collection-name my_collection

@@ -6,6 +6,137 @@
 
 **TestTeller RAG Agent** is a powerful CLI-based RAG (Retrieval Augmented Generation) agent designed to generate comprehensive software test cases. It leverages Google's Gemini LLM and ChromaDB as a vector store to process various input sources and generate high-quality test cases.
 
+## ✨ Features
+
+### 🔄 Intelligent Test Generation
+- **Multiple Test Types**
+  - Technical test cases for components, APIs, and system architecture
+  - User journey test cases for end-to-end flows
+  - Integration test scenarios
+  - Edge case and error handling tests
+  - Performance test considerations
+
+### 📚 Document Processing
+- **Multi-Format Support**
+  - PDF documents (`.pdf`)
+  - Word documents (`.docx`)
+  - Excel spreadsheets (`.xlsx`)
+  - Markdown files (`.md`)
+  - Text files (`.txt`)
+  - Source code files (multiple languages)
+
+- **Smart Document Handling**
+  - Automatic text extraction from all supported formats
+  - Table and structured data processing from Excel files
+  - Code context preservation
+  - Metadata extraction and storage
+
+### 💻 Code Analysis
+- **Repository Integration**
+  - GitHub repository cloning (public and private)
+  - Local codebase analysis
+  - Multiple programming language support
+  - Branch-specific analysis
+
+- **Code Understanding**
+  - Function and class relationship analysis
+  - API endpoint detection
+  - Error handling pattern recognition
+  - Configuration and environment awareness
+
+### 🧠 Advanced RAG Pipeline
+- **State-of-the-Art LLM Integration**
+  - Google Gemini 2.0 Flash for fast generation
+  - Optimized embeddings using text-embedding-004
+  - Context-aware prompt engineering
+  - Streaming response support
+
+- **Vector Store Optimization**
+  - Efficient ChromaDB integration
+  - Fast similarity search
+  - Persistent storage
+  - Collection management
+  - Metadata-based filtering
+
+### 🔧 Processing Capabilities
+- **Smart Text Processing**
+  - Intelligent text chunking
+  - Context preservation across chunks
+  - Overlap handling for better context
+  - Custom chunk size configuration
+
+- **Performance Optimization**
+  - Asynchronous processing
+  - Batch operations
+  - Concurrent document processing
+  - Memory-efficient handling
+
+### 🛠️ Developer Tools
+- **CLI Features**
+  - Interactive command-line interface
+  - Progress tracking
+  - Rich error messages
+  - Configuration management
+  - Collection statistics
+
+- **Integration Options**
+  - Docker containerization
+  - REST API support (via ChromaDB)
+  - Environment variable configuration
+  - Custom output formatting
+
+### 📊 Output Management
+- **Flexible Output Formats**
+  - Markdown documentation
+  - Structured test cases
+  - Custom formatting options
+  - Machine-readable formats
+
+- **Result Organization**
+  - Test case categorization
+  - Priority assignment
+  - Traceability to source
+  - Coverage reporting
+
+### 🔐 Security Features
+- **Secure Processing**
+  - API key management
+  - Token-based authentication
+  - Secure credential handling
+  - Non-root container execution
+
+- **Data Protection**
+  - Local data persistence
+  - Configurable data retention
+  - Secure temporary file handling
+  - Private repository support
+
+### ⚡ Performance Features
+- **Resource Optimization**
+  - Configurable resource limits
+  - Memory-efficient processing
+  - Concurrent operations
+  - Background processing support
+
+- **Scalability**
+  - Horizontal scaling with Docker
+  - Load balancing support
+  - Distributed processing capability
+  - Resource monitoring
+
+### 🔍 Monitoring & Debugging
+- **Observability**
+  - Comprehensive logging
+  - Performance metrics
+  - Health checks
+  - Status monitoring
+
+- **Troubleshooting**
+  - Detailed error reporting
+  - Debug mode
+  - Log level configuration
+  - Health check endpoints
+
 ## 🚀 Key Features
 
 *   **Intelligent Test Generation**:

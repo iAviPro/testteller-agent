@@ -1,8 +1,10 @@
 # TestTeller RAG Agent
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://img.shields.io/pypi/v/testteller.svg)](https://pypi.org/project/testteller/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 
 **TestTeller RAG Agent** TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases. It leverages Google's Gemini LLM and ChromaDB as a vector store. The agent can process various input sources, including PRD documentation, API contracts, technical design documents (HLD/LLD), and code from GitHub repositories or local folders.
 

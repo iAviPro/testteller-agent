@@ -5,4 +5,51 @@ build-backend = "setuptools.build_meta"
 # backend-path = ["."]
 
 [project]
+name = "testteller"
+version = "0.1.1"
+description = "TestTeller : A versatile RAG AI agent for generating test cases from project documentation (PRDs, Contracts, Design Docs, etc.) and project code, leveraging LLMs."
+readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT License"}
+authors = [
+    {name = "Aviral Nigam"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+keywords = [
+    "testing",
+    "rag",
+    "llm",
+    "generative ai",
+    "test case generation",
+    "qa",
+    "automation",
+    "testcase",
+    "testteller",
+    "ai testing",
+    "rag agent",
+    "knowledge base",
+    "document ingestion",
+    "code ingestion",
+    "testteller-rag-agent",
+    "testteller rag agent",
+    "testteller_rag_agent"
+]
+
+[project.urls]
+Homepage = "https://github.com/iAviPro/testteller-rag-agent"
+"Bug Tracker" = "https://github.com/iAviPro/testteller-rag-agent/issues"
+
+[project.scripts]
+testteller = "testteller.main:app_runner"

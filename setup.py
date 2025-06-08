@@ -25,7 +25,7 @@ README = (HERE / "README.md").read_text()
 
 # Package version (should ideally be managed in one place, e.g., a version.py or __init__.py)
 # For simplicity here, hardcoded. In a real setup, you might read it from testteller_rag_agent/__init__.py
-VERSION = "0.1.0"  # Make sure this matches your intended version
+VERSION = "0.1.1"  # Make sure this matches your intended version
 
 
 setup(
@@ -51,15 +51,13 @@ setup(
         exclude=["tests", "tests.*", ".github", ".github.*"]),
     include_package_data=True,
     install_requires=parse_requirements(),
-    python_requires=">=3.10",
+    python_requires=">=3.11",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",

@@ -1,30 +1,83 @@
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
+# Build stage
+FROM python:3.11-slim as builder
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PIP_NO_CACHE_DIR=1
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Install system dependencies that might be needed by Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends     gcc     libpoppler-cpp-dev     pkg-config     tesseract-ocr     git  && apt-get clean  && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpoppler-cpp-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
+# Copy only requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies into a virtual environment
+RUN python -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the container
+# Final stage
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpoppler-cpp-dev \
+    tesseract-ocr \
+    git \
+    wget \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/chroma_data \
+    /app/temp_cloned_repos \
+    && chmod -R 777 /app/chroma_data \
+    && chmod -R 777 /app/temp_cloned_repos
+
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+    if [ "$1" = "serve" ]; then\n\
+    echo "Container is running. Use docker exec to run testteller commands."\n\
+    # Keep container running\n\
+    tail -f /dev/null\n\
+    else\n\
+    python -m testteller.main "$@"\n\
+    fi' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+# Copy the application code
 COPY . .
 
-# Expose the port the app runs on (if any, for now not specified but good practice)
-# EXPOSE 8000
+# Create a non-root user and switch to it
+RUN useradd -m -u 1000 testteller && \
+    chown -R testteller:testteller /app
+USER testteller
 
-# Specify the command to run on container startup
-# This will depend on how main.py is typically invoked.
-# Assuming it's a CLI application, we might not need a default CMD
-# or we can set it to run a basic command like "python main.py --help"
-CMD ["python", "-m",  "testteller.main", "--help"]
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/heartbeat || exit 1
+
+# Set the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["serve"]

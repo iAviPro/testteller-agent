@@ -4,22 +4,55 @@ Configuration module for TestTeller RAG agent.
 This module uses Pydantic to manage application settings, including API keys,
 ChromaDB settings, and other parameters.
 """
+import logging
 import os
-from typing import Optional, List
+from pathlib import Path
+from typing import List, Optional
+from dotenv import load_dotenv
+from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr, field_validator
 
+logger = logging.getLogger(__name__)
+
+# Load .env file from the current working directory or parent directories
+
+
+def load_env():
+    """Load environment variables from .env file."""
+    current_dir = Path.cwd()
+    env_path = None
+
+    # Search for .env in current and parent directories
+    while current_dir.parent != current_dir:
+        test_path = current_dir / '.env'
+        if test_path.is_file():
+            env_path = test_path
+            break
+        current_dir = current_dir.parent
+
+    if env_path:
+        load_dotenv(env_path)
+        logger.info("Loaded .env from: %s", env_path)
+        return True
+    return False
+
+
+# Load .env file
+load_env()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Global variable to track if settings are loaded
+settings = None
 
 
 class CommonSettings(BaseSettings):
     """Common application settings."""
     APP_NAME: str = "TestTeller RAG Agent"
-    APP_VERSION: str = "0.1.0-alpha"
+    APP_VERSION: str = "0.1.1"
 
     model_config = SettingsConfigDict(
-        env_file=os.path.join(BASE_DIR, '.env'),
+        env_file=os.path.join(os.getcwd(), '.env'),
         env_file_encoding='utf-8',
         extra='ignore',  # Ignore extra fields from .env
         case_sensitive=False
@@ -57,9 +90,9 @@ class ChromaDbSettings(BaseSettings):
     model_config = SettingsConfigDict(extra='ignore', case_sensitive=False)
 
     chroma_db_path: str = Field(
-        default="./chroma_data_prod", env="CHROMA_DB_PATH", description="Path to ChromaDB persistent storage")
+        default="./chroma_data_non_prod", env="CHROMA_DB_PATH", description="Path to ChromaDB persistent storage")
     default_collection_name: str = Field(
-        default="test_documents_prod", env="DEFAULT_COLLECTION_NAME", description="Default ChromaDB collection name")
+        default="test_documents_non_prod", env="DEFAULT_COLLECTION_NAME", description="Default ChromaDB collection name")
     chroma_db_host: Optional[str] = Field(
         default=None, env="CHROMA_DB_HOST", description="ChromaDB server host (for HttpClient)")
     chroma_db_port: Optional[int] = Field(
@@ -92,13 +125,13 @@ class CodeLoaderSettings(BaseSettings):
 
     code_extensions: List[str] = Field(
         default=['.py', '.js', '.java', '.c', '.cpp', '.cs', '.go', '.rb',
-                 '.php', '.ts', '.tsx', '.html', '.css', '.md', '.json', '.yaml', '.sh'],
+                 '.php', '.ts', '.tsx', '.html', '.css', '.md', '.json', '.yml', '.sh', '.yaml', '.ini', '.md'],
         # Pydantic handles comma-separated string from env for List[str]
         env="CODE_EXTENSIONS",
         description="Supported code file extensions"
     )
     temp_clone_dir_base: str = Field(
-        default="./temp_cloned_repos_prod", env="TEMP_CLONE_DIR_BASE", description="Base directory for cloning GitHub repos")
+        default="./temp_cloned_repos", env="TEMP_CLONE_DIR_BASE", description="Base directory for cloning GitHub repos")
 
 
 class ApiRetrySettings(BaseSettings):
@@ -118,7 +151,7 @@ class LoggingSettings(BaseSettings):
     log_level: str = Field(
         default="INFO", env="LOG_LEVEL", description="Logging level (e.g., DEBUG, INFO, WARNING, ERROR)")
     log_format: str = Field(
-        default="json", env="LOG_FORMAT", description="Log format ('json' or 'text')")
+        default="JSON", env="LOG_FORMAT", description="Log format ('json' or 'text')")
 
     @field_validator("log_level")
     @classmethod
@@ -139,6 +172,24 @@ class LoggingSettings(BaseSettings):
         return v.lower()
 
 
+class OutputSettings(BaseSettings):
+    """Output configurations."""
+    model_config = SettingsConfigDict(extra='ignore', case_sensitive=False)
+
+    output_file_path: Optional[str] = Field(
+        default="testteller_output.md",
+        env="OUTPUT_FILE_PATH",
+        description="Path to save the generated output (default: testteller_output.md in current directory)"
+    )
+
+    @field_validator("output_file_path")
+    @classmethod
+    def validate_output_file_path(cls, v: Optional[str]) -> Optional[str]:
+        if v and not v.endswith('.md'):
+            raise ValueError("Output file path must end with .md extension")
+        return v
+
+
 # --- Main Application Settings ---
 
 
@@ -149,7 +200,7 @@ class AppSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=os.path.join(BASE_DIR, '.env'),
+        env_file=os.path.join(os.getcwd(), '.env'),
         env_file_encoding='utf-8',
         extra='ignore',  # Ignore extra fields from .env
         case_sensitive=False
@@ -164,9 +215,25 @@ class AppSettings(BaseSettings):
     code_loader: CodeLoaderSettings = Field(default_factory=CodeLoaderSettings)
     api_retry: ApiRetrySettings = Field(default_factory=ApiRetrySettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    output: OutputSettings = Field(default_factory=OutputSettings)
+
+    @classmethod
+    def load_settings(cls) -> Optional['AppSettings']:
+        """
+        Load settings with graceful error handling.
+        Returns None if required settings are missing.
+        """
+        try:
+            return cls()
+        except ValidationError as e:
+            if any('google_api_key' in err['loc'] for err in e.errors()):
+                return None
+            raise
 
 
-# Instantiate settings.
-# Pydantic will load from .env, environment variables, apply defaults, and run validators.
-# If any required setting is missing or validation fails, Pydantic raises a ValidationError.
-settings = AppSettings()
+# Initialize settings with graceful error handling
+try:
+    settings = AppSettings.load_settings()
+except Exception as e:
+    print(f"Error loading settings: {e}")
+    settings = None

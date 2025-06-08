@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.11.0-slim AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -11,22 +11,28 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     libpoppler-cpp-dev \
     pkg-config \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only requirements first for better caching
 COPY requirements.txt .
+COPY setup.py .
+COPY README.md .
+COPY MANIFEST.in .
+COPY pyproject.toml .
 
-# Install dependencies into a virtual environment
+# Install dependencies and package in development mode
 RUN python -m venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install -e .
 
 # Final stage
-FROM python:3.11-slim
+FROM python:3.11.0-slim 
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -37,7 +43,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpoppler-cpp-dev \
     tesseract-ocr \
     git \
@@ -55,13 +61,47 @@ RUN mkdir -p /app/chroma_data \
     && chmod -R 777 /app/chroma_data \
     && chmod -R 777 /app/temp_cloned_repos
 
-# Create entrypoint script
+# Create entrypoint script with improved error handling
 RUN echo '#!/bin/bash\n\
+    set -e\n\
+    \n\
+    # Function to check ChromaDB health\n\
+    check_chromadb_health() {\n\
+    for i in {1..30}; do\n\
+    if curl -s -f http://chromadb:8000/api/v1/heartbeat > /dev/null; then\n\
+    return 0\n\
+    fi\n\
+    echo "Waiting for ChromaDB to be ready... ($i/30)"\n\
+    sleep 2\n\
+    done\n\
+    echo "ChromaDB is not ready after 60 seconds"\n\
+    return 1\n\
+    }\n\
+    \n\
+    # Function to validate environment\n\
+    validate_environment() {\n\
+    if [ -z "$GOOGLE_API_KEY" ]; then\n\
+    echo "Error: GOOGLE_API_KEY is required"\n\
+    return 1\n\
+    fi\n\
+    }\n\
+    \n\
     if [ "$1" = "serve" ]; then\n\
-    echo "Container is running. Use docker exec to run testteller commands."\n\
+    echo "Container is running. Use one of the following commands:"\n\
+    echo "  docker-compose exec app python -m testteller.main --help"\n\
+    echo "  docker-compose exec app python -m testteller.main <command> [options]"\n\
     # Keep container running\n\
     tail -f /dev/null\n\
     else\n\
+    # Validate environment\n\
+    validate_environment\n\
+    # Check ChromaDB health before running commands\n\
+    check_chromadb_health\n\
+    # Unset GITHUB_TOKEN if empty to avoid validation errors\n\
+    if [ -z "$GITHUB_TOKEN" ]; then\n\
+    unset GITHUB_TOKEN\n\
+    fi\n\
+    # Run the command\n\
     python -m testteller.main "$@"\n\
     fi' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
@@ -75,8 +115,8 @@ RUN useradd -m -u 1000 testteller && \
 USER testteller
 
 # Add healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/heartbeat || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://chromadb:8000/api/v1/heartbeat || exit 1
 
 # Set the entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]

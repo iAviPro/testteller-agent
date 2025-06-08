@@ -6,7 +6,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
-
 **TestTeller RAG Agent** TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases. It leverages Google's Gemini LLM and ChromaDB as a vector store. The agent can process various input sources, including PRD documentation, API contracts, technical design documents (HLD/LLD), and code from GitHub repositories or local folders.
 
 ## 🚀 Quick Start

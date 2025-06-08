@@ -181,7 +181,9 @@ class ProcessingSettings(BaseSettings):
             extensions = [ext.strip().strip('.') for ext in v.split(',')]
             # Add dots back and filter out empty strings
             return [f".{ext}" for ext in extensions if ext]
-        return v
+        if isinstance(v, list):
+            return [f".{ext.strip().strip('.')}" for ext in v if ext.strip()]
+        return DEFAULT_CODE_EXTENSIONS
 
 
 class OutputSettings(BaseSettings):
@@ -258,6 +260,18 @@ class CodeLoaderSettings(BaseSettings):
         env=ENV_TEMP_CLONE_DIR_BASE,
         description="Base directory for temporary cloned repositories"
     )
+
+    @validator("code_extensions", pre=True)
+    def parse_code_extensions(cls, v):  # noqa: N805
+        """Parse comma-separated string of extensions into a list of properly formatted extensions."""
+        if isinstance(v, str):
+            # Split by comma and strip whitespace and dots
+            extensions = [ext.strip().strip('.') for ext in v.split(',')]
+            # Add dots back and filter out empty strings
+            return [f".{ext}" for ext in extensions if ext]
+        if isinstance(v, list):
+            return [f".{ext.strip().strip('.')}" for ext in v if ext.strip()]
+        return DEFAULT_CODE_EXTENSIONS
 
 
 class AppSettings:

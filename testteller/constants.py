@@ -10,7 +10,11 @@ APP_DESCRIPTION = "A versatile CLI-based RAG (Retrieval Augmented Generation) ag
 
 # Default Environment Settings
 DEFAULT_LOG_LEVEL = "INFO"
+<<<<<<< HEAD
 DEFAULT_LOG_FORMAT = "json"
+=======
+DEFAULT_LOG_FORMAT = "text"
+>>>>>>> origin/main
 
 # ChromaDB Settings
 DEFAULT_CHROMA_HOST = "localhost"

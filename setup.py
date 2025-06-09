@@ -39,7 +39,7 @@ setup(
     project_urls={
         "Bug Tracker": "https://github.com/iAviPro/testteller-rag-agent/issues"
     },
-    license="MIT License",
+    license="Apache License 2.0",
     entry_points={
         # The entry point should point to the app_runner function
         # which handles the initial logging setup before calling app().
@@ -56,7 +56,7 @@ setup(
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -64,6 +64,7 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Testing",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     keywords=["testing", "rag", "llm", "generative ai", "test case generation", "qa", "automation", "testcase",
               "testteller", "ai testing", "rag agent", "knowledge base", "document ingestion", "code ingestion", "testteller-rag-agent", "testteller rag agent", "testteller_rag_agent"]

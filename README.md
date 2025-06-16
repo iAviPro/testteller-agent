@@ -49,16 +49,20 @@ testteller generate "Create API integration tests for user authentication"
 ## ✨ Features
 
 ### 🔄 Intelligent Test Generation
-- **Multiple Test Types**
-  - End-to-End (E2E) tests covering complete user journeys
-  - Integration tests for component interactions
-  - Technical tests for system limitations and edge cases
-  - System tests for isolated component testing
-  - Security and performance test considerations
-  - Happy path tests (20% coverage)
-  - Negative test scenarios (35% coverage)
-  - Corner case tests (25% coverage)
-  - Security & performance tests (20% coverage)
+
+**TestTeller** generates a comprehensive suite of tests by analyzing your documentation and code. It covers multiple layers of your application with a focus on realism and technical depth.
+
+- **Generates Multiple Test Types:**
+  - **End-to-End (E2E) Tests:** Simulates complete user journeys, from UI interactions to backend processing, to validate entire workflows.
+  - **Integration Tests:** Verifies the contracts and interactions between different components, services, and APIs, including event-driven architectures.
+  - **Technical Tests:** Focuses on non-functional requirements, probing for weaknesses in performance, security, and resilience.
+  - **Mocked System Tests:** Provides fast, isolated tests for individual components by mocking their dependencies.
+
+- **Ensures Comprehensive Scenario Coverage:**
+  - **Happy Paths:** Validates the primary, expected functionality.
+  - **Negative & Edge Cases:** Explores system behavior with invalid inputs, at operational limits, and under stress.
+  - **Failure & Recovery:** Tests resilience by simulating dependency failures and verifying recovery mechanisms.
+  - **Security & Performance:** Assesses vulnerabilities and measures adherence to performance SLAs.
 
 ## 🧪 Test Case Types
 

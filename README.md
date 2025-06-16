@@ -50,11 +50,62 @@ testteller generate "Create API integration tests for user authentication"
 
 ### 🔄 Intelligent Test Generation
 - **Multiple Test Types**
-  - Technical test cases for components, APIs, and system architecture
-  - User journey test cases for end-to-end flows
-  - Integration test scenarios
-  - Edge case and error handling tests
-  - Performance test considerations
+  - End-to-End (E2E) tests covering complete user journeys
+  - Integration tests for component interactions
+  - Technical tests for system limitations and edge cases
+  - System tests for isolated component testing
+  - Security and performance test considerations
+  - Happy path tests (20% coverage)
+  - Negative test scenarios (35% coverage)
+  - Corner case tests (25% coverage)
+  - Security & performance tests (20% coverage)
+
+## 🧪 Test Case Types
+
+### End-to-End (E2E) Tests
+- Complete user journey coverage
+- Focus on business workflows and user interactions
+- Documentation includes:
+  - User story or journey being tested
+  - Prerequisites and test environment setup
+  - Step-by-step test flow
+  - Expected outcomes at each step
+  - Test data requirements
+
+### Integration Tests
+- Component interaction verification
+- API contract validation
+- Documentation includes:
+  - Components or services involved
+  - Interface specifications
+  - Data flow diagrams
+  - Error handling scenarios
+  - Dependencies and mocking requirements
+
+### Technical Tests
+- System limitations testing
+- Edge case handling
+- Documentation includes:
+  - Technical constraints being tested
+  - System boundaries and limits
+  - Resource utilization scenarios
+  - Error conditions and recovery
+  - Performance thresholds
+
+### Mocked System Tests
+- Isolated component testing assuming the component is mocked
+- Functional requirement verification
+- Documentation includes:
+  - Component specifications
+  - Input/output requirements
+  - State transitions
+  - Configuration requirements
+  - Environmental dependencies
+  - Authentication and authorization
+  - Data validation
+  - Response times
+  - Resource utilization
+  - Load handling
 
 ### 📚 Document Processing
 - **Multi-Format Support**

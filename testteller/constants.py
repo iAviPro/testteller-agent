@@ -5,7 +5,7 @@ This module centralizes all default values and configuration constants used thro
 
 # Application Information
 APP_NAME = "TestTeller RAG Agent"
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 APP_DESCRIPTION = "A versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases."
 
 # Default Environment Settings

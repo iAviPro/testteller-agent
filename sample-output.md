@@ -1,204 +1,169 @@
-]--- Generated Test Cases ---
-Okay, I will generate technical and user journey test cases based on the provided context.
+Okay, I'm ready to generate the test cases based on the provided documentation and code. I will strictly adhere to the provided templates and output structure.
 
-**Main Product Features (Based on Context):**
+## 1. Documentation Analysis
 
-*   User Management (Registration, Authentication, Profile Management)
-*   Product Browsing and Search
-*   Shopping Cart Management
-*   Order Fulfillment
-*   Real-time Inventory Updates
+*   **Available Documentation Types:**
+    *   Product Requirement Document (PRD)
+    *   API Contracts (e.g., OpenAPI/Swagger Specification)
+    *   Database Schema Diagram
+    *   Source Code (e.g., Backend Service for a specific feature)
+*   **Missing Critical Documents:**
+    *   Frontend Code
+    *   System Architecture Diagrams
+    *   Non-Functional Requirements (Performance SLAs, Security Requirements, etc.)
+*   **Impact on Test Coverage:**
+    *   E2E tests will be limited to backend API flows without frontend documentation.
+    *   Technical tests will be based on common best practices rather than specific SLAs.
 
-**1. Technical Test Cases:**
+## 2. Test Case Distribution
 
-**User Management Microservice**
+This is an example distribution. The agent will adjust this based on the provided context.
 
-*   **TECH_TC_001**
-    *   **Component/Module:** User Registration API
-    *   **Test Objective:** Verify successful user registration with valid data.
-    *   **Preconditions:** Database is running and accessible. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a POST request to the `/users/register` endpoint with valid user data (e.g., username, password, email).
-    *   **Expected Result:**
-        1.  HTTP 201 Created status code is returned.
-        2.  User account is created in the database.
-        3.  Response body contains user ID.
-    *   **Test Data:**
-        *   `username: testuser`
-        *   `password: P@$$wOrd`
-        *   `email: testuser@example.com`
-    *   **Priority:** High
+*   End-to-End Test Cases: 1
+*   Integration Test Cases: 1
+*   Technical Test Cases: 1
+*   Mocked System Tests: 1
+*   Total Test Cases: 4
 
-*   **TECH_TC_002**
-    *   **Component/Module:** User Registration API
-    *   **Test Objective:** Verify user registration fails with invalid email format.
-    *   **Preconditions:** Database is running and accessible. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a POST request to the `/users/register` endpoint with an invalid email format (e.g., missing @ symbol).
-    *   **Expected Result:**
-        1.  HTTP 400 Bad Request status code is returned.
-        2.  Error message in the response body indicating invalid email format.
-        3.  No user account is created in the database.
-    *   **Test Data:**
-        *   `username: testuser`
-        *   `password: P@$$wOrd`
-        *   `email: testuserexample.com`
-    *   **Priority:** High
+## 3. Coverage Analysis
 
-*   **TECH_TC_003**
-    *   **Component/Module:** User Authentication API (Login)
-    *   **Test Objective:** Verify successful user login with correct credentials.
-    *   **Preconditions:** User account exists in the database. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a POST request to the `/users/login` endpoint with valid username and password.
-    *   **Expected Result:**
-        1.  HTTP 200 OK status code is returned.
-        2.  Response body contains a valid JWT (JSON Web Token).
-    *   **Test Data:**
-        *   `username: testuser`
-        *   `password: P@$$wOrd`
-    *   **Priority:** High
+*   **Scenario Distribution:** The following test cases cover a happy path, a contract validation, a security concern, and a mocked component interaction.
+*   **Technical Depth:** The tests show validation from the API layer down to the database, including security and component-level mocking.
 
-*   **TECH_TC_004**
-    *   **Component/Module:** User Authentication API (Login)
-    *   **Test Objective:** Verify failed user login with incorrect password.
-    *   **Preconditions:** User account exists in the database. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a POST request to the `/users/login` endpoint with a valid username and incorrect password.
-    *   **Expected Result:**
-        1.  HTTP 401 Unauthorized status code is returned.
-        2.  Error message in the response body indicating invalid credentials.
-    *   **Test Data:**
-        *   `username: testuser`
-        *   `password: wrongPassword`
-    *   **Priority:** High
+## 4. Recommendations
 
-*   **TECH_TC_005**
-    *   **Component/Module:** User Profile API (Get User)
-    *   **Test Objective:** Verify retrieval of user profile data with a valid JWT.
-    *   **Preconditions:** User account exists in the database. User has a valid JWT. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a GET request to the `/users/{user_id}` endpoint with a valid JWT in the `Authorization` header.
-    *   **Expected Result:**
-        1.  HTTP 200 OK status code is returned.
-        2.  Response body contains user profile data (username, email, etc.).
-    *   **Test Data:**
-        *   `user_id: 123` (replace with a valid user ID)
-        *   `Authorization: Bearer <valid_jwt>` (replace with a valid JWT)
-    *   **Priority:** High
+*   **Required Documentation for Better Coverage:** For more comprehensive testing, provide Frontend Code, System Architecture Diagrams, and explicit Non-Functional Requirements.
+*   **Coverage Improvement Suggestions:** Expand test cases to include more negative paths, edge cases, and performance/load testing scenarios.
 
-*   **TECH_TC_006**
-    *   **Component/Module:** User Profile API (Get User)
-    *   **Test Objective:** Verify access to user profile data is denied without a valid JWT.
-    *   **Preconditions:** User account exists in the database. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a GET request to the `/users/{user_id}` endpoint without a JWT in the `Authorization` header.
-    *   **Expected Result:**
-        1.  HTTP 401 Unauthorized status code is returned.
-    *   **Test Data:**
-        *   `user_id: 123` (replace with a valid user ID)
-    *   **Priority:** High
+---
 
-*   **TECH_TC_007**
-    *   **Component/Module:** User Profile API (Update User)
-    *   **Test Objective:** Verify successful update of user profile data with a valid JWT.
-    *   **Preconditions:** User account exists in the database. User has a valid JWT. API endpoint is available.
-    *   **Test Steps:**
-        1.  Send a PUT request to the `/users/{user_id}` endpoint with a valid JWT in the `Authorization` header and updated user data in the request body.
-    *   **Expected Result:**
-        1.  HTTP 200 OK status code is returned.
-        2.  Response body confirms successful update.
-        3.  User profile data is updated in the database.
-    *   **Test Data:**
-        *   `user_id: 123` (replace with a valid user ID)
-        *   `Authorization: Bearer <valid_jwt>` (replace with a valid JWT)
-        *   Request Body: `{ "email": "newemail@example.com" }`
-    *   **Priority:** Medium
+### Test Case E2E_1
+**Feature:** [Feature Name, e.g., Item Creation and Retrieval]
+**Type:** Journey
+**Category:** Happy Path
 
-*   **TECH_TC_008**
-    *   **Component/Module:** Real-time Inventory Updates (WebSocket)
-    *   **Test Objective:** Verify that inventory updates are pushed to connected clients in near real-time.
-    *   **Preconditions:** WebSocket server is running. A client is connected to the WebSocket server.
-    *   **Test Steps:**
-        1.  Update the inventory level of a product in the database.
-        2.  Observe the connected client.
-    *   **Expected Result:**
-        1.  The connected client receives a WebSocket message containing the updated inventory level within a specified timeframe (e.g., 1 second).
-    *   **Test Data:**
-        *   Product ID: 456
-        *   Inventory Level: 10 -> 5
-    *   **Priority:** High
+#### Objective
+Verify that an item can be created via the API and then successfully retrieved.
 
-**2. User Journey Test Cases:**
+#### References
+- **Product:** PRD (Section on Item Management)
+- **Technical:** API Contracts (e.g., POST /items, GET /items/{id})
 
-*   **UJ_TC_001**
-    *   **User Story/Scenario:** User registers, logs in, and views their profile.
-    *   **Test Objective:** Verify the complete user registration and login flow.
-    *   **Preconditions:** The application is running.
-    *   **Test Steps (User Actions):**
-        1.  Navigate to the registration page.
-        2.  Enter valid registration details (username, password, email).
-        3.  Submit the registration form.
-        4.  Navigate to the login page.
-        5.  Enter the registered username and password.
-        6.  Submit the login form.
-        7.  Navigate to the user profile page.
-    *   **Expected System Response/Outcome:**
-        1.  User is successfully registered.
-        2.  User is redirected to the login page or automatically logged in.
-        3.  User is successfully logged in.
-        4.  User is able to view their profile information.
-    *   **Priority:** High
+#### Prerequisites & Setup
+- **System State:** The system is running and the database is available.
+- **Test Data:** None; the test will create its own data.
+- **Mocked Services:** None
 
-*   **UJ_TC_002**
-    *   **User Story/Scenario:** User searches for a product and adds it to the shopping cart.
-    *   **Test Objective:** Verify product search and adding to cart functionality.
-    *   **Preconditions:** The application is running. Products are available in the catalog.
-    *   **Test Steps (User Actions):**
-        1.  Navigate to the product search page.
-        2.  Enter a search term (e.g., "apple").
-        3.  Select a product from the search results.
-        4.  Click the "Add to Cart" button.
-    *   **Expected System Response/Outcome:**
-        1.  Search results are displayed based on the search term.
-        2.  Product details page is displayed for the selected product.
-        3.  The product is added to the shopping cart.
-        4.  A notification or visual cue indicates successful addition to the cart.
-    *   **Priority:** High
+#### Test Steps
+1.  **Action:** Send a POST request to `/api/v1/items` with a valid item payload.
+    - **Technical Details:** `Content-Type: application/json; Body: {"name": "Test Item", "value": 100}`
+2.  **Validation:** Verify that the API returns a 201 Created response.
+    - **Technical Details:** Status Code: 201; Response Body: contains the new `item_id`.
+3.  **Action:** Send a GET request to `/api/v1/items/{item_id}` using the ID from the previous step.
+    - **Technical Details:** URL: `/api/v1/items/[new_item_id]`
+4.  **Validation:** Verify that the API returns a 200 OK response with the correct item data.
+    - **Technical Details:** Status Code: 200; Response Body: matches the data sent in step 1.
 
-*   **UJ_TC_003**
-    *   **User Story/Scenario:** User checks out and places an order.
-    *   **Test Objective:** Verify the order placement process.
-    *   **Preconditions:** The application is running. User is logged in. Items are in the shopping cart.
-    *   **Test Steps (User Actions):**
-        1.  Navigate to the shopping cart page.
-        2.  Review the items in the cart.
-        3.  Proceed to checkout.
-        4.  Enter shipping and payment information.
-        5.  Confirm the order.
-    *   **Expected System Response/Outcome:**
-        1.  Shopping cart displays the selected items.
-        2.  User is presented with shipping and payment options.
-        3.  Order is successfully placed.
-        4.  Order confirmation page is displayed.
-        5.  Order confirmation email is sent to the user.
-    *   **Priority:** High
+#### Expected Final State
+- **UI/Frontend:** (Cannot validate without frontend documentation).
+- **Backend/API:** The item data is successfully returned by the GET endpoint.
+- **Database:** A new row exists in the `items` table with the created item data.
+- **Events/Messages:** (No events documented for this flow).
 
-*   **UJ_TC_004**
-    *   **User Story/Scenario:** User views real-time inventory updates.
-    *   **Test Objective:** Verify real-time inventory updates on the product page.
-    *   **Preconditions:** The application is running. User is viewing a product details page. Inventory levels change in the backend.
-    *   **Test Steps (User Actions):**
-        1.  Navigate to a product details page.
-        2.  Observe the displayed inventory level.
-        3.  (In a separate process) Simulate a change in inventory level in the backend.
-        4.  Observe the displayed inventory level on the product details page.
-    *   **Expected System Response/Outcome:**
-        1.  The product details page displays the current inventory level.
-        2.  The inventory level on the product details page updates in near real-time to reflect the change in the backend.
-    *   **Priority:** Medium
+---
 
-These test cases provide a starting point and can be further expanded based on more detailed requirements and specifications.
+### Test Case INT_1
+**Integration:** API -> Database
+**Type:** API
+**Category:** Contract
 
---- End of Test Cases ---
+#### Objective
+Verify that the API correctly persists a new record to the database according to the schema.
+
+#### Technical Contract
+- **Endpoint/Topic:** `/api/v1/items`
+- **Protocol/Pattern:** REST/Request-Reply
+- **Schema/Contract:** Defined in API Specification and Database Schema documents.
+
+#### Test Scenario
+- **Given:** The API is running and connected to the database.
+- **When:** A valid POST request is sent to `/api/v1/items` with item data.
+- **Then:** A new record is created in the `items` table.
+
+#### Request/Message Payload
+```json
+{
+  "description": "Valid payload for item creation",
+  "name": "Integration Test Item",
+  "value": 500
+}
+```
+
+#### Expected Response/Assertions
+- **Status Code:** 201 Created
+- **Response Body/Schema:** Matches the defined success response schema in the API contract, including an `item_id`.
+- **Target State Change:** A new row exists in the `items` table with the provided data.
+- **Headers/Metadata:** `Content-Type` is `application/json`
+
+#### Error Scenario Details (if applicable)
+- **Fault:** The database connection is temporarily unavailable.
+- **Expected Handling:** The API should return a 5xx error (e.g., 503 Service Unavailable) and log the error.
+
+---
+
+### Test Case TECH_1
+**Technical Area:** Security
+**Focus:** Input Sanitization (SQL Injection)
+
+#### Objective
+To verify that the API endpoint is not vulnerable to basic SQL injection attacks.
+
+#### Test Hypothesis
+The system uses parameterized queries or an ORM that properly sanitizes user input, preventing SQL injection.
+
+#### Test Setup
+- **Target Component(s):** An API endpoint that uses user input in a database query (e.g., a search endpoint).
+- **Tooling:** API client like cURL or Postman.
+- **Monitoring:** Application logs for errors.
+- **Attack Vector:** A malicious string is sent as input.
+
+#### Execution Steps
+1. **Send Malicious Request:** Send a request to a search endpoint (e.g., `GET /api/v1/items/search?q=' OR '1'='1'`) with a SQL injection payload.
+2. **Analyze Response:** Observe the API response.
+3. **Check Logs:** Check the application logs for any database errors.
+
+#### Success Criteria (Assertions)
+- **Security:** The API returns an empty result set or a 400 Bad Request. It MUST NOT return all items from the database.
+- **System Behavior:** The application does not crash and handles the malicious input gracefully.
+
+#### Failure Analysis
+- **Expected Failure Mode:** The query returns no results as there is no item with the literal name provided.
+- **Unexpected Failure Mode:** The query returns all items in the table, indicating a successful SQL injection attack.
+
+---
+
+### Test Case MOCK_1
+**Component Under Test:** [Service Name, e.g., PaymentService]
+**Type:** Functional
+
+#### Objective
+Verify that the `process_payment` function correctly calls an external `fraud-check-service` before saving to the database.
+
+#### Setup & Mocks
+- **System Under Test (SUT):** The `process_payment` function/method.
+- **Mocked Dependencies:**
+  - **Service:** `fraud-check-service` | **Endpoint:** `POST /check` | **Returns:** `{"status": "approved"}`
+  - **Database:** A mocked `save_payment` function.
+- **Initial Data State:** N/A
+
+#### Trigger
+- **Action:** The `process_payment` function is called directly in a unit test.
+- **Input/Payload:** A payment object with amount and user details.
+
+#### Assertions & Verifications
+- **Return Value/Response:** The function should return a success indicator (e.g., `{"status": "success", "transaction_id": ...}`).
+- **Mock Interactions:**
+  - **`fraud-check-service`:** Was called exactly once with the correct payment details.
+  - **Database mock:** The `save_payment` function was called exactly once with the transaction details and a `status` of `processed`.
+- **State Changes:** No changes to the actual database are expected.
 

@@ -25,7 +25,7 @@ README = (HERE / "README.md").read_text()
 
 # Package version (should ideally be managed in one place, e.g., a version.py or __init__.py)
 # For simplicity here, hardcoded. In a real setup, you might read it from testteller_rag_agent/__init__.py
-VERSION = "0.1.1"  # Make sure this matches your intended version
+VERSION = "0.1.2"  # Make sure this matches your intended version
 
 
 setup(

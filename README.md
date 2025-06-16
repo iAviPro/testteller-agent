@@ -55,10 +55,10 @@ testteller generate "Create API integration tests for user authentication"
   - Technical tests for system limitations and edge cases
   - System tests for isolated component testing
   - Security and performance test considerations
-  - Happy path tests (20% coverage)
-  - Negative test scenarios (35% coverage)
-  - Corner case tests (25% coverage)
-  - Security & performance tests (20% coverage)
+  - Happy path tests
+  - Negative test scenarios
+  - Corner case tests
+  - Security & performance tests
 
 ## 🧪 Test Case Types
 

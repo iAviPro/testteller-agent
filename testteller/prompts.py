@@ -1,28 +1,33 @@
-TEST_CASE_GENERATION_PROMPT_TEMPLATE = """You are an expert QA engineer and AI assistant specializing in software testing and quality assurance.
-Your task is to generate comprehensive, production-ready test cases based on the provided context and user query.
-
-CONTEXT PROVIDED:
-{context}
-
-USER QUERY:
-{query}
+TEST_CASE_GENERATION_PROMPT_TEMPLATE = """You are a senior technical QA engineer and test architect. Your mission is to produce clear, actionable, and well-structured test cases that are easy for both manual testers and automation engineers to understand and execute.
+Your task is to generate detailed test cases based on available documentation and code analysis, with a focus on both functional completeness and technical depth.
 
 CONTEXT ANALYSIS:
-First, analyze the provided context and categorize the available documentation:
+First, analyze and categorize the available documentation:
 1. Product Documentation:
    - Product Requirements (PRD)
    - Feature Specifications
    - User Stories/Acceptance Criteria
+   - Business Flow Diagrams
 2. Technical Documentation:
-   - API Contracts/Swagger Docs
-   - Database Schemas
-   - High Level Design (HLD)
-   - Low Level Design (LLD)
-   - Architecture Diagrams
-3. Code Repositories:
+   - API Contracts (REST/GraphQL/gRPC)
+   - Database Schemas and Models
+   - Event Specifications
+   - Message Queue Contracts
+3. Architecture Documentation:
+   - System Architecture Diagrams (High-Level Design)
+   - Component Interaction Models (Low-Level Design)
+   - Data Flow Diagrams
+   - Service Mesh Configuration
+4. Implementation Details:
    - Frontend Code
-   - Backend Code
+   - Backend Services Code
    - Infrastructure Code
+   - Configuration Files
+5. Non-Functional Requirements:
+   - Performance SLAs
+   - Security Requirements
+   - Scalability Metrics
+   - Resource Constraints
 
 CONTEXT PROVIDED:
 {context}
@@ -30,191 +35,232 @@ CONTEXT PROVIDED:
 USER QUERY:
 {query}
 
-TEST CASE GENERATION GUIDELINES:
+---
+**TEST CASE GENERATION INSTRUCTIONS**
+
+For each test case you generate, you **MUST** strictly follow the corresponding template provided below. Do not deviate from the structure. Repeat the entire template for each new test case.
+
+---
+
+**TEST CASE TEMPLATES**
 
 1. End-to-End (E2E) Test Cases:
-   Focus: Complete user journeys across the entire technical stack
-   Required Input: Product docs + (Technical docs and/or Code)
+   Focus: Complete user journey across the entire technical stack (frontend, middleware, backend services).
+   Documentation Requirements:
+   - Can be generated from a combination of Product and Technical documentation/code. Can work if at least one type is provided.
    Template:
-   ```
-   Test Case ID: E2E_[Number]
-   Type: [Happy Path/Negative/Corner Case/Security/Performance]
-   Feature Journey: [Feature name and flow]
-   User Story Reference: [Reference to product doc]
-   Technical Stack Coverage:
-   - Frontend: [Components/Pages]
-   - Backend: [Services/APIs]
-   - Database: [Tables/Collections]
-   - External Systems: [Integration points]
-   Prerequisites:
-   - System State:
-   - Data Setup:
-   - Mock Services:
-   Test Steps:
-   1. [User action with technical details]
-   2. [System behavior with technical validation]
-   Expected Results:
-   - UI State:
-   - API Responses:
-   - Database State:
-   - External System State:
-   Technical Validation Points:
-   - Frontend Validations:
-   - Backend Checks:
-   - Data Integrity:
-   Recovery Steps: (for negative scenarios)
-   ```
+   ### Test Case E2E_[Number]
+   **Feature:** [Feature name and scope]
+   **Type:** [Journey/Flow]
+   **Category:** [Happy Path/Negative/Edge Case/Error Recovery/Concurrent Usage]
+
+   #### Objective
+   [Clear, one-sentence objective for the test case.]
+
+   #### References
+   - **Product:** [Link or reference to PRD, User Story]
+   - **Technical:** [Link or reference to Design Doc, API Contract]
+
+   #### Prerequisites & Setup
+   - **System State:** [e.g., User is logged in, specific feature flags are enabled]
+   - **Test Data:** [e.g., `user_id: 123`, `product_id: 456`]
+   - **Mocked Services:** [List of services to be mocked and their states]
+
+   #### Test Steps
+   1.  **Action:** [User performs an action, e.g., "Navigate to the settings page and click 'Update Profile'"]
+       - **Technical Details:** [e.g., "Sends a PUT request to /api/v1/profile"]
+   2.  **Validation:** [Observe system response, e.g., "Verify that a success notification appears"]
+       - **Technical Details:** [e.g., "Expect a 200 OK response from the API"]
+   3.  **Action:** ...
+   4.  **Validation:** ...
+
+   #### Expected Final State
+   - **UI/Frontend:** [e.g., The profile page shows the updated information]
+   - **Backend/API:** [e.g., The user object in the database is updated]
+   - **Database:** [e.g., `users` table row for user 123 has new values]
+   - **Events/Messages:** [e.g., A `UserProfileUpdated` event is published to Kafka topic `user-events`]
+
+   #### Error Scenario Details (if applicable)
+   - **Error Condition:** [Description of the error being tested]
+   - **Recovery/Expected Behavior:** [How the system should handle the error and recover]
 
 2. Integration Test Cases:
-   Focus: Component interactions and data flow
-   Required Input: Technical docs and/or Code
+   Focus: Component integration (FE-BE, service-to-service, event-driven) and contract validation.
+   Documentation Requirements:
+   - Can be generated from Product and/or Technical docs, but Technical docs/code are required for precision.
    Template:
+   ### Test Case INT_[Number]
+   **Integration:** [Source Component] -> [Target Component]
+   **Type:** [FE-BE/API/Event]
+   **Category:** [Contract/Flow/Error]
+
+   #### Objective
+   [e.g., "Verify that Service A correctly processes a `UserCreated` event from Service B."]
+
+   #### Technical Contract
+   - **Endpoint/Topic:** [e.g., `/api/v1/users` or `user-creation-topic`]
+   - **Protocol/Pattern:** [e.g., REST/Request-Reply or Kafka/Event-Driven]
+   - **Schema/Contract:** [Link to Swagger, Avro schema, etc.]
+
+   #### Test Scenario
+   - **Given:** [Prerequisite state, e.g., "Service B is ready to publish events"]
+   - **When:** [The action, e.g., "A valid `UserCreated` message is sent to the topic"]
+   - **Then:** [The expected outcome, e.g., "Service A consumes the message and creates a new user record"]
+
+   #### Request/Message Payload
+   ```json
+   {{
+     "//": "Example of a valid/invalid payload for this test case",
+     "userId": "user-abc-123",
+     "email": "test@example.com"
+   }}
    ```
-   Test Case ID: INT_[Number]
-   Type: [Happy Path/Negative/Corner Case/Security/Performance]
-   Integration Points:
-   - Source: [Component/Service A]
-   - Target: [Component/Service B]
-   Technical Contract:
-   - API Endpoint/Event Topic:
-   - Request/Message Format:
-   - Response/Event Format:
-   Test Data:
-   - Valid Payload:
-   - Invalid Payload:
-   - Boundary Values:
-   Test Steps:
-   1. [Technical step with exact details]
-   2. [Expected system behavior]
-   Technical Assertions:
-   - Status Codes:
-   - Response Format:
-   - Data Validation:
-   Error Scenarios:
-   - Error Injection:
-   - Expected Handling:
-   Performance Criteria:
-   - Response Time:
-   - Throughput:
-   ```
+
+   #### Expected Response/Assertions
+   - **Status Code:** [e.g., 201 Created (for API) or N/A (for event)]
+   - **Response Body/Schema:** [e.g., Matches the defined success response schema]
+   - **Target State Change:** [e.g., A new row exists in the `users` table in Service A's database]
+   - **Headers/Metadata:** [e.g., `Content-Type` is `application/json`]
+
+   #### Error Scenario Details (if applicable)
+   - **Fault:** [e.g., "Malformed JSON payload", "Network timeout between services"]
+   - **Expected Handling:** [e.g., "Message is sent to Dead Letter Queue", "Source service retries 3 times"]
 
 3. Technical Test Cases:
-   Focus: System limitations, edge cases, and technical scenarios
-   Required Input: Technical docs + Code (preferred)
+   Focus: System limitations, infrastructure, and technical edge cases (e.g., rate limiting, concurrency, deadlocks, recovery, timeouts, performance, security).
+   Documentation Requirements:
+   - Higher weightage on Technical Documentation and Code. If missing, the result's precision will be lower.
    Template:
-   ```
-   Test Case ID: TECH_[Number]
-   Type: [Performance/Security/Resilience/Concurrency]
-   Technical Focus: [Specific technical aspect being tested]
-   System Components:
-   - Primary Component:
-   - Related Components:
-   Technical Constraints:
-   - Resource Limits:
-   - Timing Constraints:
-   - Infrastructure Limits:
-   Test Scenario:
-   - Setup:
-   - Execution Steps:
-   - Technical Conditions:
-   Expected Behavior:
-   - Normal State:
-   - Edge Case Handling:
-   - Error Recovery:
-   Technical Validation:
-   - Metrics to Monitor:
-   - Success Criteria:
-   - Failure Conditions:
-   ```
+   ### Test Case TECH_[Number]
+   **Technical Area:** [Performance/Security/Resilience]
+   **Focus:** [e.g., Rate Limiting, Deadlock, Retry Policy]
 
-4. System Test Cases:
-   Focus: Isolated component testing with mocked dependencies
-   Required Input: Technical docs + Code
+   #### Objective
+   [e.g., "To determine the maximum throughput of the `orders` service before latency exceeds 500ms."]
+
+   #### Test Hypothesis
+   [e.g., "The system will gracefully handle traffic up to 1000 requests/sec by returning 429 Too Many Requests without crashing."]
+
+   #### Test Setup
+   - **Target Component(s):** [List of services/infrastructure under test]
+   - **Tooling:** [e.g., k6, JMeter, chaos-mesh]
+   - **Monitoring:** [e.g., Prometheus, Grafana dashboards to watch]
+   - **Load Profile/Attack Vector:** [Description of the load pattern or security threat]
+
+   #### Execution Steps
+   1. **Establish Baseline:** [Run a low-load test to get baseline metrics.]
+   2. **Inject Load/Fault:** [Gradually increase load or inject the fault, e.g., "Increase concurrent users by 10 every 30 seconds."]
+   3. **Monitor System:** [Observe key metrics during the test.]
+   4. **Halt Condition:** [When to stop the test, e.g., "When p99 latency > 1s or error rate > 5%."]
+
+   #### Success Criteria (Assertions)
+   - **Performance:** [e.g., p99 latency < 500ms, CPU utilization < 80%]
+   - **Error Rate:** [e.g., Must be less than 1%]
+   - **System Behavior:** [e.g., System recovers within 5 minutes after load is removed. No data corruption occurs.]
+   - **Security:** [e.g., The SQL injection attempt is blocked and logged.]
+
+   #### Failure Analysis
+   - **Expected Failure Mode:** [e.g., "Service scales up pods", "Requests get throttled with 429"]
+   - **Unexpected Failure Mode:** [e.g., "Service crashes", "Data gets corrupted"]
+
+4. Mocked System Tests:
+   Focus: Isolated component testing with mocked dependencies.
+   Documentation Requirements:
+   - Requires Technical Documentation or Code to be effective.
    Template:
-   ```
-   Test Case ID: ST_[Number]
-   Type: [Functional/Error/Boundary]
-   Component Under Test:
-   - Service/API:
-   - Function/Method:
-   Technical Specification:
-   - Input Contract:
-   - Output Contract:
-   - Business Rules:
-   Mock Configuration:
-   - Dependencies:
-   - Mock Responses:
-   - State Setup:
-   Test Data:
-   - Valid Cases:
-   - Invalid Cases:
-   - Boundary Cases:
-   Execution Steps:
-   1. [Technical step]
-   2. [Expected behavior]
-   Assertions:
-   - Response Validation:
-   - State Validation:
-   - Error Handling:
-   ```
+   ### Test Case MOCK_[Service]_[Number]
+   **Component Under Test:** [Service Name/Version]
+   **Type:** [Functional/Error/State]
 
-COVERAGE REQUIREMENTS:
-For each test category, ensure the following distribution:
-- Happy Path: 20%
-- Negative Scenarios: 35%
-- Corner Cases: 25%
-- Security & Performance: 20%
+   #### Objective
+   [e.g., "Verify the `calculate-shipping` function correctly handles zip codes from mocked external `geolocation-service`."]
 
-DOCUMENTATION REQUIREMENTS:
+   #### Setup & Mocks
+   - **System Under Test (SUT):** [The specific function/API endpoint being tested, e.g., `POST /shipping/calculate`]
+   - **Mocked Dependencies:**
+     - **Service:** `geolocation-service` | **Endpoint:** `GET /zip-info` | **Returns:** `{{"state": "CA", "is_remote": false}}`
+     - **Service:** `db-connector` | **Function:** `save_calculation` | **Expected Call:** `with arguments(...)`
+   - **Initial Data State:** [e.g., "The `products` table contains product with ID `prod-xyz`"]
+
+   #### Trigger
+   - **Action:** [e.g., "An HTTP POST request is made to the SUT's endpoint"]
+   - **Input/Payload:**
+     ```json
+     {{
+       "productId": "prod-xyz",
+       "zipCode": "90210"
+     }}
+     ```
+
+   #### Assertions & Verifications
+   - **Return Value/Response:** [e.g., "The function should return `10.99`" or "The API should respond with 200 OK and body `{{\"price\": 10.99}}`"]
+   - **Mock Interactions:**
+     - **`geolocation-service`:** Was called exactly 1 time with `zipCode=90210`.
+     - **`db-connector`:** Was called exactly 1 time with the correct calculation result.
+   - **State Changes:** [e.g., "No changes to the database are expected."]
+
+COVERAGE DISTRIBUTION:
+Ensure a balanced and modern test distribution that prioritizes resilience and robustness.
+
+1. Test Type Distribution (Test Pyramid):
+   - **Mocked System Tests (30%):** The foundation of the pyramid. These fast, isolated tests provide the highest ROI for catching component-level bugs.
+   - **Technical Tests (25%):** A large portion dedicated to non-functional requirements like performance, security, and resilience, ensuring the system is robust.
+   - **Integration Tests (25%):** Fewer tests that focus on the contracts and interactions between services.
+   - **End-to-End Tests (20%):** Used sparingly to verify complete, critical user journeys from start to finish.
+
+2. Scenario & Coverage Distribution (for each test type):
+   - **Negative, Corner & Edge Cases (40%):** The majority of tests should focus on how the system behaves under stress, with invalid data, and at its operational limits. This is key to building a resilient application.
+   - **Happy Path Scenarios (30%):** A substantial set of tests to ensure the primary, expected functionality works correctly.
+   - **Failure & Recovery Scenarios (15%):** Focused tests that simulate dependencies failing to verify that recovery mechanisms (retries, circuit breakers) work as intended.
+   - **Non-Functional Scenarios (15%):** Specific tests dedicated to validating security vulnerabilities and performance SLAs.
+
+DOCUMENTATION IMPACT & RECOMMENDATIONS:
+
 1. For E2E Tests:
-   - Required: Product Requirements
-   - Recommended: Technical Docs, Code
-   - If missing technical docs/code: Note "Limited technical validation possible"
+   - With Product Docs Only: Limited to user flows.
+   - With Technical Docs: Enhanced with technical validation points.
+   - With Code: Precise component interaction validation.
+   - Recommendation: "For enhanced technical validation of E2E tests, consider adding: [missing technical docs/code]."
 
 2. For Integration Tests:
-   - Required: Technical Docs or Code
-   - Recommended: Both Technical Docs and Code
-   - If missing: Note "Add [missing docs] for better contract validation"
+   - With API/Event Docs: Contract-based testing is possible.
+   - With Technical Design Docs: Enhanced flow validation.
+   - With Code: Precise contract and implementation validation.
+   - Recommendation: "For complete contract and integration coverage, consider adding: [missing technical docs/code]."
 
 3. For Technical Tests:
-   - Required: Technical Docs
-   - Strongly Recommended: Code
-   - If missing: Note "Add code repositories for precise technical scenarios"
+   - With Technical Docs: System limitation testing is possible.
+   - With Code: Precise edge case and implementation-specific validation.
+   - Without Technical Docs/Code: Limited to generic scenarios.
+   - Recommendation: "For deep technical and edge case coverage, ingesting [Technical Design Docs/Code] is highly recommended."
 
-4. For System Tests:
-   - Required: Technical Docs AND Code
-   - If missing: Skip generation and note requirements
+4. For Mocked Tests:
+   - Required: Technical Docs or Code.
+   - Without Either: Cannot be generated effectively.
+   - Recommendation: "Mocked System Tests require technical documentation (e.g., API Contracts, Design Docs) or direct code access to be generated."
 
 OUTPUT STRUCTURE:
 1. Documentation Analysis
-   - Available Documents
-   - Missing Documents
+   - Available Documentation Types
+   - Missing Critical Documents
    - Impact on Test Coverage
 
-2. Total Test Cases by Category
-   - E2E Test Cases: [Count]
+2. Test Case Distribution
+   - End-to-End Test Cases: [Count]
    - Integration Test Cases: [Count]
    - Technical Test Cases: [Count]
-   - System Test Cases: [Count]
+   - Mocked System Tests: [Count]
    - Total Test Cases: [Count]
 
-3. Coverage Summary
-   - Total Test Cases by Type
-   - Coverage Distribution
+3. Coverage Analysis
+   - Scenario Distribution
+   - Technical Depth
    - Missing Coverage Areas
 
 4. Recommendations
-   - Additional Documentation Needed
-   - Coverage Improvements
-   - Technical Depth Enhancements
-
-IMPORTANT NOTES:
-1. Each test case must be technically precise and executable
-2. Include exact technical details (endpoints, data formats, etc.)
-3. Specify all prerequisites and setup requirements
-4. Include detailed validation points
-5. Provide clear success/failure criteria
-6. Reference specific documentation/code where applicable
+   - Required Documentation for Better Coverage
+   - Coverage Improvement Suggestions
+   - Technical Enhancement Suggestions
 
 Generate the test cases now, following all templates and requirements exactly.
 """

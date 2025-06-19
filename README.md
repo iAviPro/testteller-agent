@@ -16,7 +16,7 @@
 pip install testteller
 
 # Or clone and install locally
-git clone https://github.com/yourusername/testteller-rag-agent.git
+git clone https://github.com/iAviPro/testteller-rag-agent.git
 cd testteller-rag-agent
 pip install -e .
 ```

@@ -46,7 +46,7 @@ DEFAULT_CODE_EXTENSIONS = [
 DEFAULT_TEMP_CLONE_DIR = "./temp_cloned_repos"
 
 # Output Settings
-DEFAULT_OUTPUT_FILE = "testteller_output.md"
+DEFAULT_OUTPUT_FILE = "testteller-tc-output.md"
 
 # API Retry Settings
 DEFAULT_API_RETRY_ATTEMPTS = 3

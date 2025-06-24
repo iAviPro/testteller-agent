@@ -47,8 +47,8 @@ class TestTellerAgent:
     def _get_collection_name(self) -> str:
         """Get collection name from settings or use default."""
         try:
-            if settings and settings.chroma_db:
-                return settings.chroma_db.__dict__.get('default_collection_name', DEFAULT_COLLECTION_NAME)
+            if settings and settings.chromadb:
+                return settings.chromadb.__dict__.get('default_collection_name', DEFAULT_COLLECTION_NAME)
         except Exception as e:
             logger.debug("Could not get collection name from settings: %s", e)
         return DEFAULT_COLLECTION_NAME

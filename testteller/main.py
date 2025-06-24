@@ -8,10 +8,20 @@ from typing_extensions import Annotated
 from .agent import TestTellerRagAgent
 from .config import settings
 from .utils.helpers import setup_logging
+from .utils.loader import with_spinner
+from ._version import __version__
 
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+def version_callback(value: bool):
+    """Callback for version option."""
+    if value:
+        print(f"TestTeller RAG Agent version: {__version__}")
+        raise typer.Exit()
+
 
 app = typer.Typer(
     help="TestTeller: RAG Agent for AI Test Case Generation. Configure the agent via .env file.")
@@ -74,8 +84,8 @@ def get_collection_name(provided_name: str | None = None) -> str:
     default_name = "test_documents_prod"
 
     try:
-        if settings and settings.chroma_db:
-            settings_dict = settings.chroma_db.__dict__
+        if settings and settings.chromadb:
+            settings_dict = settings.chromadb.__dict__
             if settings_dict.get('default_collection_name'):
                 name = settings_dict['default_collection_name']
                 logger.info(
@@ -120,16 +130,24 @@ def _get_agent(collection_name: str) -> TestTellerRagAgent:
 
 async def ingest_docs_async(path: str, collection_name: str):
     agent = _get_agent(collection_name)
-    await agent.ingest_documents_from_path(path)
-    count = await agent.get_ingested_data_count()
+
+    async def _ingest_task():
+        await agent.ingest_documents_from_path(path)
+        return await agent.get_ingested_data_count()
+
+    count = await with_spinner(_ingest_task(), f"Ingesting documents from '{path}'...")
     print(
         f"Successfully ingested documents. Collection '{collection_name}' now contains {count} items.")
 
 
 async def ingest_code_async(source_path: str, collection_name: str, no_cleanup_github: bool):
     agent = _get_agent(collection_name)
-    await agent.ingest_code_from_source(source_path, cleanup_github_after=not no_cleanup_github)
-    count = await agent.get_ingested_data_count()
+
+    async def _ingest_task():
+        await agent.ingest_code_from_source(source_path, cleanup_github_after=not no_cleanup_github)
+        return await agent.get_ingested_data_count()
+
+    count = await with_spinner(_ingest_task(), f"Ingesting code from '{source_path}'...")
     print(
         f"Successfully ingested code from '{source_path}'. Collection '{collection_name}' now contains {count} items.")
 
@@ -145,7 +163,10 @@ async def generate_async(query: str, collection_name: str, num_retrieved: int, o
             print("Generation aborted.")
             return
 
-    test_cases = await agent.generate_test_cases(query, n_retrieved_docs=num_retrieved)
+    async def _generate_task():
+        return await agent.generate_test_cases(query, n_retrieved_docs=num_retrieved)
+
+    test_cases = await with_spinner(_generate_task(), f"Generating test cases for query...")
     print("\n--- Generated Test Cases ---")
     print(test_cases)
     print("--- End of Test Cases ---\n")
@@ -188,11 +209,16 @@ async def clear_data_async(collection_name: str, force: bool):
             f"Are you sure you want to clear all data from collection '{collection_name}' and remove related cloned repositories?")
         if not confirm:
             print("Operation cancelled.")
-            raise typer.Exit()
+            return False  # Return False to indicate cancellation
 
     agent = _get_agent(collection_name)
-    await agent.clear_ingested_data()
+
+    async def _clear_task():
+        await agent.clear_ingested_data()
+
+    await with_spinner(_clear_task(), f"Clearing data from collection '{collection_name}'...")
     print(f"Successfully cleared data from collection '{collection_name}'.")
+    return True  # Return True to indicate success
 
 
 @app.command()
@@ -217,6 +243,9 @@ def ingest_docs(
 
     try:
         asyncio.run(ingest_docs_async(path, collection_name))
+    except typer.Exit:
+        # Re-raise typer.Exit exceptions to avoid catching them
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during document ingestion from '%s': %s", path, e, exc_info=True)
@@ -250,6 +279,9 @@ def ingest_code(
     try:
         asyncio.run(ingest_code_async(
             source_path, collection_name, no_cleanup_github))
+    except typer.Exit:
+        # Re-raise typer.Exit exceptions to avoid catching them
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during code ingestion from '%s': %s", source_path, e, exc_info=True)
@@ -296,6 +328,9 @@ def generate(
     try:
         asyncio.run(generate_async(
             query, collection_name, num_retrieved, final_output_file))
+    except typer.Exit:
+        # Re-raise typer.Exit exceptions to avoid catching them
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during test case generation: %s", e, exc_info=True)
@@ -315,6 +350,9 @@ def status(
     logger.info("CLI: Checking status for collection: %s", collection_name)
     try:
         asyncio.run(status_async(collection_name))
+    except typer.Exit:
+        # Re-raise typer.Exit exceptions to avoid catching them
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during status check: %s", e, exc_info=True)
@@ -335,7 +373,13 @@ def clear_data(
 
     logger.info("CLI: Clearing data for collection: %s", collection_name)
     try:
-        asyncio.run(clear_data_async(collection_name, force))
+        result = asyncio.run(clear_data_async(collection_name, force))
+        if result is False:
+            # Operation was cancelled by user
+            raise typer.Exit(code=0)
+    except typer.Exit:
+        # Re-raise typer.Exit exceptions to avoid catching them
+        raise
     except Exception as e:
         logger.error(
             "CLI: Unhandled error during data clearing: %s", e, exc_info=True)
@@ -438,6 +482,19 @@ def configure():
     except Exception as e:
         print(f"\n❌ Error saving configuration: {e}")
         raise typer.Exit(code=1)
+
+
+@app.callback()
+def main(
+    _: Annotated[bool, typer.Option(
+        "--version", "-v",
+        help="Show version and exit",
+        callback=version_callback,
+        is_eager=True
+    )] = False
+):
+    """TestTeller: RAG Agent for AI Test Case Generation. Configure the agent via your .env file."""
+    pass
 
 
 def app_runner():

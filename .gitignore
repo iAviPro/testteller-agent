@@ -119,7 +119,9 @@ chroma_data_prod/
 chroma_data_db_persistent/
 my_vector_data/ # Example if you used this in .env
 *.chroma_data # General pattern if names vary
+testteller-tc-output.md
 testteller_output.md
+.cursorignore
 
 # Temporary Cloned Repositories (adjust if your path is different)
 temp_cloned_repos/

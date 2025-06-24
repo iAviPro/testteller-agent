@@ -5,6 +5,7 @@ This script sets up the TestTeller RAG Agent package, including dependencies,
 entry points, and metadata. It uses setuptools for packaging.
 """
 import pathlib
+import re
 from setuptools import setup, find_packages
 
 # Function to read the requirements from requirements.txt
@@ -16,16 +17,27 @@ def parse_requirements(filename="requirements.txt"):
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 
+def get_version():
+    """Extract version from testteller/_version.py"""
+    version_file = pathlib.Path(__file__).parent / "testteller" / "_version.py"
+    with open(version_file, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    version_match = re.search(
+        r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError(
+        "Unable to find version string in testteller/_version.py")
+
    # The directory containing this file
 HERE = pathlib.Path(__file__).parent
 
 # The text of the README file
 README = (HERE / "README.md").read_text()
 
-
-# Package version (should ideally be managed in one place, e.g., a version.py or __init__.py)
-# For simplicity here, hardcoded. In a real setup, you might read it from testteller_rag_agent/__init__.py
-VERSION = "0.1.2"  # Make sure this matches your intended version
+# Get version from single source of truth
+VERSION = get_version()
 
 
 setup(

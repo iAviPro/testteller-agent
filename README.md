@@ -21,7 +21,13 @@ cd testteller-rag-agent
 pip install -e .
 ```
 
-2. **Configure the Agent**
+2. **Verify Installation**
+```bash
+# Check if testteller is correctly installed
+testteller --version
+```
+
+**Configure the Agent**
 ```bash
 # Run the configuration wizard
 testteller configure
@@ -37,13 +43,14 @@ export GITHUB_TOKEN="your_github_token"  # Optional, for private repos
 docker run -d -p 8000:8000 chromadb/chroma:0.4.15
 ```
 
-4. **Generate Test Cases**
+5. **Generate Test Cases**
 ```bash
 # Ingest code or documentation
-testteller ingest-code https://github.com/owner/repo.git
+testteller ingest-code https://github.com/owner/repo.git --collection-name my_collection
+testteller ingest-docs path/to/document.pdf --collection-name my_collection
 
 # Generate tests
-testteller generate "Create API integration tests for user authentication"
+testteller generate "Create API integration tests for user authentication" --collection-name my_collection --output-file ./tests.md
 ```
 
 ## ✨ Features
@@ -165,7 +172,7 @@ docker run -d -p 8000:8000 chromadb/chroma:0.4.15
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/testteller-rag-agent.git
+git clone https://github.com/iAviPro/testteller-rag-agent.git
 cd testteller-rag-agent
 ```
 
@@ -219,14 +226,14 @@ testteller ingest-code ./local/code/folder --collection-name my_collection
 
 ### Generate Test Cases
 ```bash
-# Generate tests with default settings
-testteller generate "Create API integration tests for user authentication"
+# Generate with default settings
+testteller generate "Create API integration tests for user authentication" --collection-name my_collection
 
 # Generate tests with custom output file
-testteller generate "Create technical tests for login flow" --output-file tests.md
+testteller generate "Create technical tests for login flow" --collection-name my_collection --output-file tests.md
 
 # Generate tests with specific collection and number of retrieved docs
-testteller generate "Create end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
+testteller generate "Create more than  end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
 ```
 
 ### Manage Data

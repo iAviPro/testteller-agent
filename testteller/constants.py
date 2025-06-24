@@ -5,7 +5,9 @@ This module centralizes all default values and configuration constants used thro
 
 # Application Information
 APP_NAME = "TestTeller RAG Agent"
-APP_VERSION = "0.1.2"
+# APP_VERSION is now imported from __init__.py to maintain single source of truth
+# Import will be handled by __init__.py
+FALLBACK_VERSION = "0.1.3"  # Fallback version when _version.py import fails
 APP_DESCRIPTION = "A versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases."
 
 # Default Environment Settings
@@ -46,7 +48,7 @@ DEFAULT_CODE_EXTENSIONS = [
 DEFAULT_TEMP_CLONE_DIR = "./temp_cloned_repos"
 
 # Output Settings
-DEFAULT_OUTPUT_FILE = "testteller_output.md"
+DEFAULT_OUTPUT_FILE = "testteller-tc-output.md"
 
 # API Retry Settings
 DEFAULT_API_RETRY_ATTEMPTS = 3

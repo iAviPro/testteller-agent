@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "testteller"
-version = "0.1.2"
+dynamic = ["version"]
 description = "TestTeller : A versatile RAG AI agent for generating test cases from project documentation (PRDs, Contracts, Design Docs, etc.) and project code, leveraging LLMs."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -53,3 +53,6 @@ Homepage = "https://github.com/iAviPro/testteller-rag-agent"
 
 [project.scripts]
 testteller = "testteller.main:app_runner"
+
+[tool.setuptools.dynamic]
+version = {attr = "testteller._version.__version__"}

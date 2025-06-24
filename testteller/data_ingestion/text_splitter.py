@@ -103,7 +103,7 @@ class TextSplitter:
 
 
 class TestTellerAgent:
-    def __init__(self, collection_name: str = settings.chroma_db.default_collection_name):
+    def __init__(self, collection_name: str = settings.chromadb.default_collection_name):
         # Initialize clients. These are lightweight and can be created per agent instance.
         # For a long-running service, you might make them singletons or manage them differently.
         self.gemini_client = GeminiClient()

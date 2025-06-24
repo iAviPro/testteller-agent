@@ -17,9 +17,9 @@ DEFAULT_LOG_FORMAT = "json"
 # ChromaDB Settings
 DEFAULT_CHROMA_HOST = "localhost"
 DEFAULT_CHROMA_PORT = 8000
-DEFAULT_CHROMA_USE_REMOTE = True
+DEFAULT_CHROMA_USE_REMOTE = False
 DEFAULT_CHROMA_PERSIST_DIRECTORY = "./chroma_data"
-DEFAULT_COLLECTION_NAME = "test_documents_non_prod"
+DEFAULT_COLLECTION_NAME = "test_collection"
 
 # LLM Settings
 DEFAULT_GEMINI_EMBEDDING_MODEL = "text-embedding-004"
@@ -48,7 +48,7 @@ DEFAULT_CODE_EXTENSIONS = [
 DEFAULT_TEMP_CLONE_DIR = "./temp_cloned_repos"
 
 # Output Settings
-DEFAULT_OUTPUT_FILE = "testteller-tc-output.md"
+DEFAULT_OUTPUT_FILE = "testteller-testcases.md"
 
 # API Retry Settings
 DEFAULT_API_RETRY_ATTEMPTS = 3

@@ -181,7 +181,8 @@ class ProcessingSettings(BaseSettings):
     )
 
     @validator("code_extensions", pre=True)
-    def parse_code_extensions(cls, v):  # noqa: N805
+    @classmethod
+    def parse_code_extensions(cls, v):
         """Parse comma-separated string of extensions into a list of properly formatted extensions."""
         if isinstance(v, str):
             # Split by comma and strip whitespace and dots
@@ -269,7 +270,8 @@ class CodeLoaderSettings(BaseSettings):
     )
 
     @validator("code_extensions", pre=True)
-    def parse_code_extensions(cls, v):  # noqa: N805
+    @classmethod
+    def parse_code_extensions(cls, v):
         """Parse comma-separated string of extensions into a list of properly formatted extensions."""
         if isinstance(v, str):
             # Split by comma and strip whitespace and dots

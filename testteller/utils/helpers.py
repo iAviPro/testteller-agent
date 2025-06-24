@@ -27,8 +27,8 @@ def setup_logging():
         try:
             log_level_str = str(settings.logging.level).upper()
             log_format = str(settings.logging.format).lower()
-        except Exception as e:
-            # Fallback to defaults if there's any error
+        except AttributeError:
+            # Fallback to defaults if settings attributes don't exist
             pass
 
     log_level = getattr(logging, log_level_str, logging.INFO)

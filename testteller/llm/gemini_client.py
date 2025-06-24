@@ -11,6 +11,7 @@ import google.generativeai as genai
 from pydantic import SecretStr
 
 from testteller.config import settings  # Ensure settings is imported
+from testteller.constants import DEFAULT_GEMINI_GENERATION_MODEL, DEFAULT_GEMINI_EMBEDDING_MODEL
 from testteller.utils.retry_helpers import api_retry_async, api_retry_sync
 
 logger = logging.getLogger(__name__)
@@ -26,19 +27,19 @@ class GeminiClient:
 
         # Get model names from settings
         try:
-            if settings and settings.gemini_model:
-                self.generation_model = settings.gemini_model.__dict__.get(
-                    'gemini_generation_model', 'gemini-2.0-flash')
-                self.embedding_model = settings.gemini_model.__dict__.get(
-                    'gemini_embedding_model', 'text-embedding-004')
+            if settings and settings.llm:
+                self.generation_model = settings.llm.__dict__.get(
+                    'generation_model', DEFAULT_GEMINI_GENERATION_MODEL)
+                self.embedding_model = settings.llm.__dict__.get(
+                    'embedding_model', DEFAULT_GEMINI_EMBEDDING_MODEL)
             else:
-                self.generation_model = 'gemini-2.0-flash'
-                self.embedding_model = 'text-embedding-004'
+                self.generation_model = DEFAULT_GEMINI_GENERATION_MODEL
+                self.embedding_model = DEFAULT_GEMINI_EMBEDDING_MODEL
         except Exception as e:
             logger.warning(
                 "Could not get model names from settings: %s. Using defaults.", e)
-            self.generation_model = 'gemini-2.0-flash'
-            self.embedding_model = 'text-embedding-004'
+            self.generation_model = DEFAULT_GEMINI_GENERATION_MODEL
+            self.embedding_model = DEFAULT_GEMINI_EMBEDDING_MODEL
 
         self.model = genai.GenerativeModel(self.generation_model)
         logger.info("Initialized Gemini client with generation model '%s' and embedding model '%s'",

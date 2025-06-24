@@ -7,6 +7,10 @@ from typing_extensions import Annotated
 
 from .agent import TestTellerRagAgent
 from .config import settings
+from .constants import (
+    DEFAULT_LOG_LEVEL, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_GEMINI_GENERATION_MODEL,
+    DEFAULT_OUTPUT_FILE, DEFAULT_COLLECTION_NAME
+)
 from .utils.helpers import setup_logging
 from .utils.loader import with_spinner
 from ._version import __version__
@@ -39,7 +43,7 @@ ENV_TEMPLATE = {
         "description": "GitHub Personal Access Token for private repos (optional)"
     },
     "LOG_LEVEL": {
-        "value": "INFO",
+        "value": DEFAULT_LOG_LEVEL,
         "required": False,
         "description": "Logging level (DEBUG, INFO, WARNING, ERROR)"
     },
@@ -54,17 +58,17 @@ ENV_TEMPLATE = {
         "description": "Default ChromaDB collection name"
     },
     "GEMINI_EMBEDDING_MODEL": {
-        "value": "text-embedding-004",
+        "value": DEFAULT_GEMINI_EMBEDDING_MODEL,
         "required": False,
         "description": "Gemini model for embeddings"
     },
     "GEMINI_GENERATION_MODEL": {
-        "value": "gemini-2.0-flash",
+        "value": DEFAULT_GEMINI_GENERATION_MODEL,
         "required": False,
         "description": "Gemini model for generation"
     },
     "OUTPUT_FILE_PATH": {
-        "value": "testteller_output.md",
+        "value": DEFAULT_OUTPUT_FILE,
         "required": False,
         "description": "Default path to save generated test cases"
     }
@@ -81,7 +85,7 @@ def get_collection_name(provided_name: str | None = None) -> str:
     if provided_name:
         return provided_name
 
-    default_name = "test_documents_prod"
+    default_name = DEFAULT_COLLECTION_NAME
 
     try:
         if settings and settings.chromadb:
@@ -297,7 +301,7 @@ def generate(
     num_retrieved: Annotated[int, typer.Option(
         min=0, max=20, help="Number of docs for context.")] = 5,
     output_file: Annotated[str, typer.Option(
-        help="Optional: Save test cases to this file. If not provided, uses OUTPUT_FILE_PATH from .env or defaults to testteller_output.md")] = None
+        help=f"Optional: Save test cases to this file. If not provided, uses OUTPUT_FILE_PATH from .env or defaults to {DEFAULT_OUTPUT_FILE}")] = None
 ):
     """Generates test cases based on query and knowledge base."""
     logger.info(
@@ -321,7 +325,7 @@ def generate(
                 "Failed to get output file path from settings: %s", e)
 
         if not final_output_file:
-            final_output_file = "testteller_output.md"
+            final_output_file = DEFAULT_OUTPUT_FILE
             logger.info("Using default output file path: %s",
                         final_output_file)
 

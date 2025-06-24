@@ -121,6 +121,7 @@ my_vector_data/ # Example if you used this in .env
 *.chroma_data # General pattern if names vary
 testteller-tc-output.md
 testteller_output.md
+testteller-testcases.md
 .cursorignore
 
 # Temporary Cloned Repositories (adjust if your path is different)

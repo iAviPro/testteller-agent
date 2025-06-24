@@ -18,15 +18,15 @@ from chromadb.api.types import (
     WhereDocument
 )
 from testteller.config import settings
+from testteller.constants import DEFAULT_COLLECTION_NAME, DEFAULT_CHROMA_HOST, DEFAULT_CHROMA_PORT, DEFAULT_CHROMA_PERSIST_DIRECTORY
 from testteller.llm.gemini_client import GeminiClient
 
 logger = logging.getLogger(__name__)
 
-# Default configuration values
-DEFAULT_COLLECTION_NAME = "test_documents_prod"
-DEFAULT_PERSIST_DIRECTORY = "chroma_data_prod"
-DEFAULT_HOST = "localhost"
-DEFAULT_PORT = 8000
+# Default configuration values (imported from constants)
+DEFAULT_PERSIST_DIRECTORY = DEFAULT_CHROMA_PERSIST_DIRECTORY
+DEFAULT_HOST = DEFAULT_CHROMA_HOST
+DEFAULT_PORT = DEFAULT_CHROMA_PORT
 
 
 class ChromaDBManager:
@@ -56,16 +56,16 @@ class ChromaDBManager:
 
         # Get configuration from settings if available, otherwise use defaults/parameters
         try:
-            if settings and settings.chroma_db:
-                self.collection_name = collection_name or settings.chroma_db.__dict__.get(
+            if settings and settings.chromadb:
+                self.collection_name = collection_name or settings.chromadb.__dict__.get(
                     'default_collection_name', DEFAULT_COLLECTION_NAME)
-                self.persist_directory = persist_directory or settings.chroma_db.__dict__.get(
+                self.persist_directory = persist_directory or settings.chromadb.__dict__.get(
                     'persist_directory', DEFAULT_PERSIST_DIRECTORY)
-                self.host = host or settings.chroma_db.__dict__.get(
+                self.host = host or settings.chromadb.__dict__.get(
                     'host', DEFAULT_HOST)
-                self.port = port or settings.chroma_db.__dict__.get(
+                self.port = port or settings.chromadb.__dict__.get(
                     'port', DEFAULT_PORT)
-                self.use_remote = use_remote if use_remote is not None else settings.chroma_db.__dict__.get(
+                self.use_remote = use_remote if use_remote is not None else settings.chromadb.__dict__.get(
                     'use_remote', False)
             else:
                 logger.info(

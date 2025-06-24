@@ -9,10 +9,19 @@ from .agent import TestTellerRagAgent
 from .config import settings
 from .utils.helpers import setup_logging
 from .utils.loader import with_spinner
+from ._version import __version__
 
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+def version_callback(value: bool):
+    """Callback for version option."""
+    if value:
+        print(f"TestTeller RAG Agent version: {__version__}")
+        raise typer.Exit()
+
 
 app = typer.Typer(
     help="TestTeller: RAG Agent for AI Test Case Generation. Configure the agent via .env file.")
@@ -473,6 +482,19 @@ def configure():
     except Exception as e:
         print(f"\n❌ Error saving configuration: {e}")
         raise typer.Exit(code=1)
+
+
+@app.callback()
+def main(
+    _: Annotated[bool, typer.Option(
+        "--version", "-v",
+        help="Show version and exit",
+        callback=version_callback,
+        is_eager=True
+    )] = False
+):
+    """TestTeller: RAG Agent for AI Test Case Generation. Configure the agent via your .env file."""
+    pass
 
 
 def app_runner():

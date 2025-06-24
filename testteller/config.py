@@ -8,8 +8,15 @@ import os
 from typing import Optional, List
 from pydantic.v1 import BaseSettings, Field, validator
 
+# Import version from the single source of truth
+try:
+    from ._version import __version__ as APP_VERSION
+except ImportError:
+    from .constants import FALLBACK_VERSION
+    APP_VERSION = FALLBACK_VERSION  # Use fallback from constants
+
 from .constants import (
-    APP_NAME, APP_VERSION,
+    APP_NAME,
     DEFAULT_LOG_LEVEL, DEFAULT_LOG_FORMAT,
     DEFAULT_CHROMA_HOST, DEFAULT_CHROMA_PORT, DEFAULT_CHROMA_USE_REMOTE,
     DEFAULT_CHROMA_PERSIST_DIRECTORY, DEFAULT_COLLECTION_NAME,

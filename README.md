@@ -12,22 +12,22 @@
 
 TestTeller supports multiple LLM providers to give you flexibility in choosing the best model for your needs:
 
-- ** Google Gemini** (Default)
+- **Google Gemini** (Default)
   - Models: `gemini-2.0-flash`, `text-embedding-004`
   - Fast and cost-effective
   - Requires: `GOOGLE_API_KEY`
 
-- ** OpenAI**
+- **OpenAI**
   - Models: `gpt-4o-mini`, `text-embedding-3-small`
   - High-quality responses
   - Requires: `OPENAI_API_KEY`
 
-- ** Anthropic Claude**
+- **Anthropic Claude**
   - Models: `claude-3-5-haiku-20241022`
   - Excellent reasoning capabilities
   - Requires: `CLAUDE_API_KEY` + `OPENAI_API_KEY` (for embeddings)
 
-- **� Local Llama (via Ollama)**
+- **Local Llama (via Ollama)**
   - Models: `llama3.2:3b`, `llama3.2:1b`
   - Privacy-focused, runs locally
   - Requires: Local Ollama installation

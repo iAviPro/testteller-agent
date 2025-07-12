@@ -12,22 +12,22 @@
 
 TestTeller supports multiple LLM providers to give you flexibility in choosing the best model for your needs:
 
-- **🟦 Google Gemini** (Default)
+- ** Google Gemini** (Default)
   - Models: `gemini-2.0-flash`, `text-embedding-004`
   - Fast and cost-effective
   - Requires: `GOOGLE_API_KEY`
 
-- **🟢 OpenAI**
+- ** OpenAI**
   - Models: `gpt-4o-mini`, `text-embedding-3-small`
   - High-quality responses
   - Requires: `OPENAI_API_KEY`
 
-- **🟣 Anthropic Claude**
+- ** Anthropic Claude**
   - Models: `claude-3-5-haiku-20241022`
   - Excellent reasoning capabilities
   - Requires: `CLAUDE_API_KEY` + `OPENAI_API_KEY` (for embeddings)
 
-- **🦙 Local Llama (via Ollama)**
+- **� Local Llama (via Ollama)**
   - Models: `llama3.2:3b`, `llama3.2:1b`
   - Privacy-focused, runs locally
   - Requires: Local Ollama installation
@@ -286,55 +286,29 @@ docker-compose exec app testteller --help
 
 Choose the best LLM provider for your use case:
 
-### 🟦 Google Gemini (Recommended for most users)
+### Google Gemini (Recommended for most users)
 - **Best for:** Cost-effective, fast responses, general-purpose testing
 - **Pros:** Excellent price/performance ratio, fast generation
 - **Cons:** May require more specific prompts for complex scenarios
 - **Setup:** Only requires `GOOGLE_API_KEY`
 
-### 🟢 OpenAI
+### OpenAI
 - **Best for:** High-quality test cases, complex scenarios
 - **Pros:** Superior reasoning, well-structured outputs
 - **Cons:** Higher cost, rate limits
 - **Setup:** Only requires `OPENAI_API_KEY`
 
-### 🟣 Anthropic Claude
+### Anthropic Claude
 - **Best for:** Advanced reasoning, safety-critical applications
 - **Pros:** Excellent at understanding context, safety-focused
 - **Cons:** Requires both Claude and OpenAI keys (for embeddings)
 - **Setup:** Requires `CLAUDE_API_KEY` + `OPENAI_API_KEY`
 
-### 🦙 Local Llama (Privacy-focused)
+### Local Llama (Privacy-focused)
 - **Best for:** Privacy-sensitive environments, offline usage
 - **Pros:** Complete data privacy, no API costs, offline capability
 - **Cons:** Requires local compute resources, slower than cloud APIs
 - **Setup:** Install Ollama and required models locally
-
-## 🎯 Provider-Specific Optimizations
-
-TestTeller automatically optimizes prompts for each LLM provider to maximize test case quality:
-
-### 🤖 **Gemini (Default)**
-- **Optimization:** Balanced approach with code integration
-- **Strengths:** Integrates code examples, balances technical depth with clarity
-- **Best For:** General-purpose test generation with good technical detail
-
-### 🧠 **OpenAI**
-- **Optimization:** Structured thinking with JSON emphasis
-- **Strengths:** Systematic approach, consistent JSON formatting, detailed specs
-- **Best For:** Structured test cases with precise technical specifications
-
-### 🔥 **Claude**
-- **Optimization:** Analytical approach with comprehensive reasoning
-- **Strengths:** Context analysis, detailed reasoning, edge case emphasis
-- **Best For:** Complex scenarios requiring deep analysis and edge case coverage
-
-### 🦙 **Llama**
-- **Optimization:** Simplified and direct instructions
-- **Strengths:** Focused output, clear language, concise templates
-- **Best For:** Straightforward test cases when local processing is preferred
-
-These optimizations are applied automatically - no configuration required! The system detects your active provider and applies the appropriate prompt refinements for optimal results.
 
 ## 🐳 Docker Usage Examples
 
@@ -493,7 +467,7 @@ testteller generate "Create API integration tests for user authentication" --col
 testteller generate "Create technical tests for login flow" --collection-name my_collection --output-file tests.md
 
 # Generate tests with specific collection and number of retrieved docs
-testteller generate "Create more than  end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
+testteller generate "Create more than 10 end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
 ```
 
 ### Manage Data

@@ -493,7 +493,7 @@ testteller generate "Create API integration tests for user authentication" --col
 testteller generate "Create technical tests for login flow" --collection-name my_collection --output-file tests.md
 
 # Generate tests with specific collection and number of retrieved docs
-testteller generate "Create more than  end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
+testteller generate "Create more than 10 end-to-end tests" --collection-name my_collection --num-retrieved 10 --output-file ./tests.md
 ```
 
 ### Manage Data

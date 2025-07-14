@@ -3,9 +3,9 @@
 [![PyPI](https://img.shields.io/pypi/v/testteller.svg)](https://pypi.org/project/testteller/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
 [![Tests](https://github.com/iAviPro/testteller-rag-agent/actions/workflows/test-unit.yml/badge.svg)](https://github.com/iAviPro/testteller-rag-agent/actions/workflows/test-unit.yml)
+[![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases. It supports multiple LLM providers including Google Gemini, OpenAI, Anthropic Claude, and local Llama models via Ollama. The agent uses ChromaDB as a vector store and can process various input sources, including PRD documentation, API contracts, technical design documents (HLD/LLD), and code from GitHub repositories or local folders.
 

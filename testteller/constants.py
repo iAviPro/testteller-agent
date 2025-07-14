@@ -7,7 +7,7 @@ This module centralizes all default values and configuration constants used thro
 APP_NAME = "TestTeller RAG Agent"
 # APP_VERSION is now imported from __init__.py to maintain single source of truth
 # Import will be handled by __init__.py
-FALLBACK_VERSION = "1.2.1"  # Fallback version when _version.py import fails
+FALLBACK_VERSION = "1.2.2"  # Fallback version when _version.py import fails
 APP_DESCRIPTION = "A versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases."
 
 # Default Environment Settings

@@ -33,6 +33,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+iavipro/
 
 # PyInstaller
 # Usually PyInstaller files are created during distribution of executable

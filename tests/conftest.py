@@ -240,10 +240,12 @@ def mock_testteller_agent(
     test_collection_name: str
 ) -> TestTellerAgent:
     """Create a TestTellerAgent with mocked dependencies."""
-    agent = TestTellerAgent(collection_name=test_collection_name)
-    agent.llm_manager = mock_llm_manager
-    agent.vector_store = mock_chromadb_manager
-    return agent
+    with patch('testteller.agent.testteller_agent.LLMManager') as mock_llm_class:
+        with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma_class:
+            mock_llm_class.return_value = mock_llm_manager
+            mock_chroma_class.return_value = mock_chromadb_manager
+            agent = TestTellerAgent(collection_name=test_collection_name)
+            return agent
 
 
 @pytest.fixture

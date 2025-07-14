@@ -37,24 +37,24 @@ class LLMManager:
             if provider not in SUPPORTED_LLM_PROVIDERS:
                 raise ValueError(
                     f"Unsupported LLM provider: {provider}. Supported providers: {SUPPORTED_LLM_PROVIDERS}")
-            return provider
+            return provider.lower()
 
-        # Try to get from settings
+        # Try to get from settings first
         try:
             if settings and settings.llm:
                 settings_provider = settings.llm.__dict__.get('provider')
-                if settings_provider and settings_provider in SUPPORTED_LLM_PROVIDERS:
-                    return settings_provider
+                if settings_provider and settings_provider.lower() in SUPPORTED_LLM_PROVIDERS:
+                    return settings_provider.lower()
         except Exception as e:
             logger.debug("Could not get LLM provider from settings: %s", e)
 
         # Try to get from environment
-        env_provider = os.getenv("LLM_PROVIDER", DEFAULT_LLM_PROVIDER).lower()
-        if env_provider in SUPPORTED_LLM_PROVIDERS:
-            return env_provider
+        env_provider = os.getenv("LLM_PROVIDER")
+        if env_provider and env_provider.lower() in SUPPORTED_LLM_PROVIDERS:
+            return env_provider.lower()
 
         # Default fallback
-        return DEFAULT_LLM_PROVIDER
+        return DEFAULT_LLM_PROVIDER.lower()
 
     def _initialize_client(self) -> Union[GeminiClient, OpenAIClient, ClaudeClient, LlamaClient]:
         """Initialize the appropriate LLM client based on the provider."""
@@ -150,17 +150,9 @@ class LLMManager:
         """Get list of supported LLM providers."""
         return SUPPORTED_LLM_PROVIDERS.copy()
 
-    @classmethod
-    def validate_provider_config(cls, provider: str) -> tuple[bool, str]:
-        """
-        Validate if a provider is properly configured.
-
-        Args:
-            provider: The provider to validate
-
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
+    @staticmethod
+    def validate_provider_config(provider: str) -> tuple[bool, str]:
+        """Validate if the required configuration for a provider is available."""
         if provider not in SUPPORTED_LLM_PROVIDERS:
             return False, f"Unsupported provider: {provider}"
 

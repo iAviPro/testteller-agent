@@ -43,7 +43,7 @@ VERSION = get_version()
 setup(
     name="testteller",
     version=VERSION,
-    description="TestTeller : A versatile RAG AI agent for generating test cases from project documentation (PRDs, Contracts, Design Docs, etc.) and project code, leveraging LLMs.",
+    description="TestTeller : A versatile RAG AI agent for generating test cases from project documentation and code, supporting multiple LLM providers including Gemini, OpenAI, Claude, and Llama.",
     long_description=README,
     long_description_content_type="text/markdown",
     author="Aviral Nigam",

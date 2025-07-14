@@ -29,17 +29,17 @@ services:
       # -----------------------------------------------------------------------------
       # LLM Model Configuration
       # -----------------------------------------------------------------------------
-      # Gemini models
-      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-text-embedding-004}
-      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-gemini-2.0-flash}
-      # OpenAI models
-      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
-      - OPENAI_GENERATION_MODEL=${OPENAI_GENERATION_MODEL:-gpt-4o-mini}
-      # Claude models
-      - CLAUDE_GENERATION_MODEL=${CLAUDE_GENERATION_MODEL:-claude-3-5-haiku-20241022}
-      # Llama/Ollama models (for local deployment)
-      - LLAMA_EMBEDDING_MODEL=${LLAMA_EMBEDDING_MODEL:-llama3.2:1b}
-      - LLAMA_GENERATION_MODEL=${LLAMA_GENERATION_MODEL:-llama3.2:3b}
+      # Gemini models (configure as needed)
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL}
+      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL}
+      # OpenAI models (configure as needed)
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL}
+      - OPENAI_GENERATION_MODEL=${OPENAI_GENERATION_MODEL}
+      # Claude models (configure as needed)
+      - CLAUDE_GENERATION_MODEL=${CLAUDE_GENERATION_MODEL}
+      # Llama/Ollama models (configure as needed)
+      - LLAMA_EMBEDDING_MODEL=${LLAMA_EMBEDDING_MODEL}
+      - LLAMA_GENERATION_MODEL=${LLAMA_GENERATION_MODEL}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
 
       # -----------------------------------------------------------------------------

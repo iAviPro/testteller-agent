@@ -20,6 +20,7 @@ from chromadb.api.types import (
 from testteller.config import settings
 from testteller.constants import DEFAULT_COLLECTION_NAME, DEFAULT_CHROMA_HOST, DEFAULT_CHROMA_PORT, DEFAULT_CHROMA_PERSIST_DIRECTORY
 from testteller.llm.llm_manager import LLMManager
+from testteller.utils.exceptions import EmbeddingGenerationError
 
 logger = logging.getLogger(__name__)
 
@@ -130,9 +131,20 @@ class ChromaDBManager:
         """Add documents to the collection."""
         try:
             # Get embeddings for all documents
-            embeddings = [
-                self.llm_manager.get_embedding_sync(doc) for doc in documents
-            ]
+            embeddings = self.llm_manager.get_embeddings_sync(documents)
+
+            # Check for embedding generation failures
+            if any(embedding is None for embedding in embeddings):
+                failed_indices = [i for i, emb in enumerate(
+                    embeddings) if emb is None]
+                error_msg = f"Embedding generation failed for {len(failed_indices)} out of {len(documents)} documents."
+                logger.error(error_msg + f" Failed indices: {failed_indices}")
+                # We can't be sure which exception caused the failure for which document,
+                # so we raise a general error. The root cause is likely in the logs from the LLM client.
+                raise EmbeddingGenerationError(
+                    message=error_msg,
+                    provider=self.llm_manager.provider
+                )
 
             # If no IDs provided, generate unique IDs
             if not ids:
@@ -202,7 +214,16 @@ class ChromaDBManager:
     ) -> QueryResult:
         """Query similar documents from the collection."""
         try:
-            query_embedding = self.llm_manager.get_embedding_sync(query_text)
+            query_embedding = self.llm_manager.get_embedding_sync([query_text])[
+                0]
+
+            # Handle case where embedding generation fails
+            if query_embedding is None:
+                raise EmbeddingGenerationError(
+                    message="Failed to generate embedding for query text.",
+                    provider=self.llm_manager.provider
+                )
+
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
@@ -221,18 +242,12 @@ class ChromaDBManager:
             raise
 
     def clear_collection(self) -> None:
-        """Clear all documents from the collection."""
+        """Clear all data from the collection."""
         try:
-            # Get all document IDs
-            all_docs = self.collection.get()
-            if all_docs and all_docs['ids']:
-                # Delete all documents
-                self.collection.delete(ids=all_docs['ids'])
-                logger.info("Cleared %d documents from collection '%s'", len(
-                    all_docs['ids']), self.collection_name)
-            else:
-                logger.info("Collection '%s' is already empty",
-                            self.collection_name)
+            self.client.delete_collection(name=self.collection_name)
+            self.collection = self._get_or_create_collection()
+            logger.info("Cleared all data from collection '%s'",
+                        self.collection_name)
         except Exception as e:
             logger.error("Error clearing collection '%s': %s",
                          self.collection_name, e)
@@ -254,10 +269,24 @@ class ChromaDBManager:
                 self.llm_client = llm_client
 
             def __call__(self, input_texts: List[str]) -> List[List[float]]:
-                raw_embeddings = self.llm_client.get_embedding_sync(
+                raw_embeddings = self.llm_client.get_embeddings_sync(
                     input_texts)
                 valid_embeddings: List[List[float]] = []
-                embedding_dim = 768  # For "models/embedding-001"
+
+                # Check for embedding generation failures
+                if any(embedding is None for embedding in raw_embeddings):
+                    failed_indices = [i for i, emb in enumerate(
+                        raw_embeddings) if emb is None]
+                    error_msg = f"Embedding generation failed for {len(failed_indices)} out of {len(raw_embeddings)} documents during embedding function call."
+                    logger.error(
+                        error_msg + f" Failed indices: {failed_indices}")
+                    raise EmbeddingGenerationError(
+                        message=error_msg,
+                        provider=self.llm_client.provider
+                    )
+
+                # Assuming all embeddings are valid if we passed the check above
+                embedding_dim = len(raw_embeddings[0]) if raw_embeddings else 0
 
                 for i, emb in enumerate(raw_embeddings):
                     if emb is None or len(emb) != embedding_dim:

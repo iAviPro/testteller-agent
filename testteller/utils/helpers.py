@@ -1,7 +1,6 @@
 import logging
 import sys
 from pythonjsonlogger import jsonlogger
-from testteller.config import settings
 from testteller.constants import (
     DEFAULT_LOG_LEVEL,
     DEFAULT_LOG_FORMAT
@@ -23,13 +22,18 @@ def setup_logging():
     log_format = DEFAULT_LOG_FORMAT
 
     # Try to get settings from config if available
-    if settings is not None:
-        try:
-            log_level_str = str(settings.logging.level).upper()
-            log_format = str(settings.logging.format).lower()
-        except AttributeError:
-            # Fallback to defaults if settings attributes don't exist
-            pass
+    try:
+        from testteller.config import settings
+        if settings is not None:
+            try:
+                log_level_str = str(settings.logging.level).upper()
+                log_format = str(settings.logging.format).lower()
+            except AttributeError:
+                # Fallback to defaults if settings attributes don't exist
+                pass
+    except ImportError:
+        # If config can't be imported, use defaults
+        pass
 
     log_level = getattr(logging, log_level_str, logging.INFO)
 

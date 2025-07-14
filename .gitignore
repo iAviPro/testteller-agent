@@ -53,6 +53,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+.coverage
 *.cover
 .hypothesis/
 .pytest_cache/
@@ -115,6 +116,7 @@ Desktop.ini
 # ChromaDB Data (adjust if your path is different from default)
 # If your CHROMA_DB_PATH in config.py or .env points elsewhere, add that pattern.
 chroma_data/
+test_chroma_data/
 chroma_data_prod/
 chroma_data_db_persistent/
 my_vector_data/ # Example if you used this in .env

@@ -7,7 +7,7 @@ This module centralizes all default values and configuration constants used thro
 APP_NAME = "TestTeller RAG Agent"
 # APP_VERSION is now imported from __init__.py to maintain single source of truth
 # Import will be handled by __init__.py
-FALLBACK_VERSION = "0.1.3"  # Fallback version when _version.py import fails
+FALLBACK_VERSION = "1.2.1"  # Fallback version when _version.py import fails
 APP_DESCRIPTION = "A versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases."
 
 # Default Environment Settings
@@ -35,7 +35,10 @@ DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_OPENAI_GENERATION_MODEL = "gpt-4o-mini"
 
 # Claude Settings
-DEFAULT_CLAUDE_GENERATION_MODEL = "claude-3-5-haiku-20241022"
+# Claude specific defaults
+DEFAULT_CLAUDE_GENERATION_MODEL = "claude-3-5-haiku-20241022"  # Claude generation model
+# Embedding provider for Claude (google, openai)
+DEFAULT_CLAUDE_EMBEDDING_PROVIDER = "google"
 
 # Llama Settings
 DEFAULT_LLAMA_EMBEDDING_MODEL = "llama3.2:1b"
@@ -107,6 +110,7 @@ ENV_OPENAI_GENERATION_MODEL = "OPENAI_GENERATION_MODEL"
 
 # Claude Model Environment Variables
 ENV_CLAUDE_GENERATION_MODEL = "CLAUDE_GENERATION_MODEL"
+ENV_CLAUDE_EMBEDDING_PROVIDER = "CLAUDE_EMBEDDING_PROVIDER"
 
 # Llama/Ollama Model Environment Variables
 ENV_LLAMA_EMBEDDING_MODEL = "LLAMA_EMBEDDING_MODEL"

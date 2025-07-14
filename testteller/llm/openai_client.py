@@ -89,51 +89,33 @@ class OpenAIClient:
             return None
 
     @api_retry_sync
-    def get_embedding_sync(self, text: str) -> List[float]:
+    def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
         """
-        Get embeddings for text synchronously.
+        Get embeddings for a list of texts synchronously in a single batch.
 
         Args:
-            text: Text to get embeddings for
+            texts: List of texts to get embeddings for
 
         Returns:
-            List of embedding values
+            List of embedding lists, with None for failed texts.
         """
-        if not text or not text.strip():
-            logger.warning(
-                "Empty text provided for sync embedding, returning None.")
-            return None
+        if not texts:
+            return []
+
         try:
+            # Replace any empty strings with a single space to avoid API errors
+            processed_texts = [text if text.strip() else " " for text in texts]
+
             response = self.client.embeddings.create(
                 model=self.embedding_model,
-                input=text
+                input=processed_texts
             )
-            return response.data[0].embedding
+            return [embedding.embedding for embedding in response.data]
         except Exception as e:
             logger.error(
-                "Error generating sync embedding for text: '%s...': %s", text[:50], e, exc_info=True)
-            return None
-
-    async def get_embeddings_async(self, texts: list[str]) -> list[list[float] | None]:
-        tasks = [self.get_embedding_async(text_chunk) for text_chunk in texts]
-        embeddings = await asyncio.gather(*tasks, return_exceptions=True)
-
-        processed_embeddings = []
-        for i, emb_or_exc in enumerate(embeddings):
-            if isinstance(emb_or_exc, Exception):
-                logger.error(
-                    "Failed to get embedding for text chunk %d after retries: %s", i, emb_or_exc)
-                processed_embeddings.append(None)
-            else:
-                processed_embeddings.append(emb_or_exc)
-        return processed_embeddings
-
-    def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
-        embeddings = []
-        for text_chunk in texts:
-            emb = self.get_embedding_sync(text_chunk)
-            embeddings.append(emb)
-        return embeddings
+                "Error generating sync embeddings for a batch of %d texts: %s", len(texts), e, exc_info=True)
+            # Return a list of Nones to indicate failure for all texts in the batch
+            return [None] * len(texts)
 
     @api_retry_async
     async def generate_text_async(self, prompt: str) -> str:

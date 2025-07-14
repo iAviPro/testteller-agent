@@ -11,7 +11,7 @@ FALLBACK_VERSION = "1.2.1"  # Fallback version when _version.py import fails
 APP_DESCRIPTION = "A versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases."
 
 # Default Environment Settings
-DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_LOG_LEVEL = "ERROR"
 DEFAULT_LOG_FORMAT = "json"
 
 # ChromaDB Settings

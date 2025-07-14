@@ -6,7 +6,7 @@ python-docx
 PyMuPDF
 openpyxl
 GitPython
-typer[all]
+typer
 python-dotenv
 pydantic
 pydantic-settings

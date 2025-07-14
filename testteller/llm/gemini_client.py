@@ -134,12 +134,35 @@ class GeminiClient:
                 processed_embeddings.append(emb_or_exc)
         return processed_embeddings
 
+    @api_retry_sync
     def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
-        embeddings = []
-        for text_chunk in texts:
-            emb = self.get_embedding_sync(text_chunk)
-            embeddings.append(emb)
-        return embeddings
+        """
+        Get embeddings for a list of texts synchronously in a single batch.
+
+        Args:
+            texts: List of texts to get embeddings for
+
+        Returns:
+            List of embedding lists, with None for failed texts.
+        """
+        if not texts:
+            return []
+
+        try:
+            # Replace any empty strings with a single space to avoid API errors
+            processed_texts = [text if text.strip() else " " for text in texts]
+
+            result = genai.embed_content(
+                model=self.embedding_model,
+                content=processed_texts,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
+        except Exception as e:
+            logger.error(
+                "Error generating sync embeddings for a batch of %d texts: %s", len(texts), e, exc_info=True)
+            # Return a list of Nones to indicate failure for all texts in the batch
+            return [None] * len(texts)
 
     @api_retry_async
     async def generate_text_async(self, prompt: str) -> str:

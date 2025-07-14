@@ -87,58 +87,48 @@ class LlamaClient:
                 "Error generating embedding for text: '%s...': %s", text[:50], e, exc_info=True)
             return None
 
-    @api_retry_sync
-    def get_embedding_sync(self, text: str) -> List[float]:
+    def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
         """
-        Get embeddings for text synchronously using Ollama.
+        Get embeddings for a list of texts synchronously using Ollama.
+        NOTE: Ollama API does not support batching, so this iterates through texts.
 
         Args:
-            text: Text to get embeddings for
+            texts: List of texts to get embeddings for
 
         Returns:
-            List of embedding values
+            List of embedding lists, with None for failed texts.
         """
-        if not text or not text.strip():
-            logger.warning(
-                "Empty text provided for sync embedding, returning None.")
-            return None
-        try:
-            with httpx.Client(timeout=60.0) as client:
-                response = client.post(
-                    f"{self.base_url}/api/embeddings",
-                    json={
-                        "model": self.embedding_model,
-                        "prompt": text
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                return result["embedding"]
-        except Exception as e:
-            logger.error(
-                "Error generating sync embedding for text: '%s...': %s", text[:50], e, exc_info=True)
-            return None
+        if not texts:
+            return []
 
-    async def get_embeddings_async(self, texts: list[str]) -> list[list[float] | None]:
-        tasks = [self.get_embedding_async(text_chunk) for text_chunk in texts]
-        embeddings = await asyncio.gather(*tasks, return_exceptions=True)
+        all_embeddings = []
+        with httpx.Client(timeout=60.0) as client:
+            for i, text in enumerate(texts):
+                if not text or not text.strip():
+                    logger.warning(
+                        "Empty text provided for sync embedding at index %d, skipping.", i)
+                    all_embeddings.append(None)
+                    continue
 
-        processed_embeddings = []
-        for i, emb_or_exc in enumerate(embeddings):
-            if isinstance(emb_or_exc, Exception):
-                logger.error(
-                    "Failed to get embedding for text chunk %d after retries: %s", i, emb_or_exc)
-                processed_embeddings.append(None)
-            else:
-                processed_embeddings.append(emb_or_exc)
-        return processed_embeddings
+                try:
+                    response = client.post(
+                        f"{self.base_url}/api/embeddings",
+                        json={
+                            "model": self.embedding_model,
+                            "prompt": text
+                        }
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+                    all_embeddings.append(result["embedding"])
+                except Exception as e:
+                    logger.error(
+                        "Error generating sync embedding for text at index %d ('%s...'): %s",
+                        i, text[:50], e, exc_info=True
+                    )
+                    all_embeddings.append(None)
 
-    def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
-        embeddings = []
-        for text_chunk in texts:
-            emb = self.get_embedding_sync(text_chunk)
-            embeddings.append(emb)
-        return embeddings
+        return all_embeddings
 
     @api_retry_async
     async def generate_text_async(self, prompt: str) -> str:

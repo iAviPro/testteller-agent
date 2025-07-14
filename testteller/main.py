@@ -9,11 +9,16 @@ from .agent import TestTellerRagAgent
 from .config import settings
 from .constants import (
     DEFAULT_LOG_LEVEL, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_GEMINI_GENERATION_MODEL,
-    DEFAULT_OUTPUT_FILE, DEFAULT_COLLECTION_NAME, DEFAULT_LLM_PROVIDER, SUPPORTED_LLM_PROVIDERS
+    DEFAULT_OUTPUT_FILE, DEFAULT_COLLECTION_NAME, DEFAULT_LLM_PROVIDER, SUPPORTED_LLM_PROVIDERS,
+    DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_GENERATION_MODEL,
+    DEFAULT_CLAUDE_GENERATION_MODEL, DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
+    DEFAULT_LLAMA_EMBEDDING_MODEL, DEFAULT_LLAMA_GENERATION_MODEL,
+    DEFAULT_CHROMA_PERSIST_DIRECTORY
 )
 from .utils.helpers import setup_logging
 from .utils.loader import with_spinner
 from ._version import __version__
+from .utils.exceptions import EmbeddingGenerationError
 
 
 setup_logging()
@@ -56,6 +61,55 @@ ENV_TEMPLATE = {
         "description": "Your Anthropic Claude API key (required for Claude)",
         "conditional": "claude"
     },
+    "CLAUDE_EMBEDDING_PROVIDER": {
+        "value": DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
+        "required": False,
+        "description": "Embedding provider for Claude (google, openai)",
+        "conditional": "claude",
+        "options": ["google", "openai"]
+    },
+    "GEMINI_EMBEDDING_MODEL": {
+        "value": DEFAULT_GEMINI_EMBEDDING_MODEL,
+        "required": False,
+        "description": f"Gemini embedding model (optional, default: {DEFAULT_GEMINI_EMBEDDING_MODEL})",
+        "conditional": "gemini"
+    },
+    "GEMINI_GENERATION_MODEL": {
+        "value": DEFAULT_GEMINI_GENERATION_MODEL,
+        "required": False,
+        "description": f"Gemini generation model (optional, default: {DEFAULT_GEMINI_GENERATION_MODEL})",
+        "conditional": "gemini"
+    },
+    "OPENAI_EMBEDDING_MODEL": {
+        "value": DEFAULT_OPENAI_EMBEDDING_MODEL,
+        "required": False,
+        "description": f"OpenAI embedding model (optional, default: {DEFAULT_OPENAI_EMBEDDING_MODEL})",
+        "conditional": "openai"
+    },
+    "OPENAI_GENERATION_MODEL": {
+        "value": DEFAULT_OPENAI_GENERATION_MODEL,
+        "required": False,
+        "description": f"OpenAI generation model (optional, default: {DEFAULT_OPENAI_GENERATION_MODEL})",
+        "conditional": "openai"
+    },
+    "CLAUDE_GENERATION_MODEL": {
+        "value": DEFAULT_CLAUDE_GENERATION_MODEL,
+        "required": False,
+        "description": f"Claude generation model (optional, default: {DEFAULT_CLAUDE_GENERATION_MODEL})",
+        "conditional": "claude"
+    },
+    "LLAMA_EMBEDDING_MODEL": {
+        "value": DEFAULT_LLAMA_EMBEDDING_MODEL,
+        "required": False,
+        "description": f"Llama embedding model (optional, default: {DEFAULT_LLAMA_EMBEDDING_MODEL})",
+        "conditional": "llama"
+    },
+    "LLAMA_GENERATION_MODEL": {
+        "value": DEFAULT_LLAMA_GENERATION_MODEL,
+        "required": False,
+        "description": f"Llama generation model (optional, default: {DEFAULT_LLAMA_GENERATION_MODEL})",
+        "conditional": "llama"
+    },
     "GITHUB_TOKEN": {
         "value": "",
         "required": False,
@@ -67,12 +121,12 @@ ENV_TEMPLATE = {
         "description": "Logging level (DEBUG, INFO, WARNING, ERROR)"
     },
     "CHROMA_DB_PATH": {
-        "value": "./chroma_data_non_prod",
+        "value": DEFAULT_CHROMA_PERSIST_DIRECTORY,
         "required": False,
         "description": "Path to ChromaDB persistent storage"
     },
     "DEFAULT_COLLECTION_NAME": {
-        "value": "test_data_non_prod",
+        "value": DEFAULT_COLLECTION_NAME,
         "required": False,
         "description": "Default ChromaDB collection name"
     },
@@ -256,6 +310,18 @@ def ingest_docs(
 
     try:
         asyncio.run(ingest_docs_async(path, collection_name))
+    except EmbeddingGenerationError as e:
+        logger.error(
+            "CLI: Embedding generation failed during document ingestion. Error: %s", e, exc_info=True)
+        print(f"\n❌ Embedding Generation Failed:")
+        print(f"   {e}")
+        print("\n💡 Potential Solutions:")
+        print("   1. Verify your API key in the .env file is correct and has sufficient quota.")
+        print("   2. For Claude, ensure CLAUDE_API_KEY and your selected embedding provider's API key are set.")
+        print("   3. For Llama, ensure the Ollama service is running and accessible.")
+        print("   4. Check your network connection and firewall settings.")
+        print("\nRun 'testteller configure' to re-check your settings.")
+        raise typer.Exit(code=1)
     except typer.Exit:
         # Re-raise typer.Exit exceptions to avoid catching them
         raise
@@ -292,6 +358,18 @@ def ingest_code(
     try:
         asyncio.run(ingest_code_async(
             source_path, collection_name, no_cleanup_github))
+    except EmbeddingGenerationError as e:
+        logger.error(
+            "CLI: Embedding generation failed during code ingestion. Error: %s", e, exc_info=True)
+        print(f"\n❌ Embedding Generation Failed:")
+        print(f"   {e}")
+        print("\n💡 Potential Solutions:")
+        print("   1. Verify your API key in the .env file is correct and has sufficient quota.")
+        print("   2. For Claude, ensure CLAUDE_API_KEY and your selected embedding provider's API key are set.")
+        print("   3. For Llama, ensure the Ollama service is running and accessible.")
+        print("   4. Check your network connection and firewall settings.")
+        print("\nRun 'testteller configure' to re-check your settings.")
+        raise typer.Exit(code=1)
     except typer.Exit:
         # Re-raise typer.Exit exceptions to avoid catching them
         raise
@@ -441,63 +519,223 @@ def configure():
 
     print(f"\n✅ Selected LLM provider: {selected_provider}")
 
-    # Collect values for each setting
-    for key, config in ENV_TEMPLATE.items():
-        if key == "LLM_PROVIDER":  # Already handled above
-            continue
+    # Special handling for Llama provider - ask for URL and Port separately
+    if selected_provider == "llama":
+        print("\n📝 Configuring Ollama connection:")
+        print("   - No API key is required for local Llama models")
+        print("   - Make sure Ollama is installed and running")
+        print(
+            f"   - Install required models: ollama pull {DEFAULT_LLAMA_EMBEDDING_MODEL} && ollama pull {DEFAULT_LLAMA_GENERATION_MODEL}")
 
-        description = config["description"]
-        default = config["value"]
-        required = config["required"]
-        conditional = config.get("conditional")
-
-        # Skip conditional fields if they don't match the selected provider
-        if conditional and conditional != selected_provider:
-            continue
-
-        # For API keys, make them required if they match the selected provider
-        if conditional and conditional == selected_provider:
-            required = True
-
-        # Format prompt based on whether the field is required
-        prompt = f"\n{description}"
-        if required:
-            prompt += " (required)"
-        elif default:
-            prompt += f" (default: {default})"
-
-        # Special handling for Llama provider
-        if selected_provider == "llama" and key in ["GOOGLE_API_KEY", "OPENAI_API_KEY", "CLAUDE_API_KEY"]:
-            continue  # Skip API keys for Llama since it uses local Ollama
-
-        # Get user input
+        # Ask for URL first
         while True:
             try:
-                value = typer.prompt(
-                    prompt, default=default if not required else None, show_default=bool(default))
-                if value or not required:
+                url = typer.prompt(
+                    "\nOllama server URL (optional, default: localhost)",
+                    default="localhost",
+                    show_default=False
+                )
+                if url:
                     break
-                print("This field is required. Please provide a value.")
             except typer.Abort:
                 print("Configuration cancelled.")
                 raise typer.Exit()
 
-        if value:
-            env_values[key] = value
+        # Ask for Port second
+        while True:
+            try:
+                port = typer.prompt(
+                    "\nOllama server Port (optional, default: 11434)",
+                    default="11434",
+                    show_default=False
+                )
+                if port:
+                    try:
+                        # Validate port is a number
+                        int(port)
+                        break
+                    except ValueError:
+                        print("Port must be a valid number.")
+                        continue
+            except typer.Abort:
+                print("Configuration cancelled.")
+                raise typer.Exit()
 
-    # Special message for Llama users
-    if selected_provider == "llama":
-        print("\n📝 Note for Llama users:")
-        print("   - Make sure Ollama is installed and running (http://localhost:11434)")
-        print("   - Install required models: ollama pull llama3.2:1b && ollama pull llama3.2:3b")
-        print("   - No API key is required for local Llama models")
+        # Form complete URL:PORT
+        if url == "localhost":
+            url = "http://localhost"
+        elif not url.startswith(('http://', 'https://')):
+            url = f"http://{url}"
 
-    # Special message for Claude users
+        ollama_base_url = f"{url}:{port}"
+        env_values["OLLAMA_BASE_URL"] = ollama_base_url
+        print(f"\n✅ Ollama URL configured: {ollama_base_url}")
+
+        # Ask for Llama models right after URL configuration
+        print("\n🔧 Llama Model Configuration:")
+
+        # Llama embedding model
+        embedding_prompt = f"\nLlama embedding model (optional, default: {DEFAULT_LLAMA_EMBEDDING_MODEL})"
+        try:
+            embedding_model = typer.prompt(
+                embedding_prompt,
+                default=DEFAULT_LLAMA_EMBEDDING_MODEL,
+                show_default=False
+            )
+            env_values["LLAMA_EMBEDDING_MODEL"] = embedding_model
+        except typer.Abort:
+            print("Configuration cancelled.")
+            raise typer.Exit()
+
+        # Llama generation model
+        generation_prompt = f"\nLlama generation model (optional, default: {DEFAULT_LLAMA_GENERATION_MODEL})"
+        try:
+            generation_model = typer.prompt(
+                generation_prompt,
+                default=DEFAULT_LLAMA_GENERATION_MODEL,
+                show_default=False
+            )
+            env_values["LLAMA_GENERATION_MODEL"] = generation_model
+        except typer.Abort:
+            print("Configuration cancelled.")
+            raise typer.Exit()
+
+    # Handle Claude configuration separately
     if selected_provider == "claude":
-        print("\n📝 Note for Claude users:")
-        print(
-            "   - Claude uses OpenAI for embeddings, so you'll need an OpenAI API key too")
-        print("   - This is handled automatically in the background")
+        print("\n🔧 Claude Configuration:")
+
+        # Ask for Claude API key first
+        while True:
+            try:
+                claude_api_key = typer.prompt(
+                    "\nYour Anthropic Claude API key (required)",
+                    hide_input=True
+                )
+                if claude_api_key:
+                    env_values["CLAUDE_API_KEY"] = claude_api_key
+                    break
+                print("Claude API key is required. Please provide a value.")
+            except typer.Abort:
+                print("Configuration cancelled.")
+                raise typer.Exit()
+
+        # Ask for embedding provider
+        print("\n📝 Embedding Provider Selection:")
+        print("Claude needs an embedding provider for RAG functionality:")
+        print("  1. google (Google Gemini - free, suitable for most use cases)")
+        print("  2. openai (OpenAI - paid, high quality)")
+
+        while True:
+            try:
+                choice = typer.prompt(
+                    "\nSelect embedding provider (enter number)", type=int)
+                if choice == 1:
+                    embedding_provider = "google"
+                    env_values["CLAUDE_EMBEDDING_PROVIDER"] = embedding_provider
+                    break
+                elif choice == 2:
+                    embedding_provider = "openai"
+                    env_values["CLAUDE_EMBEDDING_PROVIDER"] = embedding_provider
+                    break
+                else:
+                    print("Invalid choice. Please enter 1 or 2.")
+            except (ValueError, typer.Abort):
+                print("Invalid input. Please enter a number.")
+
+        # Ask for embedding provider's API key
+        if embedding_provider == "google":
+            while True:
+                try:
+                    google_api_key = typer.prompt(
+                        "\nYour Google API key (required for Claude embeddings)",
+                        hide_input=True
+                    )
+                    if google_api_key:
+                        env_values["GOOGLE_API_KEY"] = google_api_key
+                        break
+                    print("Google API key is required. Please provide a value.")
+                except typer.Abort:
+                    print("Configuration cancelled.")
+                    raise typer.Exit()
+        elif embedding_provider == "openai":
+            while True:
+                try:
+                    openai_api_key = typer.prompt(
+                        "\nYour OpenAI API key (required for Claude embeddings)",
+                        hide_input=True
+                    )
+                    if openai_api_key:
+                        env_values["OPENAI_API_KEY"] = openai_api_key
+                        break
+                    print("OpenAI API key is required. Please provide a value.")
+                except typer.Abort:
+                    print("Configuration cancelled.")
+                    raise typer.Exit()
+
+        # Ask for Claude generation model
+        try:
+            claude_generation_model = typer.prompt(
+                f"\nClaude generation model (optional, default: {DEFAULT_CLAUDE_GENERATION_MODEL})",
+                default=DEFAULT_CLAUDE_GENERATION_MODEL,
+                show_default=False
+            )
+            env_values["CLAUDE_GENERATION_MODEL"] = claude_generation_model
+        except typer.Abort:
+            print("Configuration cancelled.")
+            raise typer.Exit()
+
+        print(f"\n✅ Claude configuration complete!")
+        print(f"   • Claude API key: configured")
+        print(f"   • Embedding provider: {embedding_provider}")
+        print(f"   • Generation model: {claude_generation_model}")
+
+    # Collect values for each setting (for non-Claude providers)
+    elif selected_provider != "claude":
+        for key, config in ENV_TEMPLATE.items():
+            if key == "LLM_PROVIDER":  # Already handled above
+                continue
+
+            description = config["description"]
+            default = config["value"]
+            required = config["required"]
+            conditional = config.get("conditional")
+
+            # Skip conditional fields if they don't match the selected provider
+            if conditional and conditional != selected_provider:
+                continue
+
+            # For API keys, make them required if they match the selected provider
+            # Keep model configurations optional (embedding/generation models)
+            if conditional and conditional == selected_provider and ("API_KEY" in key or "TOKEN" in key):
+                required = True
+
+            # Format prompt based on whether the field is required
+            prompt = f"\n{description}"
+            if required:
+                prompt += " (required)"
+            elif default:
+                prompt += f" (default: {default})"
+
+            # Special handling for Llama provider
+            if selected_provider == "llama" and key in ["GOOGLE_API_KEY", "OPENAI_API_KEY", "CLAUDE_API_KEY", "LLAMA_EMBEDDING_MODEL", "LLAMA_GENERATION_MODEL"]:
+                continue  # Skip API keys and model configs for Llama since they're handled separately
+
+            # Get user input
+            while True:
+                try:
+                    # Hide input for API keys to keep them secure
+                    hide_input = "API_KEY" in key or "TOKEN" in key
+                    value = typer.prompt(
+                        prompt, default=default if not required else None, show_default=bool(default), hide_input=hide_input)
+                    if value or not required:
+                        break
+                    print("This field is required. Please provide a value.")
+                except typer.Abort:
+                    print("Configuration cancelled.")
+                    raise typer.Exit()
+
+            if value:
+                env_values[key] = value
 
     # Try to read additional non-critical configs from .env.example
     additional_configs = {}
@@ -544,7 +782,9 @@ def configure():
                 key_lower = key.lower()
                 if (selected_provider == "gemini" and "gemini" in key_lower) or \
                    (selected_provider == "openai" and "openai" in key_lower) or \
-                   (selected_provider == "claude" and ("claude" in key_lower or "openai" in key_lower)) or \
+                   (selected_provider == "claude" and ("claude" in key_lower or
+                    (env_values.get("CLAUDE_EMBEDDING_PROVIDER") == "openai" and "openai" in key_lower) or
+                    (env_values.get("CLAUDE_EMBEDDING_PROVIDER") == "google" and "google" in key_lower))) or \
                    (selected_provider == "llama" and ("llama" in key_lower or "ollama" in key_lower)):
                     relevant_provider_configs[key] = value
 

@@ -10,14 +10,19 @@ import anthropic
 from pydantic import SecretStr
 
 from testteller.config import settings
-from testteller.constants import DEFAULT_CLAUDE_GENERATION_MODEL, DEFAULT_OPENAI_EMBEDDING_MODEL
+from testteller.constants import (
+    DEFAULT_CLAUDE_GENERATION_MODEL,
+    DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
+    DEFAULT_OPENAI_EMBEDDING_MODEL,
+    DEFAULT_GEMINI_EMBEDDING_MODEL
+)
 from testteller.utils.retry_helpers import api_retry_async, api_retry_sync
 
 logger = logging.getLogger(__name__)
 
 
 class ClaudeClient:
-    """Client for interacting with Anthropic's Claude API."""
+    """Client for interacting with Anthropic's Claude API with embedding support."""
 
     def __init__(self):
         """Initialize the Claude client with API key from settings or environment."""
@@ -25,29 +30,39 @@ class ClaudeClient:
         self.client = anthropic.Anthropic(api_key=self.api_key)
         self.async_client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
-        # Get model names from settings
+        # Get model names and embedding provider from settings
         try:
             if settings and settings.llm:
                 self.generation_model = settings.llm.__dict__.get(
                     'claude_generation_model', DEFAULT_CLAUDE_GENERATION_MODEL)
-                # Claude doesn't provide embeddings, so we'll use OpenAI for embeddings
-                self.embedding_model = settings.llm.__dict__.get(
-                    'openai_embedding_model', DEFAULT_OPENAI_EMBEDDING_MODEL)
+                self.embedding_provider = settings.llm.__dict__.get(
+                    'claude_embedding_provider', DEFAULT_CLAUDE_EMBEDDING_PROVIDER)
             else:
                 self.generation_model = DEFAULT_CLAUDE_GENERATION_MODEL
-                self.embedding_model = DEFAULT_OPENAI_EMBEDDING_MODEL
+                self.embedding_provider = DEFAULT_CLAUDE_EMBEDDING_PROVIDER
         except Exception as e:
             logger.warning(
                 "Could not get model names from settings: %s. Using defaults.", e)
             self.generation_model = DEFAULT_CLAUDE_GENERATION_MODEL
-            self.embedding_model = DEFAULT_OPENAI_EMBEDDING_MODEL
+            self.embedding_provider = DEFAULT_CLAUDE_EMBEDDING_PROVIDER
 
-        # Initialize OpenAI client for embeddings (Claude doesn't provide embeddings)
+        # Check environment variables as fallback
+        env_generation_model = os.getenv("CLAUDE_GENERATION_MODEL")
+        if env_generation_model:
+            self.generation_model = env_generation_model
+
+        env_embedding_provider = os.getenv("CLAUDE_EMBEDDING_PROVIDER")
+        if env_embedding_provider:
+            self.embedding_provider = env_embedding_provider
+
+        # Initialize embedding clients lazily
         self._openai_client = None
         self._openai_async_client = None
+        self._gemini_client = None
+        self._gemini_async_client = None
 
-        logger.info("Initialized Claude client with generation model '%s' and embedding model '%s' (via OpenAI)",
-                    self.generation_model, self.embedding_model)
+        logger.info("Initialized Claude client with generation model '%s' and embedding provider '%s'",
+                    self.generation_model, self.embedding_provider)
 
     def _get_api_key(self) -> str:
         """Get API key from settings or environment variables."""
@@ -75,7 +90,8 @@ class ClaudeClient:
             if not openai_api_key:
                 raise ValueError(
                     "OpenAI API key is required for embeddings when using Claude. "
-                    "Please set OPENAI_API_KEY in your .env file."
+                    "Please set OPENAI_API_KEY in your .env file.\n"
+                    "💡 Run 'testteller configure' to set up your API keys properly."
                 )
             self._openai_client = openai.OpenAI(api_key=openai_api_key)
         return self._openai_client
@@ -88,16 +104,101 @@ class ClaudeClient:
             if not openai_api_key:
                 raise ValueError(
                     "OpenAI API key is required for embeddings when using Claude. "
-                    "Please set OPENAI_API_KEY in your .env file."
+                    "Please set OPENAI_API_KEY in your .env file.\n"
+                    "💡 Run 'testteller configure' to set up your API keys properly."
                 )
             self._openai_async_client = openai.AsyncOpenAI(
                 api_key=openai_api_key)
         return self._openai_async_client
 
+    def _get_gemini_client(self):
+        """Lazy initialization of Gemini client for embeddings."""
+        if self._gemini_client is None:
+            import google.generativeai as genai
+            google_api_key = os.getenv("GOOGLE_API_KEY")
+            if not google_api_key:
+                raise ValueError(
+                    "Google API key is required for Gemini embeddings when using Claude. "
+                    "Please set GOOGLE_API_KEY in your .env file.\n"
+                    "💡 Run 'testteller configure' to set up your API keys properly."
+                )
+            genai.configure(api_key=google_api_key)
+            self._gemini_client = genai
+        return self._gemini_client
+
+    def _get_gemini_async_client(self):
+        """Lazy initialization of Gemini async client for embeddings."""
+        if self._gemini_async_client is None:
+            import google.generativeai as genai
+            google_api_key = os.getenv("GOOGLE_API_KEY")
+            if not google_api_key:
+                raise ValueError(
+                    "Google API key is required for Gemini embeddings when using Claude. "
+                    "Please set GOOGLE_API_KEY in your .env file.\n"
+                    "💡 Run 'testteller configure' to set up your API keys properly."
+                )
+            genai.configure(api_key=google_api_key)
+            self._gemini_async_client = genai
+        return self._gemini_async_client
+
+    async def _get_google_embedding_async(self, text: str) -> List[float]:
+        """Get embedding from Google Gemini API asynchronously."""
+        try:
+            gemini_client = self._get_gemini_async_client()
+            response = await gemini_client.embed_content_async(
+                model=DEFAULT_GEMINI_EMBEDDING_MODEL,
+                content=text,
+                task_type="retrieval_document"
+            )
+            return response['embedding']
+        except Exception as e:
+            logger.error("Error getting Google embedding: %s", e)
+            raise
+
+    def _get_google_embedding_sync(self, text: str) -> List[float]:
+        """Get embedding from Google Gemini API synchronously."""
+        try:
+            gemini_client = self._get_gemini_client()
+            response = gemini_client.embed_content(
+                model=DEFAULT_GEMINI_EMBEDDING_MODEL,
+                content=text,
+                task_type="retrieval_document"
+            )
+            return response['embedding']
+        except Exception as e:
+            logger.error("Error getting Google embedding: %s", e)
+            raise
+
+    async def _get_openai_embedding_async(self, text: str) -> List[float]:
+        """Get embedding from OpenAI API asynchronously."""
+        try:
+            openai_client = self._get_openai_async_client()
+            response = await openai_client.embeddings.create(
+                model=DEFAULT_OPENAI_EMBEDDING_MODEL,
+                input=text
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            logger.error("Error getting OpenAI embedding: %s", e)
+            raise
+
+    def _get_openai_embedding_sync(self, text: str) -> List[float]:
+        """Get embedding from OpenAI API synchronously."""
+        try:
+            openai_client = self._get_openai_client()
+            response = openai_client.embeddings.create(
+                model=DEFAULT_OPENAI_EMBEDDING_MODEL,
+                input=text
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            logger.error("Error getting OpenAI embedding: %s", e)
+            raise
+
     @api_retry_async
     async def get_embedding_async(self, text: str) -> List[float]:
         """
-        Get embeddings for text asynchronously using OpenAI (Claude doesn't provide embeddings).
+        Get embeddings for text asynchronously.
 
         Args:
             text: Text to get embeddings for
@@ -109,22 +210,31 @@ class ClaudeClient:
             logger.warning(
                 "Empty text provided for embedding, returning None.")
             return None
+
         try:
-            openai_client = self._get_openai_async_client()
-            response = await openai_client.embeddings.create(
-                model=self.embedding_model,
-                input=text
-            )
-            return response.data[0].embedding
+            if self.embedding_provider == "google":
+                return await self._get_google_embedding_async(text)
+            elif self.embedding_provider == "openai":
+                return await self._get_openai_embedding_async(text)
+            else:
+                logger.error(
+                    f"Unknown embedding provider: {self.embedding_provider}")
+                raise ValueError(
+                    f"Unknown embedding provider: {self.embedding_provider}")
         except Exception as e:
             logger.error(
-                "Error generating embedding for text: '%s...': %s", text[:50], e, exc_info=True)
-            return None
+                f"Embedding provider '{self.embedding_provider}' failed: {e}")
+            # Import here to avoid circular imports
+            from testteller.utils.exceptions import EmbeddingGenerationError
+            raise EmbeddingGenerationError(
+                f"Embedding provider '{self.embedding_provider}' failed: {e}. "
+                "Please check your API keys and network connection, or run 'testteller configure' to reconfigure."
+            ) from e
 
     @api_retry_sync
     def get_embedding_sync(self, text: str) -> List[float]:
         """
-        Get embeddings for text synchronously using OpenAI (Claude doesn't provide embeddings).
+        Get embeddings for text synchronously.
 
         Args:
             text: Text to get embeddings for
@@ -136,19 +246,37 @@ class ClaudeClient:
             logger.warning(
                 "Empty text provided for sync embedding, returning None.")
             return None
+
         try:
-            openai_client = self._get_openai_client()
-            response = openai_client.embeddings.create(
-                model=self.embedding_model,
-                input=text
-            )
-            return response.data[0].embedding
+            if self.embedding_provider == "google":
+                return self._get_google_embedding_sync(text)
+            elif self.embedding_provider == "openai":
+                return self._get_openai_embedding_sync(text)
+            else:
+                logger.error(
+                    f"Unknown embedding provider: {self.embedding_provider}")
+                raise ValueError(
+                    f"Unknown embedding provider: {self.embedding_provider}")
         except Exception as e:
             logger.error(
-                "Error generating sync embedding for text: '%s...': %s", text[:50], e, exc_info=True)
-            return None
+                f"Embedding provider '{self.embedding_provider}' failed: {e}")
+            # Import here to avoid circular imports
+            from testteller.utils.exceptions import EmbeddingGenerationError
+            raise EmbeddingGenerationError(
+                f"Embedding provider '{self.embedding_provider}' failed: {e}. "
+                "Please check your API keys and network connection, or run 'testteller configure' to reconfigure."
+            ) from e
 
     async def get_embeddings_async(self, texts: list[str]) -> list[list[float] | None]:
+        """
+        Get embeddings for multiple texts asynchronously.
+
+        Args:
+            texts: List of texts to get embeddings for
+
+        Returns:
+            List of embedding lists, with None for failed texts.
+        """
         tasks = [self.get_embedding_async(text_chunk) for text_chunk in texts]
         embeddings = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -162,12 +290,26 @@ class ClaudeClient:
                 processed_embeddings.append(emb_or_exc)
         return processed_embeddings
 
+    @api_retry_sync
     def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
-        embeddings = []
-        for text_chunk in texts:
-            emb = self.get_embedding_sync(text_chunk)
-            embeddings.append(emb)
-        return embeddings
+        """
+        Get embeddings for a list of texts synchronously.
+
+        Args:
+            texts: List of texts to get embeddings for
+
+        Returns:
+            List of embedding lists, with None for failed texts.
+        """
+        if not texts:
+            return []
+
+        # For batch processing, we'll process each text individually
+        results = []
+        for text in texts:
+            embedding = self.get_embedding_sync(text)
+            results.append(embedding)
+        return results
 
     @api_retry_async
     async def generate_text_async(self, prompt: str) -> str:

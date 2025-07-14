@@ -23,7 +23,7 @@ from .constants import (
     DEFAULT_LLM_PROVIDER, SUPPORTED_LLM_PROVIDERS,
     DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_GEMINI_GENERATION_MODEL,
     DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_GENERATION_MODEL,
-    DEFAULT_CLAUDE_GENERATION_MODEL,
+    DEFAULT_CLAUDE_GENERATION_MODEL, DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
     DEFAULT_LLAMA_EMBEDDING_MODEL, DEFAULT_LLAMA_GENERATION_MODEL, DEFAULT_OLLAMA_BASE_URL,
     DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP,
     DEFAULT_CODE_EXTENSIONS, DEFAULT_TEMP_CLONE_DIR,
@@ -35,7 +35,7 @@ from .constants import (
     ENV_CHROMA_DB_PERSIST_DIRECTORY, ENV_DEFAULT_COLLECTION_NAME,
     ENV_GEMINI_EMBEDDING_MODEL, ENV_GEMINI_GENERATION_MODEL,
     ENV_OPENAI_EMBEDDING_MODEL, ENV_OPENAI_GENERATION_MODEL,
-    ENV_CLAUDE_GENERATION_MODEL,
+    ENV_CLAUDE_GENERATION_MODEL, ENV_CLAUDE_EMBEDDING_PROVIDER,
     ENV_LLAMA_EMBEDDING_MODEL, ENV_LLAMA_GENERATION_MODEL, ENV_OLLAMA_BASE_URL,
     ENV_CHUNK_SIZE, ENV_CHUNK_OVERLAP,
     ENV_CODE_EXTENSIONS, ENV_TEMP_CLONE_DIR_BASE,
@@ -197,6 +197,12 @@ class LLMSettings(BaseSettings):
         description="Claude model for generation"
     )
 
+    claude_embedding_provider: str = Field(
+        default=DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
+        env=ENV_CLAUDE_EMBEDDING_PROVIDER,
+        description="Primary embedding provider for Claude (google, openai)"
+    )
+
     # Llama/Ollama settings
     llama_embedding_model: str = Field(
         default=DEFAULT_LLAMA_EMBEDDING_MODEL,
@@ -257,6 +263,17 @@ class ProcessingSettings(BaseSettings):
     class Config:
         extra = 'ignore'
         case_sensitive = False
+
+        @classmethod
+        def parse_env_var(cls, field_name: str, raw_val: str):
+            """Custom parser for environment variables."""
+            if field_name == 'code_extensions':
+                return raw_val  # Return raw string, let validator handle it
+            try:
+                import json
+                return json.loads(raw_val)
+            except:
+                return raw_val
 
     chunk_size: int = Field(
         default=DEFAULT_CHUNK_SIZE,
@@ -358,6 +375,17 @@ class CodeLoaderSettings(BaseSettings):
     class Config:
         case_sensitive = False
         extra = 'ignore'
+
+        @classmethod
+        def parse_env_var(cls, field_name: str, raw_val: str):
+            """Custom parser for environment variables."""
+            if field_name == 'code_extensions':
+                return raw_val  # Return raw string, let validator handle it
+            try:
+                import json
+                return json.loads(raw_val)
+            except:
+                return raw_val
 
     code_extensions: List[str] = Field(
         default=DEFAULT_CODE_EXTENSIONS,

@@ -22,7 +22,7 @@ class DocumentLoader:
             # os.path.exists is sync, consider aiofiles.os.path.exists if available and critical
             if not os.path.exists(file_path):
                 logger.error("File not found: %s", file_path)
-                return None
+                raise FileNotFoundError(f"File not found: {file_path}")
 
             if extension == ".pdf":
                 content = await asyncio.to_thread(DocumentLoader._load_pdf_sync, file_path)
@@ -35,12 +35,16 @@ class DocumentLoader:
             else:
                 logger.warning(
                     "Unsupported file type: %s for file %s", extension, file_path)
-                return None
+                raise ValueError(f"Unsupported file type: {extension}")
 
             char_count = len(content) if content else 0
             logger.info(
                 "Successfully loaded content from %s (%d characters).", file_path, char_count)
             return content
+        except (FileNotFoundError, ValueError) as e:
+            logger.error(
+                "Error loading document %s: %s", file_path, e, exc_info=True)
+            raise  # Re-raise specific exceptions
         except Exception as e:
             logger.error(
                 "Error loading document %s: %s", file_path, e, exc_info=True)

@@ -204,6 +204,7 @@ class PaymentService:
                        for keyword in ["payment", "security", "test"])
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     @pytest.mark.slow
     async def test_complete_journey_with_llama(self, llm_provider, mock_env_for_provider, cleanup_test_data):
         """Test complete user journey with Llama provider (local)."""
@@ -266,11 +267,17 @@ Simple Calculator Requirements:
             os.unlink(doc_path)
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     @pytest.mark.slow
     async def test_mixed_content_ingestion(self, mock_env_for_provider, cleanup_test_data):
         """Test ingesting mixed content types (documents and code)."""
         collection_name = "test_mixed_content"
-        agent = TestTellerAgent(collection_name=collection_name)
+
+        # Create LLM manager explicitly to avoid initialization errors
+        from testteller.llm.llm_manager import LLMManager
+        llm_manager = LLMManager(provider="llama")
+        agent = TestTellerAgent(
+            collection_name=collection_name, llm_manager=llm_manager)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
@@ -396,11 +403,17 @@ class ShoppingCart:
                 await agent.clear_ingested_data()
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     @pytest.mark.slow
     async def test_large_document_processing(self, mock_env_for_provider, cleanup_test_data):
         """Test processing large documents."""
         collection_name = "test_large_document"
-        agent = TestTellerAgent(collection_name=collection_name)
+
+        # Create LLM manager explicitly to avoid initialization errors
+        from testteller.llm.llm_manager import LLMManager
+        llm_manager = LLMManager(provider="llama")
+        agent = TestTellerAgent(
+            collection_name=collection_name, llm_manager=llm_manager)
 
         # Create a large document
         large_content = """

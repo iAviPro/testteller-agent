@@ -214,8 +214,7 @@ class ChromaDBManager:
     ) -> QueryResult:
         """Query similar documents from the collection."""
         try:
-            query_embedding = self.llm_manager.get_embedding_sync([query_text])[
-                0]
+            query_embedding = self.llm_manager.get_embedding_sync(query_text)
 
             # Handle case where embedding generation fails
             if query_embedding is None:

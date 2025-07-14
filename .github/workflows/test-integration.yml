@@ -56,10 +56,10 @@ jobs:
       run: |
         curl -fsSL https://ollama.ai/install.sh | sh
         ollama serve &
-        sleep 10
-        # Pull generic models for testing
-        ollama pull llama3.2
-        sleep 30
+        sleep 15
+        # Pull smaller models for testing to avoid timeout
+        ollama pull llama3.2:1b
+        sleep 45
     
     - name: Verify Ollama is running
       if: matrix.provider == 'llama'
@@ -111,13 +111,15 @@ jobs:
       env:
         LLM_PROVIDER: llama
         OLLAMA_BASE_URL: http://localhost:11434
+        LLAMA_EMBEDDING_MODEL: llama3.2:1b
+        LLAMA_GENERATION_MODEL: llama3.2:1b
         CHROMA_DB_HOST: localhost
         CHROMA_DB_PORT: 8000
         CHROMA_DB_USE_REMOTE: true
         LOG_LEVEL: INFO
         LOG_FORMAT: text
       run: |
-        pytest tests/integration/ -v --cov=testteller --cov-report=xml -m "integration and not slow" -k "llama or (not (gemini or openai or claude))"
+        pytest tests/integration/ -v --cov=testteller --cov-report=xml --timeout=600 -m "integration and slow" -k "llama or (not (gemini or openai or claude))"
     
     - name: Run CLI tests
       env:

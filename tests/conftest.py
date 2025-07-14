@@ -336,8 +336,8 @@ def provider_specific_env_vars(llm_provider: str) -> Dict[str, str]:
     elif llm_provider == "llama":
         base_vars.update({
             "OLLAMA_BASE_URL": "http://localhost:11434",
-            "LLAMA_EMBEDDING_MODEL": "llama2:3b",
-            "LLAMA_GENERATION_MODEL": "llama2:7b"
+            "LLAMA_EMBEDDING_MODEL": "llama3.2:1b",
+            "LLAMA_GENERATION_MODEL": "llama3.2:1b"
         })
 
     return base_vars

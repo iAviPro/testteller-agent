@@ -87,6 +87,38 @@ class LlamaClient:
                 "Error generating embedding for text: '%s...': %s", text[:50], e, exc_info=True)
             return None
 
+    @api_retry_sync
+    def get_embedding_sync(self, text: str) -> List[float]:
+        """
+        Get embeddings for text synchronously using Ollama.
+
+        Args:
+            text: Text to get embeddings for
+
+        Returns:
+            List of embedding values
+        """
+        if not text or not text.strip():
+            logger.warning(
+                "Empty text provided for embedding, returning None.")
+            return None
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    f"{self.base_url}/api/embeddings",
+                    json={
+                        "model": self.embedding_model,
+                        "prompt": text
+                    }
+                )
+                response.raise_for_status()
+                result = response.json()
+                return result["embedding"]
+        except Exception as e:
+            logger.error(
+                "Error generating embedding for text: '%s...': %s", text[:50], e, exc_info=True)
+            return None
+
     def get_embeddings_sync(self, texts: list[str]) -> list[list[float] | None]:
         """
         Get embeddings for a list of texts synchronously using Ollama.

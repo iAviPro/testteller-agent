@@ -19,11 +19,24 @@ TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generatio
 - **Flexible Model Selection**: Configure any supported model from each provider based on your needs and use case
 - **Automatic Fallbacks**: Built-in retry mechanisms and error handling for robust performance
 
-### Comprehensive Test Generation
-- **End-to-End Tests**: Complete user journey validation
-- **Integration Tests**: Component interaction and API contract verification
-- **Technical Tests**: System limitations, edge cases, and performance validation
-- **Mocked System Tests**: Isolated component testing with mocked dependencies
+### Comprehensive and Strategic Test Generation
+
+TestTeller goes beyond simple test case generation. It acts as a virtual QA architect, analyzing your provided documents and code to create a strategic and comprehensive test suite. The agent intelligently categorizes your context (product requirements, technical designs, code) to generate tests with the appropriate focus and depth.
+
+-   **End-to-End (E2E) Tests**: Generates detailed test cases designed to validate complete user journeys across the entire stack. These tests provide the steps to ensure that the integrated system functions correctly from the user's perspective, covering everything from UI interactions to backend data processing and event propagation.
+
+-   **Integration Tests**: Creates test scenarios to verify the contracts and interactions between components. Whether it's a Frontend-Backend connection, a service-to-service API call, or an event-driven flow, these generated tests help ensure that your system's components can communicate and cooperate as expected.
+
+-   **Technical Tests**: Goes beyond standard functional testing to generate scenarios that probe system limitations, resilience, and security. TestTeller generates test ideas for:
+    -   **Performance**: Stress, load, and soak testing hypotheses.
+    -   **Resilience**: Retry policies, timeouts, and graceful degradation.
+    -   **Security**: Common vulnerabilities and access control issues.
+    -   **Edge Cases**: Concurrency, race conditions, and unexpected inputs.
+
+-   **Mocked System Tests**: Produces test cases that enable service and component-level testing by outlining tests for isolated services or functions. The generated tests define clear mock behaviors for external dependencies, allowing a developer or QA engineer to validate a component's logic in isolation.
+
+#### Intelligent Test Strategy
+TestTeller doesn't just create tests; it also structures them actionably. It also ensures a healthy mix of happy path, negative, and edge-case scenarios to help you build a truly resilient application.
 
 ### Document and Code Processing
 - **Multi-format Document Support**: PDF, DOCX, XLSX, MD, TXT files

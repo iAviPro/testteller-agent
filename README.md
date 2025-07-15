@@ -44,7 +44,7 @@ TestTeller doesn't just create tests; it also structures them actionably. It als
 - **Multiple Programming Languages**: Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP
 - **Advanced RAG Pipeline**: Context-aware prompt engineering and streaming responses
 
-
+------------------
 
 ## Prerequisites
 
@@ -56,6 +56,8 @@ TestTeller doesn't just create tests; it also structures them actionably. It als
   - Anthropic Claude: [Get API key](https://console.anthropic.com/)
   - Ollama: [Install locally](https://ollama.ai/)
 - GitHub Personal Access Token (optional, for private repositories)
+
+------------------
 
 ## Installation
 
@@ -82,6 +84,8 @@ cp .env.example .env
 # Edit .env with your API keys
 docker-compose up -d
 ```
+
+------------------
 
 ## Quick Start
 
@@ -127,6 +131,8 @@ testteller ingest-code ./local/code/folder --collection-name my_collection
 ```bash
 testteller generate "Create API integration tests for user authentication" --collection-name my_collection --output-file tests.md
 ```
+
+--------------------
 
 ## Configuration
 
@@ -191,6 +197,8 @@ The application uses a `.env` file for configuration. Run `testteller configure`
   - Complete URL is automatically formed as `http://URL:PORT` and saved as `OLLAMA_BASE_URL` environment variable
 - **GitHub**: Only set `GITHUB_TOKEN` if accessing private repositories
 
+------------------------
+
 ## Available Commands
 
 ### Configuration
@@ -236,6 +244,8 @@ testteller status --collection-name my_collection
 # Clear collection data
 testteller clear-data --collection-name my_collection --force
 ```
+
+------------------------
 
 ## Docker Usage
 
@@ -286,6 +296,8 @@ docker-compose down
 docker-compose down -v
 ```
 
+------------------------
+
 ## Testing
 
 TestTeller includes a comprehensive test suite for all supported LLM providers.
@@ -307,6 +319,8 @@ python tests/test_runner.py
 ```
 
 For detailed testing documentation, see [TESTING.md](TESTING.md).
+
+-----------------------
 
 ## Troubleshooting
 
@@ -349,6 +363,8 @@ docker-compose exec ollama ollama list
 sudo chown -R 1000:1000 ./chroma_data
 sudo chmod -R 755 ./temp_cloned_repos
 ```
+
+------------------------
 
 ## License
 

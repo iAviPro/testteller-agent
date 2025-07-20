@@ -10,6 +10,5 @@ include testteller/automator_agent/prompts.py
 recursive-include testteller/core *.py
 recursive-include testteller/generator_agent *.py
 recursive-include testteller/automator_agent *.py
-recursive-include testwriter *.py
 recursive-include sample-outputs *.md *.py *.js *.java *.json *.xml *.txt
 exclude testteller/import_constants.py

@@ -1,13 +1,19 @@
-# TestTeller RAG Agent
+# TestTeller Agent
 
 [![PyPI](https://img.shields.io/pypi/v/testteller.svg)](https://pypi.org/project/testteller/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
-[![Tests](https://github.com/iAviPro/testteller-rag-agent/actions/workflows/test-unit.yml/badge.svg)](https://github.com/iAviPro/testteller-rag-agent/actions/workflows/test-unit.yml)
+[![Tests](https://github.com/iAviPro/testteller-agent/actions/workflows/test-unit.yml/badge.svg)](https://github.com/iAviPro/testteller-agent/actions/workflows/test-unit.yml)
 [![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases. It supports multiple LLM providers including Google Gemini, OpenAI, Anthropic Claude, and local Llama models via Ollama. The agent uses ChromaDB as a vector store and can process various input sources, including PRD documentation, API contracts, technical design documents (HLD/LLD), and code from GitHub repositories or local folders.
+**TestTeller** is a modular AI-powered test automation platform featuring:
+
+- **🤖 Generator Agent**: Intelligent test case generation using advanced RAG technology
+- **⚡ Automator Agent**: Automated code generation for multiple programming languages and frameworks  
+- **🔧 Core Engine**: Shared functionality with support for multiple LLM providers
+
+The platform analyzes your documentation and codebase to generate comprehensive test strategies, then converts those test cases into executable automation code.
 
 ## Features
 
@@ -38,11 +44,52 @@ TestTeller goes beyond simple test case generation. It acts as a virtual QA arch
 #### Intelligent Test Strategy
 TestTeller doesn't just create tests; it also structures them actionably. It also ensures a healthy mix of happy path, negative, and edge-case scenarios to help you build a truly resilient application.
 
-### Document and Code Processing
-- **Multi-format Document Support**: PDF, DOCX, XLSX, MD, TXT files
-- **Code Analysis**: GitHub repositories (public/private) and local codebases
-- **Multiple Programming Languages**: Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP
-- **Advanced RAG Pipeline**: Context-aware prompt engineering and streaming responses
+### Advanced Document Processing & Multi-Format Support
+- **Universal Document Parser**: Unified parsing engine supporting **PDF, DOCX, XLSX, MD, TXT** files
+- **Enhanced RAG Ingestion**: Smart chunking with metadata extraction for improved retrieval accuracy
+- **Document Intelligence**: Automatic document type detection (test cases, requirements, API docs, specifications)
+- **Semantic Chunking**: Context-aware text splitting that preserves document structure and meaning
+- **Batch Processing**: Concurrent processing of multiple documents with configurable performance settings
+- **Code Analysis**: GitHub repositories (public/private) and local codebases across 10+ programming languages
+- **Advanced RAG Pipeline**: Context-aware prompt engineering with rich metadata for better generation quality
+
+### TestWriter: Multi-Language Test Automation
+- **Four Language Support**: Generate executable automation code in **Python, JavaScript, TypeScript, Java**
+- **20+ Framework Support**: 
+  - **Python**: pytest, unittest, Playwright, Cucumber
+  - **JavaScript/TypeScript**: Jest, Mocha, Playwright, Cypress, Cucumber
+  - **Java**: JUnit5, JUnit4, TestNG, Playwright, Karate, Cucumber
+- **Multi-Format Input**: Parse test cases from **any supported document format** (not just markdown)
+- **AI-Enhanced Generation**: Optional LLM-powered test code enhancement with framework-specific optimizations
+- **Interactive Workflows**: Choose specific test cases to automate with rich document preview
+- **Production-Ready Output**: Generated tests include complete setup, configuration, and dependency management
+
+## 🏗️ Modular Architecture
+
+TestTeller is built with a clean, modular architecture:
+
+```
+testteller/
+├── core/                    # 🔧 Shared functionality
+│   ├── llm/                # Multi-LLM provider support
+│   ├── config/             # Configuration system
+│   ├── utils/              # Utility functions
+│   ├── vector_store/       # ChromaDB integration
+│   └── data_ingestion/     # Document processing
+├── generator_agent/         # 🤖 Test case generation
+│   ├── agent/              # RAG-powered generation
+│   └── prompts.py          # Generation prompts
+└── automator_agent/         # ⚡ Code generation
+    ├── generators/         # Language-specific generators
+    ├── parser/             # Test case parsing
+    └── templates/          # Code templates
+```
+
+**Benefits:**
+- **Modular Design**: Use components independently or together
+- **Clean Separation**: Generator and automator agents work autonomously
+- **Extensible**: Easy to add new LLM providers, languages, or frameworks
+- **Production-Ready**: Follows software engineering best practices
 
 ------------------
 
@@ -70,16 +117,16 @@ pip install testteller
 ### Option 2: Install from Source
 
 ```bash
-git clone https://github.com/iAviPro/testteller-rag-agent.git
-cd testteller-rag-agent
+git clone https://github.com/iAviPro/testteller-agent.git
+cd testteller-agent
 pip install -e .
 ```
 
 ### Option 3: Docker Installation
 
 ```bash
-git clone https://github.com/iAviPro/testteller-rag-agent.git
-cd testteller-rag-agent
+git clone https://github.com/iAviPro/testteller-agent.git
+cd testteller-agent
 cp .env.example .env
 # Edit .env with your API keys
 docker-compose up -d
@@ -115,26 +162,121 @@ TestTeller supports connecting to Ollama running on Docker or remote servers. Du
 
 The configuration wizard will ask for URL and Port separately, then automatically form the complete URL:PORT combination.
 
-3. **Ingest Documentation or Code**
+3. **Ingest Documentation or Code (Enhanced Multi-Format Support)**
 ```bash
-# Ingest documents
-testteller ingest-docs path/to/document.pdf --collection-name my_collection
+# Enhanced document ingestion with smart chunking (NEW!)
+testteller ingest-docs requirements.docx -e -s 1200  # Enhanced with chunk size 1200
+testteller ingest-docs test-scenarios.xlsx -e        # Enhanced parsing enabled
+testteller ingest-docs specification.pdf -s 800     # Custom chunk size
 
-# Ingest code from GitHub
-testteller ingest-code https://github.com/owner/repo.git --collection-name my_collection
+# Batch ingest directory with mixed formats (shorthand parameters)
+testteller ingest-docs ./docs/ -e -s 1000 -c my_docs
 
-# Ingest local code
-testteller ingest-code ./local/code/folder --collection-name my_collection
+# Legacy format support with shorthand
+testteller ingest-docs documentation.md -c my_collection
+testteller ingest-docs notes.txt -c my_collection
+
+# Code ingestion with shorthand parameters
+testteller ingest-code https://github.com/owner/repo.git -c my_collection
+testteller ingest-code ./local/code/folder -c my_collection -nc  # No cleanup
 ```
 
 4. **Generate Test Cases**
 ```bash
-testteller generate "Create API integration tests for user authentication" --collection-name my_collection --output-file tests.md
+# Generate with shorthand parameters
+testteller generate "Create API integration tests for user authentication" -c my_collection -o tests.md
+
+# Generate with custom retrieval count using shorthand
+testteller generate "Create technical tests" -c my_collection -n 10 -o technical_tests.md
+```
+
+5. **Generate Test Automation Code (Multi-Format Support)**
+```bash
+# NEW: Multi-format automation support with shorthand parameters
+testteller automate test-cases.docx -i             # Interactive mode
+testteller automate requirements.xlsx -l python -F pytest -o ./tests
+testteller automate test-scenarios.pdf -l javascript -F jest -o ./js_tests
+
+# Enhanced automation with AI optimization (shorthand)
+testteller automate tests.md -l python -F playwright -E -p gemini
+
+# Comprehensive example with all shorthand options
+testteller automate tests.md -l typescript -F jest -o ./ts_tests -i -E -p openai
+
+# Quick automation with minimal options
+testteller automate tests.md -l java -F junit5
 ```
 
 --------------------
 
 ## Configuration
+
+### Enhanced Configuration Wizard
+
+TestTeller now features a modular configuration system with multiple setup options:
+
+```bash
+# Full interactive configuration (recommended for first-time setup)
+testteller configure
+
+# Quick provider-specific setup (shorthand available)
+testteller configure -p gemini    # Using shorthand
+testteller configure -p openai
+testteller configure -p claude
+testteller configure -p llama
+
+# TestWriter automation setup only (updated command)
+testteller configure --testwriter  # or use shorthand: -tw
+testteller configure -tw          # Shorthand for TestWriter-only setup
+```
+
+The configuration wizard now includes:
+- **Unified Configuration Flow**: Single wizard for both test generation and automation setup
+- **User Choice for TestWriter**: Ask users if they want to configure automation after LLM setup
+- **Intelligent Provider Detection**: Automatically detects optimal LLM provider settings
+- **TestWriter (Automation) Wizard**: Dedicated setup for test automation preferences
+- **Configuration Validation**: Real-time validation with helpful error messages and suggestions
+- **Enhanced UI**: Better progress tracking and user experience
+- **Backward Compatibility**: All existing configurations continue to work
+
+### CLI Shorthand Parameters
+
+TestTeller now supports convenient shorthand parameters for faster command-line usage:
+
+| Command | Long Form | Shorthand | Description |
+|---------|-----------|-----------|-------------|
+| **Global** | `--version` | `-v` | Show version |
+| **Configure** | `--provider` | `-p` | Quick provider setup |
+| **Configure** | `--testwriter` | `-tw` | TestWriter-only setup |
+| **Ingest-Docs** | `--collection-name` | `-c` | Collection name |
+| **Ingest-Docs** | `--enhanced` | `-e` | Enhanced parsing |
+| **Ingest-Docs** | `--chunk-size` | `-s` | Chunk size |
+| **Ingest-Code** | `--collection-name` | `-c` | Collection name |
+| **Ingest-Code** | `--no-cleanup-github` | `-nc` | Keep cloned repo |
+| **Generate** | `--collection-name` | `-c` | Collection name |
+| **Generate** | `--num-retrieved` | `-n` | Number of docs |
+| **Generate** | `--output-file` | `-o` | Output file |
+| **Automate** | `--language` | `-l` | Programming language |
+| **Automate** | `--framework` | `-F` | Test framework |
+| **Automate** | `--output-dir` | `-o` | Output directory |
+| **Automate** | `--interactive` | `-i` | Interactive mode |
+| **Automate** | `--enhance` | `-E` | LLM enhancement |
+| **Automate** | `--llm-provider` | `-p` | LLM provider |
+| **Status** | `--collection-name` | `-c` | Collection name |
+| **Clear-Data** | `--collection-name` | `-c` | Collection name |
+| **Clear-Data** | `--force` | `-f` | Force without prompt |
+
+**Examples:**
+```bash
+# Quick automation with all shorthand parameters
+testteller automate tests.md -l python -F pytest -o ./tests -E -p gemini
+
+# Fast document ingestion
+testteller ingest-docs docs/ -c my_docs -e -s 1500
+
+# Quick test generation
+testteller generate "API tests" -c my_docs -n 10 -o api_tests.md
+```
 
 ### Environment Variables
 
@@ -215,33 +357,71 @@ testteller --help
 
 ### Document and Code Ingestion
 ```bash
-# Ingest documents
-testteller ingest-docs path/to/document.pdf --collection-name my_collection
-testteller ingest-docs path/to/docs/directory --collection-name my_collection
+# Ingest documents (with shorthand parameters)
+testteller ingest-docs path/to/document.pdf -c my_collection
+testteller ingest-docs path/to/docs/directory -c my_collection -e -s 1500
 
-# Ingest code from GitHub or local folder
-testteller ingest-code https://github.com/owner/repo.git --collection-name my_collection
-testteller ingest-code ./local/code/folder --collection-name my_collection --no-cleanup-github
+# Ingest code from GitHub or local folder (with shorthand)
+testteller ingest-code https://github.com/owner/repo.git -c my_collection
+testteller ingest-code ./local/code/folder -c my_collection -nc  # No cleanup
+
+# Traditional long-form parameters (still supported)
+testteller ingest-docs document.pdf --collection-name my_collection --enhanced --chunk-size 1500
+testteller ingest-code repo.git --collection-name my_collection --no-cleanup-github
 ```
 
 ### Test Case Generation
 ```bash
-# Generate test cases
-testteller generate "Create API integration tests for user authentication" --collection-name my_collection
+# Generate test cases (with shorthand parameters)
+testteller generate "Create API integration tests for user authentication" -c my_collection
 
-# Generate with custom output file
-testteller generate "Create technical tests for login flow" --collection-name my_collection --output-file tests.md
+# Generate with custom output file (shorthand)
+testteller generate "Create technical tests for login flow" -c my_collection -o tests.md
 
-# Generate with specific number of retrieved documents
-testteller generate "Create more than 10 end-to-end tests" --collection-name my_collection --num-retrieved 10
+# Generate with specific number of retrieved documents (shorthand)
+testteller generate "Create more than 10 end-to-end tests" -c my_collection -n 10
+
+# Traditional long-form parameters (still supported)
+testteller generate "Create tests" --collection-name my_collection --output-file tests.md --num-retrieved 10
+```
+
+### TestWriter: Multi-Format Test Automation Generation
+```bash
+# NEW: Multi-format document support (with shorthand parameters)
+testteller automate test-cases.docx -i                           # Interactive mode
+testteller automate requirements.xlsx -l python -F pytest -o ./tests
+testteller automate specification.pdf -l typescript -F jest -o ./ts_tests
+testteller automate test-matrix.xlsx -l java -F junit5 -o ./java_tests
+
+# AI-enhanced code generation with shorthand (NEW!)
+testteller automate tests.md -l python -F playwright -E          # Enhanced with default LLM
+testteller automate api-tests.docx -l javascript -F cypress -E -p openai  # Enhanced with OpenAI
+
+# Quick automation with minimal parameters
+testteller automate tests.md -l python -F pytest                 # Basic automation
+testteller automate tests.md -l javascript -F jest -i            # Interactive selection
+
+# Comprehensive example with all shorthand options
+testteller automate tests.md -l typescript -F playwright -o ./e2e -i -E -p gemini
+
+# Traditional long-form parameters (still supported)
+testteller automate tests.md --language python --framework pytest --output-dir ./tests
+testteller automate tests.md --interactive --enhance --llm-provider claude
+
+# Interactive mode with document preview (recommended)
+testteller automate any-format-document.* -i
 ```
 
 ### Data Management
 ```bash
-# Check collection status
-testteller status --collection-name my_collection
+# Check collection status (with shorthand)
+testteller status -c my_collection
 
-# Clear collection data
+# Clear collection data (with shorthand)
+testteller clear-data -c my_collection -f    # Force clear without confirmation
+
+# Traditional long-form parameters (still supported)
+testteller status --collection-name my_collection
 testteller clear-data --collection-name my_collection --force
 ```
 
@@ -253,8 +433,8 @@ testteller clear-data --collection-name my_collection --force
 
 1. **Setup**
 ```bash
-git clone https://github.com/iAviPro/testteller-rag-agent.git
-cd testteller-rag-agent
+git clone https://github.com/iAviPro/testteller-agent.git
+cd testteller-agent
 cp .env.example .env
 # Edit .env with your API keys and preferred LLM provider
 ```
@@ -276,11 +456,16 @@ docker-compose up -d app
 
 3. **Run Commands**
 ```bash
-# All commands use the same format with docker-compose exec
+# All commands use the same format with docker-compose exec (with shorthand parameters)
 docker-compose exec app testteller configure
+docker-compose exec app testteller ingest-docs /path/to/doc.pdf -c my_collection -e
+docker-compose exec app testteller generate "Create API tests" -c my_collection -o tests.md
+docker-compose exec app testteller automate tests.md -l python -F pytest -o ./tests
+docker-compose exec app testteller status -c my_collection
+
+# Traditional long-form parameters (still supported)
 docker-compose exec app testteller ingest-docs /path/to/doc.pdf --collection-name my_collection
 docker-compose exec app testteller generate "Create API tests" --collection-name my_collection
-docker-compose exec app testteller status --collection-name my_collection
 ```
 
 ### Docker Management

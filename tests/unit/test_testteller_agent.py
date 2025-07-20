@@ -5,7 +5,7 @@ import pytest
 import os
 from pathlib import Path
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from testteller.agent.testteller_agent import TestTellerAgent
+from testteller.generator_agent.agent.testteller_agent import TestTellerAgent
 
 
 class TestTestTellerAgent:
@@ -373,5 +373,5 @@ class TestTestTellerAgent:
     @pytest.mark.unit
     def test_backward_compatibility_alias(self):
         """Test that TestTellerRagAgent alias exists for backward compatibility."""
-        from testteller.agent.testteller_agent import TestTellerRagAgent
+        from testteller.generator_agent.agent.testteller_agent import TestTellerRagAgent
         assert TestTellerRagAgent == TestTellerAgent

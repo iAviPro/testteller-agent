@@ -7,8 +7,8 @@ import tempfile
 import asyncio
 from pathlib import Path
 from unittest.mock import patch, AsyncMock, Mock
-from testteller.agent.testteller_agent import TestTellerAgent
-from testteller.llm.llm_manager import LLMManager
+from testteller.generator_agent.agent.testteller_agent import TestTellerAgent
+from testteller.core.llm.llm_manager import LLMManager
 
 
 class TestUserJourney:
@@ -229,7 +229,7 @@ class PaymentService:
         collection_name = f"test_journey_{llm_provider}"
 
         # Create LLM manager explicitly with llama provider to avoid initialization errors
-        from testteller.llm.llm_manager import LLMManager
+        from testteller.core.llm.llm_manager import LLMManager
         llm_manager = LLMManager(provider="llama")
         agent = TestTellerAgent(
             collection_name=collection_name, llm_manager=llm_manager)
@@ -274,7 +274,7 @@ Simple Calculator Requirements:
         collection_name = "test_mixed_content"
 
         # Create LLM manager explicitly to avoid initialization errors
-        from testteller.llm.llm_manager import LLMManager
+        from testteller.core.llm.llm_manager import LLMManager
         llm_manager = LLMManager(provider="llama")
         agent = TestTellerAgent(
             collection_name=collection_name, llm_manager=llm_manager)
@@ -342,7 +342,7 @@ class ShoppingCart:
                 mock_openai.return_value = mock_openai_instance
 
                 # Test Gemini - create LLM manager explicitly to avoid settings caching issues
-                from testteller.llm.llm_manager import LLMManager
+                from testteller.core.llm.llm_manager import LLMManager
                 llm_manager_gemini = LLMManager(provider="gemini")
                 agent_gemini = TestTellerAgent(
                     collection_name=collection_name, llm_manager=llm_manager_gemini)
@@ -410,7 +410,7 @@ class ShoppingCart:
         collection_name = "test_large_document"
 
         # Create LLM manager explicitly to avoid initialization errors
-        from testteller.llm.llm_manager import LLMManager
+        from testteller.core.llm.llm_manager import LLMManager
         llm_manager = LLMManager(provider="llama")
         agent = TestTellerAgent(
             collection_name=collection_name, llm_manager=llm_manager)

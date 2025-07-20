@@ -12,10 +12,10 @@ from pydantic.v1 import BaseSettings, Field, validator
 try:
     from ._version import __version__ as APP_VERSION
 except ImportError:
-    from .constants import FALLBACK_VERSION
+    from testteller.core.constants import FALLBACK_VERSION
     APP_VERSION = FALLBACK_VERSION  # Use fallback from constants
 
-from .constants import (
+from testteller.core.constants import (
     APP_NAME,
     DEFAULT_LOG_LEVEL, DEFAULT_LOG_FORMAT,
     DEFAULT_CHROMA_HOST, DEFAULT_CHROMA_PORT, DEFAULT_CHROMA_USE_REMOTE,

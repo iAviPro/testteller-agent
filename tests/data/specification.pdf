@@ -1,0 +1,185 @@
+# API Specification Document (Mock PDF Content)
+
+## Authentication API v1.0
+
+### Overview
+This document describes the authentication API endpoints for the user management system.
+
+### Base URL
+https://api.example.com/v1
+
+### Authentication
+All endpoints except `/auth/login` and `/auth/register` require a valid JWT token in the Authorization header:
+```
+Authorization: Bearer <jwt_token>
+```
+
+### Endpoints
+
+#### POST /auth/register
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "12345",
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "status": "pending_verification",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+**Error Responses:**
+- 400 Bad Request: Invalid input data
+- 409 Conflict: Email already exists
+
+#### POST /auth/login
+Authenticate user and return access token.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "12345",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe"
+  },
+  "expiresIn": 3600
+}
+```
+
+**Error Responses:**
+- 401 Unauthorized: Invalid credentials
+- 423 Locked: Account locked due to failed attempts
+
+#### GET /auth/profile
+Get current user profile information.
+
+**Response (200 OK):**
+```json
+{
+  "id": "12345",
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "profilePicture": "https://cdn.example.com/profiles/12345.jpg",
+  "lastLogin": "2024-01-15T09:15:00Z",
+  "createdAt": "2024-01-10T08:00:00Z"
+}
+```
+
+#### PUT /auth/profile
+Update user profile information.
+
+**Request Body:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "phoneNumber": "+1234567890"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "12345",
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Smith",
+  "phoneNumber": "+1234567890",
+  "updatedAt": "2024-01-15T10:45:00Z"
+}
+```
+
+#### POST /auth/logout
+Invalidate current session token.
+
+**Response (204 No Content)**
+
+#### POST /auth/refresh
+Refresh expired access token.
+
+**Request Body:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 3600
+}
+```
+
+### Error Handling
+
+#### Common Error Response Format
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": [
+      {
+        "field": "email",
+        "message": "Invalid email format"
+      }
+    ]
+  }
+}
+```
+
+#### HTTP Status Codes
+- 200 OK: Request successful
+- 201 Created: Resource created successfully
+- 204 No Content: Request successful, no content returned
+- 400 Bad Request: Invalid request data
+- 401 Unauthorized: Authentication required
+- 403 Forbidden: Insufficient permissions
+- 404 Not Found: Resource not found
+- 409 Conflict: Resource already exists
+- 423 Locked: Account temporarily locked
+- 429 Too Many Requests: Rate limit exceeded
+- 500 Internal Server Error: Server error
+
+### Rate Limiting
+- Authentication endpoints: 5 requests per minute per IP
+- Profile endpoints: 60 requests per minute per user
+- Rate limit headers included in all responses:
+  - X-RateLimit-Limit: Maximum requests allowed
+  - X-RateLimit-Remaining: Requests remaining in current window
+  - X-RateLimit-Reset: Unix timestamp when limit resets
+
+### Security Considerations
+- All requests must use HTTPS
+- JWT tokens expire after 1 hour
+- Refresh tokens expire after 30 days
+- Account lockout after 5 failed login attempts
+- Password reset tokens expire after 15 minutes

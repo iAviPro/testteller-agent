@@ -10,9 +10,9 @@ from unittest.mock import Mock, patch
 from typing import Generator, Dict, Any, Optional
 
 import asyncio
-from testteller.agent.testteller_agent import TestTellerAgent
-from testteller.llm.llm_manager import LLMManager
-from testteller.vector_store.chromadb_manager import ChromaDBManager
+from testteller.generator_agent.agent.testteller_agent import TestTellerAgent
+from testteller.core.llm.llm_manager import LLMManager
+from testteller.core.vector_store.chromadb_manager import ChromaDBManager
 from testteller.config import settings
 
 
@@ -516,6 +516,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "requires_api_key: marks tests that require real API keys"
     )
+    config.addinivalue_line(
+        "markers", "automation: marks tests for automation functionality"
+    )
 
 
 def pytest_collection_modifyitems(config, items):
@@ -528,6 +531,8 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.unit)
         elif "test_cli" in item.fspath.basename:
             item.add_marker(pytest.mark.cli)
+        elif "test_automation" in item.fspath.basename or "test_parser" in item.fspath.basename or "test_generators" in item.fspath.basename:
+            item.add_marker(pytest.mark.automation)
 
         # Add slow marker for tests that might be slow
         if any(keyword in item.name.lower() for keyword in ["generate", "ingest", "llm"]):

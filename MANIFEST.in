@@ -1,7 +1,15 @@
 # MANIFEST.in
 include LICENSE
 include README.md
+include NOTICE
 include requirements.txt
 include .env.example
 include .env.docker.example
-include testteller/prompts.py
+include testteller/generator_agent/prompts.py
+include testteller/automator_agent/prompts.py
+recursive-include testteller/core *.py
+recursive-include testteller/generator_agent *.py
+recursive-include testteller/automator_agent *.py
+recursive-include testwriter *.py
+recursive-include sample-outputs *.md *.py *.js *.java *.json *.xml *.txt
+exclude testteller/import_constants.py

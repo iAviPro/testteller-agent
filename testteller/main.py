@@ -5,20 +5,28 @@ import os
 import typer
 from typing_extensions import Annotated
 
-from .agent import TestTellerRagAgent
+from .generator_agent.agent import TestTellerRagAgent
 from .config import settings
-from .constants import (
-    DEFAULT_LOG_LEVEL, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_GEMINI_GENERATION_MODEL,
-    DEFAULT_OUTPUT_FILE, DEFAULT_COLLECTION_NAME, DEFAULT_LLM_PROVIDER, SUPPORTED_LLM_PROVIDERS,
-    DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_GENERATION_MODEL,
-    DEFAULT_CLAUDE_GENERATION_MODEL, DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
-    DEFAULT_LLAMA_EMBEDDING_MODEL, DEFAULT_LLAMA_GENERATION_MODEL,
+from .core.constants import (
+    DEFAULT_OUTPUT_FILE, DEFAULT_COLLECTION_NAME, SUPPORTED_LLM_PROVIDERS,
     DEFAULT_CHROMA_PERSIST_DIRECTORY
 )
-from .utils.helpers import setup_logging
-from .utils.loader import with_spinner
+from pathlib import Path
+# Import config modules inside function to avoid circular imports
+from .core.utils.helpers import setup_logging
+from .core.utils.loader import with_spinner
 from ._version import __version__
-from .utils.exceptions import EmbeddingGenerationError
+from .core.utils.exceptions import EmbeddingGenerationError
+
+# Import automation command functionality
+try:
+    from testteller.automator_agent.parser import MarkdownTestCaseParser
+    from testteller.automator_agent.generators import PythonTestGenerator, JavaScriptTestGenerator, JavaTestGenerator, TypeScriptTestGenerator
+    from testteller.core.data_ingestion.unified_document_parser import UnifiedDocumentParser, DocumentType
+    from testteller.core.constants import SUPPORTED_LANGUAGES, SUPPORTED_FRAMEWORKS
+    HAS_TESTWRITER = True
+except ImportError:
+    HAS_TESTWRITER = False
 
 
 setup_logging()
@@ -28,114 +36,14 @@ logger = logging.getLogger(__name__)
 def version_callback(value: bool):
     """Callback for version option."""
     if value:
-        print(f"TestTeller RAG Agent version: {__version__}")
+        print(f"TestTeller Agent version: {__version__}")
         raise typer.Exit()
 
 
 app = typer.Typer(
-    help="TestTeller: RAG Agent for AI Test Case Generation. Configure the agent via .env file.")
+    help="TestTeller: Complete AI Test Agent for Generation and Automation. Configure the agent via .env file.",
+    context_settings={"help_option_names": ["--help", "-h"]})
 
-# Default .env template with descriptions
-ENV_TEMPLATE = {
-    "LLM_PROVIDER": {
-        "value": DEFAULT_LLM_PROVIDER,
-        "required": False,
-        "description": f"LLM provider to use ({', '.join(SUPPORTED_LLM_PROVIDERS)})",
-        "options": SUPPORTED_LLM_PROVIDERS
-    },
-    "GOOGLE_API_KEY": {
-        "value": "",
-        "required": False,
-        "description": "Your Google Gemini API key (required for Gemini)",
-        "conditional": "gemini"
-    },
-    "OPENAI_API_KEY": {
-        "value": "",
-        "required": False,
-        "description": "Your OpenAI API key (required for OpenAI)",
-        "conditional": "openai"
-    },
-    "CLAUDE_API_KEY": {
-        "value": "",
-        "required": False,
-        "description": "Your Anthropic Claude API key (required for Claude)",
-        "conditional": "claude"
-    },
-    "CLAUDE_EMBEDDING_PROVIDER": {
-        "value": DEFAULT_CLAUDE_EMBEDDING_PROVIDER,
-        "required": False,
-        "description": "Embedding provider for Claude (google, openai)",
-        "conditional": "claude",
-        "options": ["google", "openai"]
-    },
-    "GEMINI_EMBEDDING_MODEL": {
-        "value": DEFAULT_GEMINI_EMBEDDING_MODEL,
-        "required": False,
-        "description": f"Gemini embedding model (optional, default: {DEFAULT_GEMINI_EMBEDDING_MODEL})",
-        "conditional": "gemini"
-    },
-    "GEMINI_GENERATION_MODEL": {
-        "value": DEFAULT_GEMINI_GENERATION_MODEL,
-        "required": False,
-        "description": f"Gemini generation model (optional, default: {DEFAULT_GEMINI_GENERATION_MODEL})",
-        "conditional": "gemini"
-    },
-    "OPENAI_EMBEDDING_MODEL": {
-        "value": DEFAULT_OPENAI_EMBEDDING_MODEL,
-        "required": False,
-        "description": f"OpenAI embedding model (optional, default: {DEFAULT_OPENAI_EMBEDDING_MODEL})",
-        "conditional": "openai"
-    },
-    "OPENAI_GENERATION_MODEL": {
-        "value": DEFAULT_OPENAI_GENERATION_MODEL,
-        "required": False,
-        "description": f"OpenAI generation model (optional, default: {DEFAULT_OPENAI_GENERATION_MODEL})",
-        "conditional": "openai"
-    },
-    "CLAUDE_GENERATION_MODEL": {
-        "value": DEFAULT_CLAUDE_GENERATION_MODEL,
-        "required": False,
-        "description": f"Claude generation model (optional, default: {DEFAULT_CLAUDE_GENERATION_MODEL})",
-        "conditional": "claude"
-    },
-    "LLAMA_EMBEDDING_MODEL": {
-        "value": DEFAULT_LLAMA_EMBEDDING_MODEL,
-        "required": False,
-        "description": f"Llama embedding model (optional, default: {DEFAULT_LLAMA_EMBEDDING_MODEL})",
-        "conditional": "llama"
-    },
-    "LLAMA_GENERATION_MODEL": {
-        "value": DEFAULT_LLAMA_GENERATION_MODEL,
-        "required": False,
-        "description": f"Llama generation model (optional, default: {DEFAULT_LLAMA_GENERATION_MODEL})",
-        "conditional": "llama"
-    },
-    "GITHUB_TOKEN": {
-        "value": "",
-        "required": False,
-        "description": "GitHub Personal Access Token for private repos (optional)"
-    },
-    "LOG_LEVEL": {
-        "value": DEFAULT_LOG_LEVEL,
-        "required": False,
-        "description": "Logging level (DEBUG, INFO, WARNING, ERROR)"
-    },
-    "CHROMA_DB_PATH": {
-        "value": DEFAULT_CHROMA_PERSIST_DIRECTORY,
-        "required": False,
-        "description": "Path to ChromaDB persistent storage"
-    },
-    "DEFAULT_COLLECTION_NAME": {
-        "value": DEFAULT_COLLECTION_NAME,
-        "required": False,
-        "description": "Default ChromaDB collection name"
-    },
-    "OUTPUT_FILE_PATH": {
-        "value": DEFAULT_OUTPUT_FILE,
-        "required": False,
-        "description": "Default path to save generated test cases"
-    }
-}
 
 
 def get_collection_name(provided_name: str | None = None) -> str:
@@ -195,16 +103,20 @@ def _get_agent(collection_name: str) -> TestTellerRagAgent:
         raise typer.Exit(code=1)
 
 
-async def ingest_docs_async(path: str, collection_name: str):
+async def ingest_docs_async(path: str, collection_name: str, enhanced: bool = True, chunk_size: int = 1000):
     agent = _get_agent(collection_name)
 
     async def _ingest_task():
-        await agent.ingest_documents_from_path(path)
+        await agent.ingest_documents_from_path(path, enhanced_parsing=enhanced, chunk_size=chunk_size)
         return await agent.get_ingested_data_count()
 
-    count = await with_spinner(_ingest_task(), f"Ingesting documents from '{path}'...")
-    print(
-        f"Successfully ingested documents. Collection '{collection_name}' now contains {count} items.")
+    ingestion_mode = "enhanced" if enhanced else "basic"
+    spinner_text = f"Ingesting documents from '{path}' ({ingestion_mode} mode)"
+    count = await with_spinner(_ingest_task(), spinner_text)
+    
+    print(f"Successfully ingested documents. Collection '{collection_name}' now contains {count} items.")
+    if enhanced:
+        print(f"💡 Enhanced parsing enabled: Documents chunked ({chunk_size} chars) with metadata extraction")
 
 
 async def ingest_code_async(source_path: str, collection_name: str, no_cleanup_github: bool):
@@ -290,9 +202,13 @@ async def clear_data_async(collection_name: str, force: bool):
 
 @app.command()
 def ingest_docs(
-    path: Annotated[str, typer.Argument(help="Path to a document file or a directory.")],
+    path: Annotated[str, typer.Argument(help="Path to a document file or directory (supports .md, .txt, .pdf, .docx, .xlsx).")],
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = None
+        "--collection-name", "-c", help="ChromaDB collection name.")] = None,
+    enhanced: Annotated[bool, typer.Option(
+        "--enhanced", "-e", help="Use enhanced parsing with chunking and metadata extraction")] = True,
+    chunk_size: Annotated[int, typer.Option(
+        "--chunk-size", "-s", help="Text chunk size for better retrieval (100-5000)")] = 1000
 ):
     """Ingests documents from a file or directory into a collection."""
     # Get collection name from settings if not provided
@@ -308,8 +224,23 @@ def ingest_docs(
             f"Error: Document source path '{path}' not found or not accessible.")
         raise typer.Exit(code=1)
 
+    # Validate chunk_size
+    if not (100 <= chunk_size <= 5000):
+        print("❌ Error: chunk-size must be between 100 and 5000 characters")
+        raise typer.Exit(code=1)
+
+    # Show ingestion mode
+    mode = "enhanced" if enhanced else "basic"
+    print(f"\n📄 Document Ingestion ({mode} mode)")
+    if enhanced:
+        print(f"  • Chunk size: {chunk_size} characters")
+        print(f"  • Metadata extraction: enabled")
+        print(f"  • Supported formats: .md, .txt, .pdf, .docx, .xlsx")
+    else:
+        print(f"  • Basic parsing mode")
+
     try:
-        asyncio.run(ingest_docs_async(path, collection_name))
+        asyncio.run(ingest_docs_async(path, collection_name, enhanced, chunk_size))
     except EmbeddingGenerationError as e:
         logger.error(
             "CLI: Embedding generation failed during document ingestion. Error: %s", e, exc_info=True)
@@ -336,9 +267,9 @@ def ingest_docs(
 def ingest_code(
     source_path: Annotated[str, typer.Argument(help="URL of the GitHub repository OR path to a local code folder.")],
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = None,
+        "--collection-name", "-c", help="ChromaDB collection name.")] = None,
     no_cleanup_github: Annotated[bool, typer.Option(
-        help="Do not delete cloned GitHub repo after ingestion (no effect for local folders).")] = False
+        "--no-cleanup-github", "-nc", help="Do not delete cloned GitHub repo after ingestion (no effect for local folders).")] = False
 ):
     """Ingests code from a GitHub repository or local folder into a collection."""
     # Get collection name from settings if not provided
@@ -384,11 +315,11 @@ def ingest_code(
 def generate(
     query: Annotated[str, typer.Argument(help="Query for test case generation.")],
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = None,
+        "--collection-name", "-c", help="ChromaDB collection name.")] = None,
     num_retrieved: Annotated[int, typer.Option(
-        min=0, max=20, help="Number of docs for context.")] = 5,
+        "--num-retrieved", "-n", min=0, max=20, help="Number of docs for context.")] = 5,
     output_file: Annotated[str, typer.Option(
-        help=f"Optional: Save test cases to this file. If not provided, uses OUTPUT_FILE_PATH from .env or defaults to {DEFAULT_OUTPUT_FILE}")] = None
+        "--output-file", "-o", help=f"Optional: Save test cases to this file. If not provided, uses OUTPUT_FILE_PATH from .env or defaults to {DEFAULT_OUTPUT_FILE}")] = None
 ):
     """Generates test cases based on query and knowledge base."""
     logger.info(
@@ -432,7 +363,7 @@ def generate(
 @app.command()
 def status(
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection name.")] = None
+        "--collection-name", "-c", help="ChromaDB collection name.")] = None
 ):
     """Checks status of a collection."""
     # Get collection name from settings if not provided
@@ -454,9 +385,9 @@ def status(
 @app.command()
 def clear_data(
     collection_name: Annotated[str, typer.Option(
-        help="ChromaDB collection to clear.")] = None,
+        "--collection-name", "-c", help="ChromaDB collection to clear.")] = None,
     force: Annotated[bool, typer.Option(
-        help="Force clear without confirmation.")] = False
+        "--force", "-f", help="Force clear without confirmation.")] = False
 ):
     """Clears ingested data from a collection."""
     # Get collection name from settings if not provided
@@ -479,395 +410,394 @@ def clear_data(
 
 
 @app.command()
-def configure():
+def configure(
+    provider: Annotated[str, typer.Option(
+        "--provider", "-p", help="Quick setup for specific provider (gemini, openai, claude, llama)")] = None,
+    testwriter: Annotated[bool, typer.Option(
+        "--testwriter", "-tw", help="Configure TestWriter automation settings only")] = False
+):
     """Interactive configuration wizard to set up TestTeller."""
-    env_path = os.path.join(os.getcwd(), '.env')
-    env_example_path = os.path.join(os.getcwd(), '.env.example')
-
-    # Check if .env already exists
-    if os.path.exists(env_path):
-        overwrite = typer.confirm(
-            "⚠️  A .env file already exists. Do you want to reconfigure it?", default=False)
-        if not overwrite:
-            print("Configuration cancelled.")
-            raise typer.Exit()
-
-    print("\n🔧 TestTeller Configuration Wizard")
-    print("==================================")
-
-    env_values = {}
-
-    # First, handle LLM provider selection
-    llm_provider_config = ENV_TEMPLATE["LLM_PROVIDER"]
-    print(f"\n{llm_provider_config['description']}")
-    print("Available providers:")
-    for i, provider in enumerate(llm_provider_config["options"], 1):
-        print(f"  {i}. {provider}")
-
-    while True:
-        try:
-            choice = typer.prompt(
-                "\nSelect LLM provider (enter number)", type=int)
-            if 1 <= choice <= len(llm_provider_config["options"]):
-                selected_provider = llm_provider_config["options"][choice - 1]
-                env_values["LLM_PROVIDER"] = selected_provider
-                break
-            else:
-                print("Invalid choice. Please enter a valid number.")
-        except (ValueError, typer.Abort):
-            print("Invalid input. Please enter a number.")
-
-    print(f"\n✅ Selected LLM provider: {selected_provider}")
-
-    # Special handling for Llama provider - ask for URL and Port separately
-    if selected_provider == "llama":
-        print("\n📝 Configuring Ollama connection:")
-        print("   - No API key is required for local Llama models")
-        print("   - Make sure Ollama is installed and running")
-        print(
-            f"   - Install required models: ollama pull {DEFAULT_LLAMA_EMBEDDING_MODEL} && ollama pull {DEFAULT_LLAMA_GENERATION_MODEL}")
-
-        # Ask for URL first
-        while True:
-            try:
-                url = typer.prompt(
-                    "\nOllama server URL (optional, default: localhost)",
-                    default="localhost",
-                    show_default=False
-                )
-                if url:
-                    break
-            except typer.Abort:
-                print("Configuration cancelled.")
-                raise typer.Exit()
-
-        # Ask for Port second
-        while True:
-            try:
-                port = typer.prompt(
-                    "\nOllama server Port (optional, default: 11434)",
-                    default="11434",
-                    show_default=False
-                )
-                if port:
-                    try:
-                        # Validate port is a number
-                        int(port)
-                        break
-                    except ValueError:
-                        print("Port must be a valid number.")
-                        continue
-            except typer.Abort:
-                print("Configuration cancelled.")
-                raise typer.Exit()
-
-        # Form complete URL:PORT
-        if url == "localhost":
-            url = "http://localhost"
-        elif not url.startswith(('http://', 'https://')):
-            url = f"http://{url}"
-
-        ollama_base_url = f"{url}:{port}"
-        env_values["OLLAMA_BASE_URL"] = ollama_base_url
-        print(f"\n✅ Ollama URL configured: {ollama_base_url}")
-
-        # Ask for Llama models right after URL configuration
-        print("\n🔧 Llama Model Configuration:")
-
-        # Llama embedding model
-        embedding_prompt = f"\nLlama embedding model (optional, default: {DEFAULT_LLAMA_EMBEDDING_MODEL})"
-        try:
-            embedding_model = typer.prompt(
-                embedding_prompt,
-                default=DEFAULT_LLAMA_EMBEDDING_MODEL,
-                show_default=False
-            )
-            env_values["LLAMA_EMBEDDING_MODEL"] = embedding_model
-        except typer.Abort:
-            print("Configuration cancelled.")
-            raise typer.Exit()
-
-        # Llama generation model
-        generation_prompt = f"\nLlama generation model (optional, default: {DEFAULT_LLAMA_GENERATION_MODEL})"
-        try:
-            generation_model = typer.prompt(
-                generation_prompt,
-                default=DEFAULT_LLAMA_GENERATION_MODEL,
-                show_default=False
-            )
-            env_values["LLAMA_GENERATION_MODEL"] = generation_model
-        except typer.Abort:
-            print("Configuration cancelled.")
-            raise typer.Exit()
-
-    # Handle Claude configuration separately
-    if selected_provider == "claude":
-        print("\n🔧 Claude Configuration:")
-
-        # Ask for Claude API key first
-        while True:
-            try:
-                claude_api_key = typer.prompt(
-                    "\nYour Anthropic Claude API key (required)",
-                    hide_input=True
-                )
-                if claude_api_key:
-                    env_values["CLAUDE_API_KEY"] = claude_api_key
-                    break
-                print("Claude API key is required. Please provide a value.")
-            except typer.Abort:
-                print("Configuration cancelled.")
-                raise typer.Exit()
-
-        # Ask for embedding provider
-        print("\n📝 Embedding Provider Selection:")
-        print("Claude needs an embedding provider for RAG functionality:")
-        print("  1. google (Google Gemini - free, suitable for most use cases)")
-        print("  2. openai (OpenAI - paid, high quality)")
-
-        while True:
-            try:
-                choice = typer.prompt(
-                    "\nSelect embedding provider (enter number)", type=int)
-                if choice == 1:
-                    embedding_provider = "google"
-                    env_values["CLAUDE_EMBEDDING_PROVIDER"] = embedding_provider
-                    break
-                elif choice == 2:
-                    embedding_provider = "openai"
-                    env_values["CLAUDE_EMBEDDING_PROVIDER"] = embedding_provider
-                    break
-                else:
-                    print("Invalid choice. Please enter 1 or 2.")
-            except (ValueError, typer.Abort):
-                print("Invalid input. Please enter a number.")
-
-        # Ask for embedding provider's API key
-        if embedding_provider == "google":
-            while True:
-                try:
-                    google_api_key = typer.prompt(
-                        "\nYour Google API key (required for Claude embeddings)",
-                        hide_input=True
-                    )
-                    if google_api_key:
-                        env_values["GOOGLE_API_KEY"] = google_api_key
-                        break
-                    print("Google API key is required. Please provide a value.")
-                except typer.Abort:
-                    print("Configuration cancelled.")
-                    raise typer.Exit()
-        elif embedding_provider == "openai":
-            while True:
-                try:
-                    openai_api_key = typer.prompt(
-                        "\nYour OpenAI API key (required for Claude embeddings)",
-                        hide_input=True
-                    )
-                    if openai_api_key:
-                        env_values["OPENAI_API_KEY"] = openai_api_key
-                        break
-                    print("OpenAI API key is required. Please provide a value.")
-                except typer.Abort:
-                    print("Configuration cancelled.")
-                    raise typer.Exit()
-
-        # Ask for Claude generation model
-        try:
-            claude_generation_model = typer.prompt(
-                f"\nClaude generation model (optional, default: {DEFAULT_CLAUDE_GENERATION_MODEL})",
-                default=DEFAULT_CLAUDE_GENERATION_MODEL,
-                show_default=False
-            )
-            env_values["CLAUDE_GENERATION_MODEL"] = claude_generation_model
-        except typer.Abort:
-            print("Configuration cancelled.")
-            raise typer.Exit()
-
-        print(f"\n✅ Claude configuration complete!")
-        print(f"   • Claude API key: configured")
-        print(f"   • Embedding provider: {embedding_provider}")
-        print(f"   • Generation model: {claude_generation_model}")
-
-    # Collect values for each setting (for non-Claude providers)
-    elif selected_provider != "claude":
-        for key, config in ENV_TEMPLATE.items():
-            if key == "LLM_PROVIDER":  # Already handled above
-                continue
-
-            description = config["description"]
-            default = config["value"]
-            required = config["required"]
-            conditional = config.get("conditional")
-
-            # Skip conditional fields if they don't match the selected provider
-            if conditional and conditional != selected_provider:
-                continue
-
-            # For API keys, make them required if they match the selected provider
-            # Keep model configurations optional (embedding/generation models)
-            if conditional and conditional == selected_provider and ("API_KEY" in key or "TOKEN" in key):
-                required = True
-
-            # Format prompt based on whether the field is required
-            prompt = f"\n{description}"
-            if required:
-                prompt += " (required)"
-            elif default:
-                prompt += f" (default: {default})"
-
-            # Special handling for Llama provider
-            if selected_provider == "llama" and key in ["GOOGLE_API_KEY", "OPENAI_API_KEY", "CLAUDE_API_KEY", "LLAMA_EMBEDDING_MODEL", "LLAMA_GENERATION_MODEL"]:
-                continue  # Skip API keys and model configs for Llama since they're handled separately
-
-            # Get user input
-            while True:
-                try:
-                    # Hide input for API keys to keep them secure
-                    hide_input = "API_KEY" in key or "TOKEN" in key
-                    value = typer.prompt(
-                        prompt, default=default if not required else None, show_default=bool(default), hide_input=hide_input)
-                    if value or not required:
-                        break
-                    print("This field is required. Please provide a value.")
-                except typer.Abort:
-                    print("Configuration cancelled.")
-                    raise typer.Exit()
-
-            if value:
-                env_values[key] = value
-
-    # Try to read additional non-critical configs from .env.example
-    additional_configs = {}
-    provider_specific_configs = {}
-
-    if os.path.exists(env_example_path):
-        try:
-            with open(env_example_path, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, value = line.split('=', 1)
-                        key = key.strip()
-                        value = value.strip().strip('"').strip("'")
-
-                        # Skip placeholder values
-                        if 'your_' in value.lower() and '_here' in value.lower():
-                            continue
-
-                        # Only add if it's not already in env_values and not in ENV_TEMPLATE
-                        if key not in env_values and key not in ENV_TEMPLATE:
-                            # Categorize provider-specific vs general configs
-                            if any(provider in key.lower() for provider in ['gemini', 'openai', 'claude', 'llama', 'ollama']):
-                                provider_specific_configs[key] = value
-                            else:
-                                additional_configs[key] = value
-
-            # Handle general additional configs
-            if additional_configs:
-                print(
-                    f"\n📋 Found {len(additional_configs)} additional configuration(s) in .env.example:")
-                for key, value in additional_configs.items():
-                    print(f"  - {key}={value}")
-
-                if typer.confirm("\nWould you like to include these additional configurations?", default=True):
-                    env_values.update(additional_configs)
-                    print("✅ Additional configurations included.")
-                else:
-                    print("⏭️  Additional configurations skipped.")
-
-            # Handle provider-specific configs (auto-include relevant ones)
-            relevant_provider_configs = {}
-            for key, value in provider_specific_configs.items():
-                key_lower = key.lower()
-                if (selected_provider == "gemini" and "gemini" in key_lower) or \
-                   (selected_provider == "openai" and "openai" in key_lower) or \
-                   (selected_provider == "claude" and ("claude" in key_lower or
-                    (env_values.get("CLAUDE_EMBEDDING_PROVIDER") == "openai" and "openai" in key_lower) or
-                    (env_values.get("CLAUDE_EMBEDDING_PROVIDER") == "google" and "google" in key_lower))) or \
-                   (selected_provider == "llama" and ("llama" in key_lower or "ollama" in key_lower)):
-                    relevant_provider_configs[key] = value
-
-            if relevant_provider_configs:
-                print(
-                    f"\n🔧 Found {len(relevant_provider_configs)} {selected_provider}-specific configuration(s):")
-                for key, value in relevant_provider_configs.items():
-                    print(f"  - {key}={value}")
-
-                if typer.confirm(f"\nInclude {selected_provider}-specific configurations?", default=True):
-                    env_values.update(relevant_provider_configs)
-                    print(f"✅ {selected_provider} configurations included.")
-                else:
-                    print(f"⏭️  {selected_provider} configurations skipped.")
-
-        except Exception as e:
-            logger.warning("Could not read .env.example: %s", e)
-            # Silently continue without additional configs
-
-    # Write to .env file
+    from testteller.core.config import ConfigurationWizard, run_provider_only_setup, run_automation_only_setup
+    from testteller.core.config import UIMode
+    
+    env_path = Path.cwd() / ".env"
+    
     try:
-        with open(env_path, 'w') as f:
-            # Write critical configs first
-            for key, config in ENV_TEMPLATE.items():
-                if key in env_values:
-                    f.write(f'{key}="{env_values[key]}"\n')
-
-            # Write additional configs with a separator comment
-            if any(key not in ENV_TEMPLATE for key in env_values):
-                f.write('\n# Additional configurations\n')
-                for key, value in env_values.items():
-                    if key not in ENV_TEMPLATE:
-                        f.write(f'{key}="{value}"\n')
-
-        print("\n✅ Configuration complete!")
-        print(f"Configuration saved to: {env_path}")
-        print(f"LLM Provider: {selected_provider}")
-
-        # Report what was copied from .env.example
-        copied_from_example = []
-        for key in env_values:
-            if key not in ENV_TEMPLATE:
-                copied_from_example.append(key)
-
-        if copied_from_example:
-            print(
-                f"\n📋 Copied {len(copied_from_example)} additional configuration(s) from .env.example:")
-            for key in copied_from_example:
-                print(f"  - {key}={env_values[key]}")
-            print(
-                f"\n💡 You can modify these settings directly in {env_path} anytime:")
-            for key in copied_from_example:
-                print(f"   {key}")
-
-        # Validate the configuration
-        try:
-            from testteller.llm.llm_manager import LLMManager
-            is_valid, error_msg = LLMManager.validate_provider_config(
-                selected_provider)
-            if is_valid:
-                print("\n✅ Configuration validated successfully!")
-            else:
-                print(f"\n⚠️  Configuration validation warning: {error_msg}")
-        except Exception as e:
-            print(f"\n⚠️  Could not validate configuration: {e}")
-
-        print(f"\n🚀 Setup Summary:")
-        print(f"  • LLM Provider: {selected_provider}")
-        print(f"  • Configuration file: {env_path}")
-        if copied_from_example:
-            print(
-                f"  • Additional settings: {len(copied_from_example)} copied from .env.example")
-        print(f"  • Ready to use!")
-
-        print("\n📚 Next steps:")
-        print("  testteller --help                    # View all commands")
-        print("  testteller ingest-docs <path>        # Add documents")
-        print("  testteller ingest-code <repo_url>    # Add code")
-        print("  testteller generate \"<query>\"        # Generate tests")
-
-    except Exception as e:
-        print(f"\n❌ Error saving configuration: {e}")
+        # Handle different configuration modes
+        if testwriter:
+            # Configure TestWriter (Automation) settings only
+            success = run_automation_only_setup(UIMode.CLI)
+            if not success:
+                print("❌ TestWriter configuration failed.")
+                raise typer.Exit(code=1)
+            return
+            
+        elif provider:
+            # Quick setup for specific provider
+            if provider not in SUPPORTED_LLM_PROVIDERS:
+                print(f"❌ Unsupported provider: {provider}")
+                print(f"Supported providers: {', '.join(SUPPORTED_LLM_PROVIDERS)}")
+                raise typer.Exit(code=1)
+            
+            success = run_provider_only_setup(provider, UIMode.CLI)
+            if not success:
+                print(f"❌ {provider.title()} configuration failed.")
+                raise typer.Exit(code=1)
+            return
+        
+        # Full configuration wizard
+        wizard = ConfigurationWizard(UIMode.CLI)
+        success = wizard.run(env_path)
+        
+        if success:
+            print("\n🚀 TestTeller is now ready to use!")
+            print("\n📚 Next steps:")
+            print("  testteller --help                    # View all commands")
+            print("  testteller ingest-docs <path>        # Add documents")
+            print("  testteller ingest-code <repo_url>    # Add code") 
+            print("  testteller generate \"<query>\"        # Generate tests")
+            if HAS_TESTWRITER:
+                print("  testteller automate test-cases.md    # Generate automation code")
+        else:
+            print("❌ Configuration failed.")
+            raise typer.Exit(code=1)
+            
+    except KeyboardInterrupt:
+        print("\n⚠️  Configuration cancelled by user.")
         raise typer.Exit(code=1)
+    except Exception as e:
+        logger.error("Configuration wizard failed: %s", e, exc_info=True)
+        print(f"❌ Configuration failed: {e}")
+        raise typer.Exit(code=1)
+
+
+# TestWriter automation command (if available)
+if HAS_TESTWRITER:
+    
+    def get_generator(language: str, framework: str, output_dir: Path):
+        """Get the appropriate generator based on language and framework."""
+        if language == 'python':
+            return PythonTestGenerator(framework, output_dir)
+        elif language == 'javascript':
+            return JavaScriptTestGenerator(framework, output_dir)
+        elif language == 'typescript':
+            return TypeScriptTestGenerator(framework, output_dir)
+        elif language == 'java':
+            return JavaTestGenerator(framework, output_dir)
+        else:
+            raise ValueError(f"Unsupported language: {language}")
+
+    def validate_framework(language: str, framework: str) -> bool:
+        """Validate that the framework is supported for the language."""
+        return framework in SUPPORTED_FRAMEWORKS.get(language, [])
+
+    def interactive_select_tests(test_cases):
+        """Interactive test case selection."""
+        print("\n📋 Available test cases:")
+        for i, tc in enumerate(test_cases, 1):
+            print(f"{i:3d}. [{tc.id}] {tc.objective[:60]}...")
+        
+        print("\nSelect test cases to automate:")
+        print("  • Enter numbers separated by commas (e.g., 1,3,5)")
+        print("  • Enter ranges (e.g., 1-5)")
+        print("  • Enter 'all' to select all tests")
+        print("  • Enter 'none' to cancel")
+        
+        selection = typer.prompt("\nYour selection").strip().lower()
+        
+        if selection == 'none':
+            return []
+        elif selection == 'all':
+            return test_cases
+        else:
+            selected_indices = parse_selection(selection, len(test_cases))
+            return [test_cases[i-1] for i in selected_indices]
+
+    def parse_selection(selection: str, max_index: int) -> list:
+        """Parse user selection string into list of indices."""
+        indices = set()
+        
+        for part in selection.split(','):
+            part = part.strip()
+            if '-' in part:
+                # Range
+                try:
+                    start, end = map(int, part.split('-'))
+                    indices.update(range(max(1, start), min(max_index + 1, end + 1)))
+                except ValueError:
+                    print(f"⚠️  Invalid range: {part}")
+            else:
+                # Single number
+                try:
+                    num = int(part)
+                    if 1 <= num <= max_index:
+                        indices.add(num)
+                    else:
+                        print(f"⚠️  Index out of range: {num}")
+                except ValueError:
+                    print(f"⚠️  Invalid number: {part}")
+        
+        return sorted(indices)
+
+    def print_next_steps(language: str, framework: str, output_dir: Path):
+        """Print next steps based on language and framework."""
+        print("\n📚 Next steps:")
+        
+        if language == 'python':
+            print(f"  1. cd {output_dir}")
+            print("  2. pip install -r requirements.txt")
+            if framework == 'pytest':
+                print("  3. pytest")
+            else:
+                print("  3. python -m unittest discover")
+        
+        elif language == 'javascript':
+            print(f"  1. cd {output_dir}")
+            print("  2. npm install")
+            print("  3. npm test")
+        
+        elif language == 'java':
+            print(f"  1. cd {output_dir}")
+            print("  2. mvn clean install")
+            print("  3. mvn test")
+        
+        print("\n💡 Tips:")
+        print("  • Review and customize the generated tests")
+        print("  • Update test data and assertions")
+        print("  • Configure test environment settings")
+        print("  • Add missing test implementations marked with TODO")
+
+    @app.command()
+    def automate(
+        input_file: Annotated[str, typer.Argument(help="Path to test cases file (supports .md, .txt, .pdf, .docx, .xlsx)")],
+        language: Annotated[str, typer.Option(
+            "--language", "-l", help="Programming language for test automation")] = None,
+        framework: Annotated[str, typer.Option(
+            "--framework", "-F", help="Test framework to use")] = None,
+        output_dir: Annotated[str, typer.Option(
+            "--output-dir", "-o", help="Output directory for generated tests")] = "./generated_tests",
+        interactive: Annotated[bool, typer.Option(
+            "--interactive", "-i", help="Interactive mode to select test cases")] = False,
+        enhance: Annotated[bool, typer.Option(
+            "--enhance", "-E", help="Use LLM to enhance generated test code")] = False,
+        llm_provider: Annotated[str, typer.Option(
+            "--llm-provider", "-p", help="LLM provider for enhancement (gemini, openai, claude, llama)")] = None
+    ):
+        """Generate automation code from TestTeller test cases."""
+        
+        # Validate input file exists
+        input_path = Path(input_file)
+        if not input_path.exists():
+            logger.error(f"Input file not found: {input_file}")
+            print(f"❌ Error: Test cases file '{input_file}' not found.")
+            raise typer.Exit(code=1)
+        
+        # Interactive language/framework selection if not provided
+        if not language:
+            print("\n🔧 Test Automation Configuration")
+            print("================================")
+            print("\nSelect programming language:")
+            languages = list(SUPPORTED_FRAMEWORKS.keys())
+            for i, lang in enumerate(languages, 1):
+                print(f"  {i}. {lang}")
+            
+            while True:
+                try:
+                    choice = typer.prompt("\nEnter number", type=int)
+                    if 1 <= choice <= len(languages):
+                        language = languages[choice - 1]
+                        break
+                    print("Invalid choice. Please try again.")
+                except (ValueError, typer.Abort):
+                    print("Invalid input. Please enter a number.")
+        
+        if not framework:
+            frameworks = SUPPORTED_FRAMEWORKS[language]
+            print(f"\nSelect test framework for {language}:")
+            for i, fw in enumerate(frameworks, 1):
+                print(f"  {i}. {fw}")
+            
+            while True:
+                try:
+                    choice = typer.prompt("\nEnter number", type=int)
+                    if 1 <= choice <= len(frameworks):
+                        framework = frameworks[choice - 1]
+                        break
+                    print("Invalid choice. Please try again.")
+                except (ValueError, typer.Abort):
+                    print("Invalid input. Please enter a number.")
+        
+        # Validate framework
+        if not validate_framework(language, framework):
+            print(f"❌ Error: Framework '{framework}' is not supported for language '{language}'.")
+            print(f"Supported frameworks for {language}: {', '.join(SUPPORTED_FRAMEWORKS[language])}")
+            raise typer.Exit(code=1)
+        
+        print(f"\n✅ Configuration:")
+        print(f"  • Language: {language}")
+        print(f"  • Framework: {framework}")
+        print(f"  • Output: {output_dir}")
+        
+        # LLM Enhancement Configuration (if not already specified)
+        if not enhance:
+            try:
+                from testteller.automator_agent.llm_enhancer import is_llm_enhancement_available
+                
+                if is_llm_enhancement_available():
+                    print(f"\n🤖 LLM Enhancement Available")
+                    print("=============================")
+                    print("TestTeller can use AI to enhance the generated test code with:")
+                    print("  • Improved error handling and edge cases")
+                    print("  • Better assertions and validations")
+                    print("  • Enhanced code quality and best practices")
+                    print("  • Framework-specific optimizations")
+                    
+                    enhance = typer.confirm("\nWould you like to enable LLM enhancement?", default=False)
+                    
+                    if enhance:
+                        if not llm_provider:
+                            print("\nAvailable LLM providers: gemini, openai, claude, llama")
+                            llm_provider = typer.prompt(
+                                "Select LLM provider (leave empty for default)", 
+                                default="", 
+                                show_default=False
+                            ).strip()
+                            llm_provider = llm_provider if llm_provider else None
+                        
+                        print(f"✅ LLM enhancement enabled" + (f" with {llm_provider}" if llm_provider else ""))
+                    else:
+                        print("⏭️  LLM enhancement disabled")
+                else:
+                    print(f"\n💡 Tip: Configure TestTeller with an LLM provider to enable AI-powered test enhancement")
+            except ImportError:
+                pass  # LLM enhancement not available
+            except Exception as e:
+                logger.warning(f"Failed to check LLM availability: {e}")
+        
+        try:
+            # Parse test cases using unified parser
+            print(f"\n📖 Parsing test cases from: {input_file}")
+            file_extension = input_path.suffix.lower()
+            
+            if file_extension not in ['.md', '.txt', '.pdf', '.docx', '.xlsx']:
+                print(f"❌ Unsupported file format: {file_extension}")
+                print("Supported formats: .md, .txt, .pdf, .docx, .xlsx")
+                raise typer.Exit(code=1)
+            
+            # Use unified parser for all formats
+            print(f"  📄 Detected format: {file_extension}")
+            unified_parser = UnifiedDocumentParser()
+            
+            # Parse document for automation
+            parsed_doc = asyncio.run(unified_parser.parse_for_automation(input_path))
+            
+            # Extract test cases
+            test_cases = parsed_doc.test_cases
+            
+            # If no structured test cases found, try to use content for context
+            if not test_cases:
+                print(f"  📝 No structured test cases found. Document type: {parsed_doc.metadata.document_type.value}")
+                
+                if parsed_doc.metadata.document_type in [DocumentType.TEST_CASES, DocumentType.REQUIREMENTS]:
+                    # For markdown files, try the legacy parser as fallback
+                    if file_extension == '.md':
+                        print("  🔄 Trying markdown-specific parser...")
+                        md_parser = MarkdownTestCaseParser()
+                        test_cases = md_parser.parse_file(input_path)
+                    
+                    if not test_cases:
+                        print("❌ No test cases found in the file.")
+                        print("💡 Tip: Ensure the file contains structured test cases in the expected format.")
+                        print("   For supported formats, see: https://github.com/testteller/docs")
+                        raise typer.Exit(code=1)
+                else:
+                    print("❌ This document doesn't appear to contain test cases.")
+                    print(f"   Detected type: {parsed_doc.metadata.document_type.value}")
+                    print("💡 Try using a file that contains structured test cases.")
+                    raise typer.Exit(code=1)
+            
+            print(f"✅ Found {len(test_cases)} test cases")
+            
+            # Show document info
+            if parsed_doc.metadata.title:
+                print(f"  📋 Document: {parsed_doc.metadata.title}")
+            if parsed_doc.metadata.sections:
+                print(f"  📑 Sections: {len(parsed_doc.metadata.sections)}")
+            print(f"  📊 Content: {parsed_doc.metadata.word_count} words, {parsed_doc.metadata.character_count} characters")
+            
+            # Interactive selection if requested
+            if interactive:
+                selected_cases = interactive_select_tests(test_cases)
+                if not selected_cases:
+                    print("❌ No test cases selected.")
+                    raise typer.Exit(code=1)
+                test_cases = selected_cases
+            
+            # Generate automation code
+            print(f"\n🚀 Generating {language} automation code...")
+            output_path = Path(output_dir)
+            generator = get_generator(language, framework, output_path)
+            
+            generated_files = generator.generate(test_cases)
+            
+            # LLM Enhancement (optional)
+            if enhance:
+                print(f"\n🤖 Enhancing generated code with LLM...")
+                try:
+                    from testteller.automator_agent.llm_enhancer import create_enhancer, is_llm_enhancement_available
+                    
+                    if not is_llm_enhancement_available():
+                        print("⚠️  LLM enhancement not available. Ensure LLM is configured in TestTeller.")
+                        print("   Generated code will be used without enhancement.")
+                    else:
+                        enhancer = create_enhancer(provider=llm_provider)
+                        if enhancer.is_available():
+                            enhanced_files = enhancer.enhance_generated_tests(
+                                generated_files, language, framework
+                            )
+                            
+                            # Count enhanced files
+                            enhanced_count = sum(1 for filename, content in enhanced_files.items() 
+                                               if content != generated_files.get(filename, ""))
+                            
+                            if enhanced_count > 0:
+                                generated_files = enhanced_files
+                                print(f"✅ Enhanced {enhanced_count} test files using {enhancer.provider}")
+                                
+                                # Show optimization suggestions
+                                suggestions = enhancer.get_optimization_suggestions(language, framework)
+                                if suggestions:
+                                    print(f"\n💡 Optimization suggestions for {language} + {framework}:")
+                                    for i, suggestion in enumerate(suggestions[:5], 1):  # Show top 5
+                                        print(f"  {i}. {suggestion}")
+                            else:
+                                print("⚠️  No files were enhanced. Using original generated code.")
+                        else:
+                            print("⚠️  LLM enhancer initialization failed. Using original generated code.")
+                            
+                except ImportError:
+                    print("⚠️  LLM enhancement dependencies not available. Using original generated code.")
+                except Exception as e:
+                    logger.warning(f"LLM enhancement failed: {e}")
+                    print(f"⚠️  LLM enhancement failed: {e}")
+                    print("   Using original generated code.")
+            
+            # Write files
+            print(f"\n📝 Writing generated files to: {output_dir}")
+            generator.write_files(generated_files)
+            
+            # Summary
+            print(f"\n✅ Successfully generated {len(generated_files)} files:")
+            for file_name in generated_files:
+                print(f"  • {output_path / file_name}")
+            
+            # Next steps
+            print_next_steps(language, framework, output_path)
+            
+        except Exception as e:
+            logger.error(f"Failed to generate automation code: {e}", exc_info=True)
+            print(f"\n❌ Error: {e}")
+            raise typer.Exit(code=1)
 
 
 @app.callback()
@@ -879,7 +809,7 @@ def main(
         is_eager=True
     )] = False
 ):
-    """TestTeller: RAG Agent for AI Test Case Generation. Configure the agent via your .env file."""
+    """TestTeller: Complete AI Test Agent for Generation and Automation. Configure the agent via your .env file."""
     pass
 
 

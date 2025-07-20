@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "testteller"
 dynamic = ["version"]
-description = "TestTeller : A versatile RAG AI agent for generating test cases from project documentation and code, supporting multiple LLM providers including Gemini, OpenAI, Claude, and Llama."
+description = "TestTeller: Modular AI-powered test automation platform with generator_agent for intelligent test case generation and automator_agent for automated code generation. Supports multiple LLM providers: Gemini, OpenAI, Claude, and Llama."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache License 2.0"}
@@ -42,14 +42,18 @@ keywords = [
     "knowledge base",
     "document ingestion",
     "code ingestion",
-    "testteller-rag-agent",
-    "testteller rag agent",
-    "testteller_rag_agent"
+    "test automation",
+    "code generation",
+    "pytest",
+    "jest",
+    "junit",
+    "testwriter",
+    "testteller-agent"
 ]
 
 [project.urls]
-Homepage = "https://github.com/iAviPro/testteller-rag-agent"
-"Bug Tracker" = "https://github.com/iAviPro/testteller-rag-agent/issues"
+Homepage = "https://github.com/iAviPro/testteller-agent"
+"Bug Tracker" = "https://github.com/iAviPro/testteller-agent/issues"
 
 [project.scripts]
 testteller = "testteller.main:app_runner"

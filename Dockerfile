@@ -36,6 +36,7 @@ COPY setup.py .
 COPY README.md .
 COPY MANIFEST.in .
 COPY pyproject.toml .
+COPY testteller/ testteller/
 
 # Install dependencies and package in development mode
 RUN pip install --no-cache-dir -r requirements.txt && \

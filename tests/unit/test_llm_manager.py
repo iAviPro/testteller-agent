@@ -4,11 +4,11 @@ Unit tests for LLMManager class.
 import pytest
 import os
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from testteller.llm.llm_manager import LLMManager
-from testteller.llm.gemini_client import GeminiClient
-from testteller.llm.openai_client import OpenAIClient
-from testteller.llm.claude_client import ClaudeClient
-from testteller.llm.llama_client import LlamaClient
+from testteller.core.llm.llm_manager import LLMManager
+from testteller.core.llm.gemini_client import GeminiClient
+from testteller.core.llm.openai_client import OpenAIClient
+from testteller.core.llm.claude_client import ClaudeClient
+from testteller.core.llm.llama_client import LlamaClient
 
 
 class TestLLMManager:

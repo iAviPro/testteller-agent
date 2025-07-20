@@ -1,7 +1,7 @@
-# setup.py for the testteller-rag-agent package
+# setup.py for the testteller-agent package
 """
 setup.py
-This script sets up the TestTeller RAG Agent package, including dependencies,
+This script sets up the TestTeller Agent package, including dependencies,
 entry points, and metadata. It uses setuptools for packaging.
 """
 import pathlib
@@ -43,13 +43,13 @@ VERSION = get_version()
 setup(
     name="testteller",
     version=VERSION,
-    description="TestTeller : A versatile RAG AI agent for generating test cases from project documentation and code, supporting multiple LLM providers including Gemini, OpenAI, Claude, and Llama.",
+    description="TestTeller: Modular AI-powered test automation platform with generator_agent for intelligent test case generation and automator_agent for automated code generation. Supports multiple LLM providers: Gemini, OpenAI, Claude, and Llama.",
     long_description=README,
     long_description_content_type="text/markdown",
     author="Aviral Nigam",
-    url="https://github.com/iAviPro/testteller-rag-agent",
+    url="https://github.com/iAviPro/testteller-agent",
     project_urls={
-        "Bug Tracker": "https://github.com/iAviPro/testteller-rag-agent/issues"
+        "Bug Tracker": "https://github.com/iAviPro/testteller-agent/issues"
     },
     license="Apache License 2.0",
     entry_points={
@@ -79,6 +79,7 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     keywords=["testing", "rag", "llm", "generative ai", "test case generation", "qa", "automation", "testcase",
-              "testteller", "ai testing", "rag agent", "knowledge base", "document ingestion", "code ingestion", "testteller-rag-agent", "testteller rag agent", "testteller_rag_agent"]
+              "testteller", "ai testing", "rag agent", "knowledge base", "document ingestion", "code ingestion", 
+              "test automation", "code generation", "pytest", "jest", "junit", "testwriter", "testteller-agent"]
 
 )

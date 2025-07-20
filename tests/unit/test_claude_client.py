@@ -4,7 +4,7 @@ Unit tests for Claude client with hybrid embedding support.
 import pytest
 import os
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from testteller.llm.claude_client import ClaudeClient
+from testteller.core.llm.claude_client import ClaudeClient
 
 
 class TestClaudeClient:
@@ -40,8 +40,8 @@ class TestClaudeClient:
     def test_init_with_default_settings(self, mock_claude_env_vars):
         """Test Claude client initialization with default settings."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -55,9 +55,9 @@ class TestClaudeClient:
     def test_init_with_settings(self, mock_claude_env_vars, mock_settings):
         """Test Claude client initialization with settings."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.settings', mock_settings):
-                with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                    with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.settings', mock_settings):
+                with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                    with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                         mock_anthropic.return_value = Mock()
                         mock_async_anthropic.return_value = Mock()
 
@@ -77,8 +77,8 @@ class TestClaudeClient:
     def test_get_google_embedding_sync(self, mock_claude_env_vars):
         """Test sync Google embedding generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -98,8 +98,8 @@ class TestClaudeClient:
     async def test_get_google_embedding_async(self, mock_claude_env_vars):
         """Test async Google embedding generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -118,8 +118,8 @@ class TestClaudeClient:
     def test_get_openai_embedding_sync(self, mock_claude_env_vars):
         """Test sync OpenAI embedding generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -142,8 +142,8 @@ class TestClaudeClient:
     async def test_get_openai_embedding_async(self, mock_claude_env_vars):
         """Test async OpenAI embedding generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -166,8 +166,8 @@ class TestClaudeClient:
     def test_get_embedding_sync_google_primary_success(self, mock_claude_env_vars):
         """Test sync embedding with Google as primary provider - success."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -185,8 +185,8 @@ class TestClaudeClient:
     def test_get_embedding_sync_google_provider_failure(self, mock_claude_env_vars):
         """Test sync embedding with Google provider failure."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -195,7 +195,7 @@ class TestClaudeClient:
                     with patch.object(client, '_get_google_embedding_sync') as mock_google:
                         mock_google.side_effect = Exception("Google API error")
 
-                        from testteller.utils.exceptions import EmbeddingGenerationError
+                        from testteller.core.utils.exceptions import EmbeddingGenerationError
                         with pytest.raises(EmbeddingGenerationError):
                             client.get_embedding_sync("test text")
 
@@ -207,8 +207,8 @@ class TestClaudeClient:
     async def test_get_embedding_async_google_primary_success(self, mock_claude_env_vars):
         """Test async embedding with Google as primary provider - success."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -227,8 +227,8 @@ class TestClaudeClient:
     async def test_get_embedding_async_google_provider_failure(self, mock_claude_env_vars):
         """Test async embedding with Google provider failure."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -237,7 +237,7 @@ class TestClaudeClient:
                     with patch.object(client, '_get_google_embedding_async') as mock_google:
                         mock_google.side_effect = Exception("Google API error")
 
-                        from testteller.utils.exceptions import EmbeddingGenerationError
+                        from testteller.core.utils.exceptions import EmbeddingGenerationError
                         with pytest.raises(EmbeddingGenerationError):
                             await client.get_embedding_async("test text")
 
@@ -251,8 +251,8 @@ class TestClaudeClient:
         env_vars["CLAUDE_EMBEDDING_PROVIDER"] = "openai"
 
         with patch.dict(os.environ, env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -270,8 +270,8 @@ class TestClaudeClient:
     def test_get_embeddings_sync_multiple_texts(self, mock_claude_env_vars):
         """Test sync batch embedding generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -290,8 +290,8 @@ class TestClaudeClient:
     def test_get_embedding_sync_empty_text(self, mock_claude_env_vars):
         """Test sync embedding with empty text."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -305,8 +305,8 @@ class TestClaudeClient:
     def test_generate_text_sync(self, mock_claude_env_vars):
         """Test sync text generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_client = Mock()
                     mock_response = Mock()
                     mock_response.content = [Mock(text="Generated text")]
@@ -325,8 +325,8 @@ class TestClaudeClient:
     async def test_generate_text_async(self, mock_claude_env_vars):
         """Test async text generation."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_client = Mock()
                     mock_response = Mock()
                     mock_response.content = [Mock(text="Generated text")]
@@ -348,14 +348,14 @@ class TestClaudeClient:
         env_vars["CLAUDE_EMBEDDING_PROVIDER"] = "unknown"
 
         with patch.dict(os.environ, env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
                     client = ClaudeClient()
 
-                    from testteller.utils.exceptions import EmbeddingGenerationError
+                    from testteller.core.utils.exceptions import EmbeddingGenerationError
                     with pytest.raises(EmbeddingGenerationError):
                         client.get_embedding_sync("test text")
 
@@ -369,15 +369,15 @@ class TestClaudeClient:
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
                     client = ClaudeClient()
                     client.embedding_provider = "google"
 
-                    from testteller.utils.exceptions import EmbeddingGenerationError
+                    from testteller.core.utils.exceptions import EmbeddingGenerationError
                     with pytest.raises(EmbeddingGenerationError) as exc_info:
                         client.get_embedding_sync("test text")
 
@@ -396,15 +396,15 @@ class TestClaudeClient:
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
                     client = ClaudeClient()
                     client.embedding_provider = "openai"
 
-                    from testteller.utils.exceptions import EmbeddingGenerationError
+                    from testteller.core.utils.exceptions import EmbeddingGenerationError
                     with pytest.raises(EmbeddingGenerationError) as exc_info:
                         client.get_embedding_sync("test text")
 
@@ -417,8 +417,8 @@ class TestClaudeClient:
     def test_embedding_provider_fail_with_better_error(self, mock_claude_env_vars):
         """Test that embedding provider failing results in a helpful error message."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -428,7 +428,7 @@ class TestClaudeClient:
                     provider_error = Exception("Provider failed")
 
                     with patch.object(client, '_get_google_embedding_sync', side_effect=provider_error):
-                        from testteller.utils.exceptions import EmbeddingGenerationError
+                        from testteller.core.utils.exceptions import EmbeddingGenerationError
                         with pytest.raises(EmbeddingGenerationError) as exc_info:
                             client.get_embedding_sync("test text")
 
@@ -442,8 +442,8 @@ class TestClaudeClient:
     async def test_embedding_provider_fail_with_better_error_async(self, mock_claude_env_vars):
         """Test that embedding provider failing results in a helpful error message (async)."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
-                with patch('testteller.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
+            with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
+                with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
@@ -453,7 +453,7 @@ class TestClaudeClient:
                     provider_error = Exception("Provider failed")
 
                     with patch.object(client, '_get_google_embedding_async', side_effect=provider_error):
-                        from testteller.utils.exceptions import EmbeddingGenerationError
+                        from testteller.core.utils.exceptions import EmbeddingGenerationError
                         with pytest.raises(EmbeddingGenerationError) as exc_info:
                             await client.get_embedding_async("test text")
 

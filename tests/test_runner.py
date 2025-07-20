@@ -22,7 +22,7 @@ class TestRunner:
     def __init__(self):
         self.project_root = Path(__file__).parent.parent
         self.providers = ["gemini", "openai", "claude", "llama"]
-        self.test_types = ["unit", "integration", "cli", "all"]
+        self.test_types = ["unit", "integration", "cli", "automation", "all"]
 
     def setup_environment(self, provider: str, interactive: bool = True) -> Dict[str, str]:
         """Set up environment variables for testing."""
@@ -148,11 +148,13 @@ class TestRunner:
         cmd = [
             sys.executable, "-m", "pytest",
             "tests/unit/",
+            "tests/test_automation.py",  # Include automation tests
             "-v",
             "--cov=testteller",
+            "--cov=testteller.automator_agent",  # Include automator_agent coverage
             "--cov-report=term-missing",
             "--cov-report=html:htmlcov",
-            "-m", "unit"  # Simplified marker
+            "-m", "unit or automation"  # Include automation marker
         ]
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
@@ -190,6 +192,25 @@ class TestRunner:
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
 
+    def run_automation_tests(self, env_vars: Dict[str, str]) -> int:
+        """Run automation tests."""
+        print("\n🤖 Running Automation Tests...")
+
+        cmd = [
+            sys.executable, "-m", "pytest",
+            "tests/unit/test_parser.py",
+            "tests/unit/test_generators.py", 
+            "tests/unit/test_cli_automation.py",
+            "tests/test_automation.py",
+            "-v",
+            "--cov=testteller.automator_agent",
+            "--cov-report=term-missing",
+            "--cov-append",
+            "-m", "automation"
+        ]
+
+        return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
+
     def run_tests(self, provider: str, test_type: str, interactive: bool = True) -> int:
         """Run tests for specific provider and type."""
         print(f"\n🚀 Running {test_type} tests with {provider} provider")
@@ -212,6 +233,10 @@ class TestRunner:
 
         if test_type in ["cli", "all"]:
             result = self.run_cli_tests(env_vars)
+            total_result += result
+
+        if test_type in ["automation", "all"]:
+            result = self.run_automation_tests(env_vars)
             total_result += result
 
         return total_result
@@ -265,7 +290,7 @@ Examples:
 
     parser.add_argument(
         "--type",
-        choices=["unit", "integration", "cli", "all"],
+        choices=["unit", "integration", "cli", "automation", "all"],
         default="all",
         help="Type of tests to run (default: all)"
     )

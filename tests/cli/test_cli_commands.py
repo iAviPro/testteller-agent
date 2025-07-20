@@ -42,8 +42,13 @@ class TestCLICommands:
         """Test ingest-docs command help."""
         result = self.runner.invoke(app, ["ingest-docs", "--help"])
         assert result.exit_code == 0
-        assert "Path to a document file or a directory" in result.stdout
+        assert "Path to a document file or directory" in result.stdout
         assert "--collection-name" in result.stdout
+        assert "-c" in result.stdout  # Shorthand for collection-name
+        assert "--enhanced" in result.stdout
+        assert "-e" in result.stdout  # Shorthand for enhanced
+        assert "--chunk-size" in result.stdout
+        assert "-s" in result.stdout  # Shorthand for chunk-size
 
     @pytest.mark.cli
     def test_ingest_code_help(self):
@@ -83,6 +88,10 @@ class TestCLICommands:
         """Test configure command help."""
         result = self.runner.invoke(app, ["configure", "--help"])
         assert result.exit_code == 0
+        assert "--provider" in result.stdout
+        assert "-p" in result.stdout  # Shorthand for provider
+        assert "--automator" in result.stdout
+        assert "-a" in result.stdout  # Shorthand for automator
 
     @pytest.mark.cli
     def test_ingest_docs_missing_path(self):
@@ -345,7 +354,7 @@ class TestCLICommands:
 
         # Verify file write operations (only called once for writing .env)
         mock_open.assert_called_with(
-            '/Users/aviral/code/github/testteller-rag-agent/.env', 'w')
+            '/Users/aviral/code/github/testteller-agent/.env', 'w')
         mock_file.write.assert_called()
 
     @pytest.mark.cli
@@ -396,7 +405,7 @@ class TestCLICommands:
 
         # Verify file write operations
         mock_open.assert_called_with(
-            '/Users/aviral/code/github/testteller-rag-agent/.env', 'w')
+            '/Users/aviral/code/github/testteller-agent/.env', 'w')
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
@@ -447,7 +456,7 @@ class TestCLICommands:
 
         # Verify file write operations
         mock_open.assert_called_with(
-            '/Users/aviral/code/github/testteller-rag-agent/.env', 'w')
+            '/Users/aviral/code/github/testteller-agent/.env', 'w')
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
@@ -500,7 +509,7 @@ class TestCLICommands:
 
         # Verify file write operations
         mock_open.assert_called_with(
-            '/Users/aviral/code/github/testteller-rag-agent/.env', 'w')
+            '/Users/aviral/code/github/testteller-agent/.env', 'w')
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
@@ -596,7 +605,7 @@ class TestCLICommands:
 
         # Verify file write operations
         mock_open.assert_called_with(
-            '/Users/aviral/code/github/testteller-rag-agent/.env', 'w')
+            '/Users/aviral/code/github/testteller-agent/.env', 'w')
         mock_file.write.assert_called()
 
     @pytest.mark.cli
@@ -730,3 +739,105 @@ class TestCLICommands:
             ])
 
             assert result.exit_code != 0
+
+    @pytest.mark.cli
+    @patch('testteller.main.ingest_docs_async')
+    def test_ingest_docs_with_shorthand_params(self, mock_ingest, mock_env_vars, create_test_files):
+        """Test ingest-docs command with shorthand parameters."""
+        with patch.dict(os.environ, mock_env_vars):
+            mock_ingest.return_value = None
+
+            doc_file = create_test_files["document"]
+            result = self.runner.invoke(app, [
+                "ingest-docs",
+                str(doc_file),
+                "-c", "test_collection",  # Shorthand for --collection-name
+                "-s", "2000"  # Shorthand for --chunk-size
+            ])
+
+            assert result.exit_code == 0
+            mock_ingest.assert_called_once()
+
+    @pytest.mark.cli
+    @patch('testteller.main.generate_async')
+    def test_generate_with_shorthand_params(self, mock_generate, mock_env_vars):
+        """Test generate command with shorthand parameters."""
+        with patch.dict(os.environ, mock_env_vars):
+            mock_generate.return_value = None
+
+            result = self.runner.invoke(app, [
+                "generate",
+                "Create API tests",
+                "-c", "test_collection",  # Shorthand for --collection-name
+                "-n", "10",  # Shorthand for --num-retrieved
+                "-o", "test_output.md"  # Shorthand for --output-file
+            ])
+
+            assert result.exit_code == 0
+            mock_generate.assert_called_once()
+
+    @pytest.mark.cli
+    @patch('testteller.main.ingest_code_async')
+    def test_ingest_code_with_shorthand_params(self, mock_ingest, mock_env_vars):
+        """Test ingest-code command with shorthand parameters."""
+        with patch.dict(os.environ, mock_env_vars):
+            mock_ingest.return_value = None
+
+            result = self.runner.invoke(app, [
+                "ingest-code",
+                "https://github.com/test/repo.git",
+                "-c", "test_collection",  # Shorthand for --collection-name
+                "-nc"  # Shorthand for --no-cleanup-github
+            ])
+
+            assert result.exit_code == 0
+            mock_ingest.assert_called_once()
+
+    @pytest.mark.cli
+    @patch('testteller.main.status_async')
+    def test_status_with_shorthand_params(self, mock_status, mock_env_vars):
+        """Test status command with shorthand parameters."""
+        with patch.dict(os.environ, mock_env_vars):
+            mock_status.return_value = None
+
+            result = self.runner.invoke(app, [
+                "status",
+                "-c", "test_collection"  # Shorthand for --collection-name
+            ])
+
+            assert result.exit_code == 0
+            mock_status.assert_called_once()
+
+    @pytest.mark.cli
+    @patch('testteller.main.clear_data_async')
+    def test_clear_data_with_shorthand_params(self, mock_clear, mock_env_vars):
+        """Test clear-data command with shorthand parameters."""
+        with patch.dict(os.environ, mock_env_vars):
+            mock_clear.return_value = True
+
+            result = self.runner.invoke(app, [
+                "clear-data",
+                "-c", "test_collection",  # Shorthand for --collection-name
+                "-f"  # Shorthand for --force
+            ])
+
+            assert result.exit_code == 0
+            mock_clear.assert_called_once()
+
+    @pytest.mark.cli
+    def test_automate_help_with_shorthand(self):
+        """Test automate command help shows shorthand parameters."""
+        result = self.runner.invoke(app, ["automate", "--help"])
+        assert result.exit_code == 0
+        assert "--language" in result.stdout
+        assert "-l" in result.stdout  # Shorthand for language
+        assert "--framework" in result.stdout
+        assert "-F" in result.stdout  # Shorthand for framework
+        assert "--output-dir" in result.stdout
+        assert "-o" in result.stdout  # Shorthand for output-dir
+        assert "--interactive" in result.stdout
+        assert "-i" in result.stdout  # Shorthand for interactive
+        assert "--enhance" in result.stdout
+        assert "-E" in result.stdout  # Shorthand for enhance
+        assert "--llm-provider" in result.stdout
+        assert "-p" in result.stdout  # Shorthand for llm-provider

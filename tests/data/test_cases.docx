@@ -1,0 +1,40 @@
+# Test Cases Document (Mock DOCX Content)
+
+## Login Feature Test Cases
+
+### Test Case [TC001]: Valid Login
+**Description**: Test successful login with valid credentials
+**Priority**: High
+**Preconditions**: User account exists
+
+**Test Steps**:
+1. Navigate to login page
+2. Enter valid username
+3. Enter valid password  
+4. Click login button
+
+**Expected Result**: User is redirected to dashboard
+
+### Test Case [TC002]: Invalid Password
+**Description**: Test login with wrong password
+**Priority**: Medium
+
+**Test Steps**:
+1. Navigate to login page
+2. Enter valid username
+3. Enter invalid password
+4. Click login button
+
+**Expected Result**: Error message displayed
+
+### Test Case [TC003]: Empty Fields
+**Description**: Test login with empty fields
+**Priority**: Low
+
+**Test Steps**:
+1. Navigate to login page
+2. Leave username field empty
+3. Leave password field empty
+4. Click login button
+
+**Expected Result**: Validation errors shown

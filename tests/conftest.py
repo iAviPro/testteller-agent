@@ -318,7 +318,7 @@ def provider_specific_env_vars(llm_provider: str) -> Dict[str, str]:
         base_vars.update({
             "GOOGLE_API_KEY": "test_google_api_key_valid",
             "GEMINI_EMBEDDING_MODEL": "embedding-001",
-            "GEMINI_GENERATION_MODEL": "gemini-pro"
+            "GEMINI_GENERATION_MODEL": "gemini-2.0-flash"
         })
     elif llm_provider == "openai":
         base_vars.update({

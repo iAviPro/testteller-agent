@@ -38,7 +38,7 @@ ORIGINAL TEST CODE:
 ENHANCEMENT GUIDELINES:
 {enhancement_guidelines}
 
-Please provide the enhanced test code with explanations for major improvements made.
+IMPORTANT: Return ONLY the enhanced test code without any markdown formatting, explanations, or additional text. Do not wrap the code in ```python or any other markdown syntax. Return raw, executable code only.
 """
 
 # Code generation prompt for creating new tests
@@ -69,7 +69,7 @@ IMPLEMENTATION GUIDELINES:
 FRAMEWORK-SPECIFIC REQUIREMENTS:
 {framework_requirements}
 
-Generate the complete test automation code with proper structure and documentation.
+IMPORTANT: Return ONLY the test code without any markdown formatting, explanations, or additional text. Do not wrap the code in ```python or any other markdown syntax. Return raw, executable code only.
 """
 
 # Provider-specific prompt optimizations

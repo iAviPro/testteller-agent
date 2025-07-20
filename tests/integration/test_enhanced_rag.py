@@ -25,7 +25,7 @@ class TestEnhancedRAGIngestion:
         settings = Mock()
         settings.llm.provider = "gemini"
         settings.llm.gemini_api_key = "test-key"
-        settings.llm.gemini_generation_model = "gemini-pro"
+        settings.llm.gemini_generation_model = "gemini-2.0-flash"
         settings.llm.gemini_embedding_model = "embedding-001"
         settings.chromadb.host = "localhost"
         settings.chromadb.port = 8000

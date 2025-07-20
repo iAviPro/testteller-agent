@@ -18,6 +18,54 @@ from .prompts import (
 logger = logging.getLogger(__name__)
 
 
+def strip_markdown_code_blocks(content: str) -> str:
+    """
+    Strip markdown code blocks from LLM responses.
+    
+    Args:
+        content: Raw content from LLM
+        
+    Returns:
+        Clean code without markdown formatting
+    """
+    import re
+    
+    # Remove markdown code blocks (```language and ```)
+    content = re.sub(r'^```\w*\n', '', content, flags=re.MULTILINE)
+    content = re.sub(r'\n```$', '', content, flags=re.MULTILINE)
+    content = re.sub(r'^```$', '', content, flags=re.MULTILINE)
+    
+    # Remove any leading/trailing explanatory text that might be outside code blocks
+    lines = content.strip().split('\n')
+    
+    # Find the first line that looks like code (import, def, class, etc.)
+    start_idx = 0
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        if (line_stripped.startswith(('import ', 'from ', 'def ', 'class ', '@', '#!/'))
+            or line_stripped.startswith(('<?php', '<?xml', '<!DOCTYPE', '<html'))
+            or line_stripped.startswith(('package ', 'public class', 'private ', 'protected '))
+            or line_stripped.startswith(('const ', 'let ', 'var ', 'function ', 'export '))
+            or line_stripped.startswith(('describe(', 'it(', 'test(', 'expect('))):
+            start_idx = i
+            break
+    
+    # Find the last line that looks like code 
+    end_idx = len(lines)
+    for i in range(len(lines) - 1, -1, -1):
+        line_stripped = lines[i].strip()
+        if line_stripped and not line_stripped.startswith(('**', '#', '*', 'Key ', 'This ', 'Note:', 'Important:')):
+            end_idx = i + 1
+            break
+    
+    # Extract just the code portion
+    if start_idx < end_idx:
+        clean_lines = lines[start_idx:end_idx]
+        return '\n'.join(clean_lines).strip()
+    
+    return content.strip()
+
+
 class TestEnhancer:
     """Enhances test automation code using LLM providers."""
     
@@ -94,9 +142,13 @@ class TestEnhancer:
             # Generate enhanced code
             enhanced_code = self.llm_manager.generate_text(prompt)
             
-            if enhanced_code and len(enhanced_code.strip()) > len(test_code.strip()) * 0.5:
-                logger.info("Test code successfully enhanced")
-                return enhanced_code, True
+            if enhanced_code:
+                # Strip markdown formatting if present
+                enhanced_code = strip_markdown_code_blocks(enhanced_code)
+                
+                if len(enhanced_code.strip()) > len(test_code.strip()) * 0.5:
+                    logger.info("Test code successfully enhanced")
+                    return enhanced_code, True
             else:
                 logger.warning("Enhancement produced insufficient content, using original")
                 return test_code, False
@@ -138,9 +190,13 @@ class TestEnhancer:
             # Generate test code
             generated_code = self.llm_manager.generate_text(prompt)
             
-            if generated_code and len(generated_code.strip()) > 100:  # Minimum viable code length
-                logger.info("Test code successfully generated")
-                return generated_code, True
+            if generated_code:
+                # Strip markdown formatting if present
+                generated_code = strip_markdown_code_blocks(generated_code)
+                
+                if len(generated_code.strip()) > 100:  # Minimum viable code length
+                    logger.info("Test code successfully generated")
+                    return generated_code, True
             else:
                 logger.warning("Generation produced insufficient content")
                 return "", False

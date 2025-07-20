@@ -3,7 +3,7 @@ TestTeller Configuration System
 
 A modular configuration system for setting up TestTeller with:
 - LLM Provider configuration (Gemini, OpenAI, Claude, Llama)
-- TestWriter (Automation) Wizard for test generation setup
+- TestAutomator (Automation) Wizard for test generation setup
 - Additional settings and validation
 
 Usage:
@@ -19,11 +19,16 @@ from .config_wizard import (
     UIMode,
     ConfigurationWriter,
     ConfigurationValidator,
-    TestWriterWizard,
     run_full_wizard,
     run_provider_only_setup,
     run_automation_only_setup
 )
+
+# Import TestAutomatorWizard from new location
+try:
+    from ...automator_agent.config import TestAutomatorWizard
+except ImportError:
+    TestAutomatorWizard = None
 
 # Export validation functions for backward compatibility
 validate_api_key = ConfigurationValidator.validate_api_key
@@ -64,7 +69,7 @@ __all__ = [
     'UIMode',
     'ConfigurationWriter',
     'ConfigurationValidator',
-    'TestWriterWizard',
+    'TestAutomatorWizard',
     'run_full_wizard',
     'run_provider_only_setup',
     'run_automation_only_setup',

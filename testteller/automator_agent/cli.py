@@ -1,4 +1,4 @@
-"""CLI commands for TestWriter automation generation."""
+"""CLI commands for TestTeller automation generation."""
 
 import asyncio
 import logging
@@ -8,18 +8,16 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from .parser import MarkdownTestCaseParser
-# Import unified document parser
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
-from testteller.core.data_ingestion.unified_document_parser import UnifiedDocumentParser, DocumentType
+# Import core utilities
+from ..core.utils.loader import with_progress_bar_sync
+from ..core.data_ingestion.unified_document_parser import UnifiedDocumentParser, DocumentType
+from ..core.constants import SUPPORTED_LANGUAGES, SUPPORTED_FRAMEWORKS
+
+# Import automation components  
+from .parser.markdown_parser import MarkdownTestCaseParser
 from .generators import PythonTestGenerator, JavaScriptTestGenerator, JavaTestGenerator, TypeScriptTestGenerator
 
 logger = logging.getLogger(__name__)
-
-# Import supported languages and frameworks from central constants
-from testteller.core.constants import SUPPORTED_LANGUAGES, SUPPORTED_FRAMEWORKS
 
 
 def get_generator(language: str, framework: str, output_dir: Path):
@@ -65,91 +63,48 @@ def automate_command(
         print(f"❌ Error: Test cases file '{input_file}' not found.")
         raise typer.Exit(code=1)
     
-    # Interactive language/framework selection if not provided
+    # Use defaults from environment or fallback to sensible defaults
     if not language:
-        print("\n🔧 Test Automation Configuration")
-        print("================================")
-        print("\nSelect programming language:")
-        languages = list(SUPPORTED_FRAMEWORKS.keys())
-        for i, lang in enumerate(languages, 1):
-            print(f"  {i}. {lang}")
-        
-        while True:
-            try:
-                choice = typer.prompt("\nEnter number", type=int)
-                if 1 <= choice <= len(languages):
-                    language = languages[choice - 1]
-                    break
-                print("Invalid choice. Please try again.")
-            except (ValueError, typer.Abort):
-                print("Invalid input. Please enter a number.")
+        # Try to get from environment
+        import os
+        language = os.getenv('AUTOMATION_LANGUAGE', 'python')  # Default to python
+        print(f"💡 Using default language: {language}")
+        print("   (Use --language to specify a different language)")
     
     if not framework:
-        frameworks = SUPPORTED_FRAMEWORKS[language]
-        print(f"\nSelect test framework for {language}:")
-        for i, fw in enumerate(frameworks, 1):
-            print(f"  {i}. {fw}")
-        
-        while True:
-            try:
-                choice = typer.prompt("\nEnter number", type=int)
-                if 1 <= choice <= len(frameworks):
-                    framework = frameworks[choice - 1]
-                    break
-                print("Invalid choice. Please try again.")
-            except (ValueError, typer.Abort):
-                print("Invalid input. Please enter a number.")
+        # Try to get from environment or use first supported framework for the language
+        import os
+        framework = os.getenv('AUTOMATION_FRAMEWORK')
+        if not framework:
+            frameworks = SUPPORTED_FRAMEWORKS.get(language, ['pytest'])
+            framework = frameworks[0]  # Use first available framework
+        print(f"💡 Using default framework: {framework}")
+        print("   (Use --framework to specify a different framework)")
     
     # Validate framework
     if not validate_framework(language, framework):
         print(f"❌ Error: Framework '{framework}' is not supported for language '{language}'.")
-        print(f"Supported frameworks for {language}: {', '.join(SUPPORTED_LANGUAGES[language])}")
+        print(f"Supported frameworks for {language}: {', '.join(SUPPORTED_FRAMEWORKS[language])}")
+        print("\n💡 To configure defaults, run: testteller configure")
         raise typer.Exit(code=1)
     
-    print(f"\n✅ Configuration:")
-    print(f"  • Language: {language}")
-    print(f"  • Framework: {framework}")
-    print(f"  • Output: {output_dir}")
+    # Show configuration summary
+    print(f"\n✅ Configuration: {language}/{framework} → {output_dir}")
     
-    # LLM Enhancement Configuration (if not already specified)
+    # LLM Enhancement is enabled by default (no prompting)
     if not enhance:
         try:
             from .llm_enhancer import is_llm_enhancement_available
             
             if is_llm_enhancement_available():
-                print(f"\n🤖 LLM Enhancement Available")
-                print("=============================")
-                print("TestTeller can use AI to enhance the generated test code with:")
-                print("  • Improved error handling and edge cases")
-                print("  • Better assertions and validations")
-                print("  • Enhanced code quality and best practices")
-                print("  • Framework-specific optimizations")
-                
-                enhance = typer.confirm("\nWould you like to enable LLM enhancement?", default=False)
-                
-                if enhance:
-                    if not llm_provider:
-                        print("\nAvailable LLM providers: gemini, openai, claude, llama")
-                        llm_provider = typer.prompt(
-                            "Select LLM provider (leave empty for default)", 
-                            default="", 
-                            show_default=False
-                        ).strip()
-                        llm_provider = llm_provider if llm_provider else None
-                    
-                    print(f"✅ LLM enhancement enabled" + (f" with {llm_provider}" if llm_provider else ""))
-                else:
-                    print("⏭️  LLM enhancement disabled")
-            else:
-                print(f"\n💡 Tip: Configure TestTeller with an LLM provider to enable AI-powered test enhancement")
-        except ImportError:
-            pass  # LLM enhancement not available
-        except Exception as e:
-            logger.warning(f"Failed to check LLM availability: {e}")
+                enhance = True  # Always enable if available
+                if not llm_provider:
+                    llm_provider = None  # Use default
+        except (ImportError, Exception):
+            pass  # LLM enhancement not available, continue without it
     
     try:
         # Parse test cases using unified parser
-        print(f"\n📖 Parsing test cases from: {input_file}")
         file_extension = input_path.suffix.lower()
         
         if file_extension not in ['.md', '.txt', '.pdf', '.docx', '.xlsx']:
@@ -158,25 +113,33 @@ def automate_command(
             raise typer.Exit(code=1)
         
         # Use unified parser for all formats
-        print(f"  📄 Detected format: {file_extension}")
         unified_parser = UnifiedDocumentParser()
         
-        # Parse document for automation
-        parsed_doc = asyncio.run(unified_parser.parse_for_automation(input_path))
+        # Parse document for automation with progress
+        def parse_operation():
+            return asyncio.run(unified_parser.parse_for_automation(input_path))
+        
+        parsed_doc = with_progress_bar_sync(
+            parse_operation, 
+            f"📖 Parsing {input_file} ({file_extension})..."
+        )
         
         # Extract test cases
         test_cases = parsed_doc.test_cases
         
         # If no structured test cases found, try to use content for context
         if not test_cases:
-            print(f"  📝 No structured test cases found. Document type: {parsed_doc.metadata.document_type.value}")
-            
             if parsed_doc.metadata.document_type in [DocumentType.TEST_CASES, DocumentType.REQUIREMENTS]:
                 # For markdown files, try the legacy parser as fallback
                 if file_extension == '.md':
-                    print("  🔄 Trying markdown-specific parser...")
-                    md_parser = MarkdownTestCaseParser()
-                    test_cases = md_parser.parse_file(input_path)
+                    def fallback_parse():
+                        md_parser = MarkdownTestCaseParser()
+                        return md_parser.parse_file(input_path)
+                    
+                    test_cases = with_progress_bar_sync(
+                        fallback_parse,
+                        "🔄 Trying markdown-specific parser..."
+                    )
                 
                 if not test_cases:
                     print("❌ No test cases found in the file.")
@@ -189,14 +152,14 @@ def automate_command(
                 print("💡 Try using a file that contains structured test cases.")
                 raise typer.Exit(code=1)
         
-        print(f"✅ Found {len(test_cases)} test cases")
-        
-        # Show document info
+        # Show parsing results after completion
+        print(f"\n✅ Parsing complete!")
+        print(f"   • Found {len(test_cases)} test cases")
         if parsed_doc.metadata.title:
-            print(f"  📋 Document: {parsed_doc.metadata.title}")
+            print(f"   • Document: {parsed_doc.metadata.title}")
         if parsed_doc.metadata.sections:
-            print(f"  📑 Sections: {len(parsed_doc.metadata.sections)}")
-        print(f"  📊 Content: {parsed_doc.metadata.word_count} words, {parsed_doc.metadata.character_count} characters")
+            print(f"   • Sections: {len(parsed_doc.metadata.sections)}")
+        print(f"   • Content: {parsed_doc.metadata.word_count} words, {parsed_doc.metadata.character_count} characters")
         
         # Interactive selection if requested
         if interactive:
@@ -207,15 +170,20 @@ def automate_command(
             test_cases = selected_cases
         
         # Generate automation code
-        print(f"\n🚀 Generating {language} automation code...")
         output_path = Path(output_dir)
         generator = get_generator(language, framework, output_path)
         
-        generated_files = generator.generate(test_cases)
+        # Generate with progress bar
+        def generate_operation():
+            return generator.generate(test_cases)
+        
+        generated_files = with_progress_bar_sync(
+            generate_operation,
+            f"🚀 Generating {language}/{framework} tests..."
+        )
         
         # LLM Enhancement (optional)
         if enhance:
-            print(f"\n🤖 Enhancing generated code with LLM...")
             try:
                 from .llm_enhancer import create_enhancer, is_llm_enhancement_available
                 
@@ -225,8 +193,15 @@ def automate_command(
                 else:
                     enhancer = create_enhancer(provider=llm_provider)
                     if enhancer.is_available():
-                        enhanced_files = enhancer.enhance_generated_tests(
-                            generated_files, language, framework
+                        # Enhance with progress bar
+                        def enhance_operation():
+                            return enhancer.enhance_generated_tests(
+                                generated_files, language, framework
+                            )
+                        
+                        enhanced_files = with_progress_bar_sync(
+                            enhance_operation,
+                            f"🤖 Enhancing code with {enhancer.provider or 'AI'}..."
                         )
                         
                         # Count enhanced files
@@ -255,14 +230,20 @@ def automate_command(
                 print(f"⚠️  LLM enhancement failed: {e}")
                 print("   Using original generated code.")
         
-        # Write files
-        print(f"\n📝 Writing generated files to: {output_dir}")
-        generator.write_files(generated_files)
+        # Write files with progress bar
+        def write_operation():
+            return generator.write_files(generated_files)
+        
+        with_progress_bar_sync(
+            write_operation,
+            f"📝 Writing {len(generated_files)} files to {output_dir}..."
+        )
         
         # Summary
-        print(f"\n✅ Successfully generated {len(generated_files)} files:")
+        print(f"\n🎉 Automation Complete!")
+        print(f"✅ Successfully generated {len(generated_files)} files:")
         for file_name in generated_files:
-            print(f"  • {output_path / file_name}")
+            print(f"   • {output_path / file_name}")
         
         # Next steps
         print_next_steps(language, framework, output_path)

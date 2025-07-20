@@ -44,9 +44,9 @@ class ClaudeClient(BaseLLMClient):
     def _get_embedding_provider(self) -> str:
         """Get embedding provider from settings or environment."""
         try:
-            if hasattr(self, 'settings') and self.settings and self.settings.llm:
-                return self.settings.llm.__dict__.get(
-                    'claude_embedding_provider', DEFAULT_CLAUDE_EMBEDDING_PROVIDER)
+            from testteller.config import settings
+            if settings and settings.llm:
+                return getattr(settings.llm, 'claude_embedding_provider', DEFAULT_CLAUDE_EMBEDDING_PROVIDER)
         except Exception as e:
             logger.debug("Could not get embedding provider from settings: %s", e)
         
@@ -68,7 +68,8 @@ class ClaudeClient(BaseLLMClient):
             import openai
             openai_api_key = os.getenv("OPENAI_API_KEY")
             if not openai_api_key:
-                raise ValueError(
+                from testteller.core.utils.exceptions import EmbeddingGenerationError
+                raise EmbeddingGenerationError(
                     "OpenAI API key is required for embeddings when using Claude. "
                     "Please set OPENAI_API_KEY in your .env file.\n"
                     "💡 Run 'testteller configure' to set up your API keys properly."
@@ -82,7 +83,8 @@ class ClaudeClient(BaseLLMClient):
             import openai
             openai_api_key = os.getenv("OPENAI_API_KEY")
             if not openai_api_key:
-                raise ValueError(
+                from testteller.core.utils.exceptions import EmbeddingGenerationError
+                raise EmbeddingGenerationError(
                     "OpenAI API key is required for embeddings when using Claude. "
                     "Please set OPENAI_API_KEY in your .env file.\n"
                     "💡 Run 'testteller configure' to set up your API keys properly."
@@ -97,7 +99,8 @@ class ClaudeClient(BaseLLMClient):
             import google.generativeai as genai
             google_api_key = os.getenv("GOOGLE_API_KEY")
             if not google_api_key:
-                raise ValueError(
+                from testteller.core.utils.exceptions import EmbeddingGenerationError
+                raise EmbeddingGenerationError(
                     "Google API key is required for Gemini embeddings when using Claude. "
                     "Please set GOOGLE_API_KEY in your .env file.\n"
                     "💡 Run 'testteller configure' to set up your API keys properly."
@@ -112,7 +115,8 @@ class ClaudeClient(BaseLLMClient):
             import google.generativeai as genai
             google_api_key = os.getenv("GOOGLE_API_KEY")
             if not google_api_key:
-                raise ValueError(
+                from testteller.core.utils.exceptions import EmbeddingGenerationError
+                raise EmbeddingGenerationError(
                     "Google API key is required for Gemini embeddings when using Claude. "
                     "Please set GOOGLE_API_KEY in your .env file.\n"
                     "💡 Run 'testteller configure' to set up your API keys properly."
@@ -199,13 +203,14 @@ class ClaudeClient(BaseLLMClient):
             else:
                 logger.error(
                     f"Unknown embedding provider: {self.embedding_provider}")
-                raise ValueError(
+                from testteller.core.utils.exceptions import EmbeddingGenerationError
+                raise EmbeddingGenerationError(
                     f"Unknown embedding provider: {self.embedding_provider}")
         except Exception as e:
             logger.error(
                 f"Embedding provider '{self.embedding_provider}' failed: {e}")
             # Import here to avoid circular imports
-            from testteller.utils.exceptions import EmbeddingGenerationError
+            from testteller.core.utils.exceptions import EmbeddingGenerationError
             raise EmbeddingGenerationError(
                 f"Embedding provider '{self.embedding_provider}' failed: {e}. "
                 "Please check your API keys and network connection, or run 'testteller configure' to reconfigure."
@@ -235,13 +240,14 @@ class ClaudeClient(BaseLLMClient):
             else:
                 logger.error(
                     f"Unknown embedding provider: {self.embedding_provider}")
-                raise ValueError(
+                from testteller.core.utils.exceptions import EmbeddingGenerationError
+                raise EmbeddingGenerationError(
                     f"Unknown embedding provider: {self.embedding_provider}")
         except Exception as e:
             logger.error(
                 f"Embedding provider '{self.embedding_provider}' failed: {e}")
             # Import here to avoid circular imports
-            from testteller.utils.exceptions import EmbeddingGenerationError
+            from testteller.core.utils.exceptions import EmbeddingGenerationError
             raise EmbeddingGenerationError(
                 f"Embedding provider '{self.embedding_provider}' failed: {e}. "
                 "Please check your API keys and network connection, or run 'testteller configure' to reconfigure."

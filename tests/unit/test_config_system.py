@@ -113,7 +113,7 @@ class TestConfigurationValidator:
 
     def test_validate_model_name_valid(self):
         """Test valid model name validation"""
-        valid_models = ["gpt-4", "gemini-pro", "claude-3-sonnet"]
+        valid_models = ["gpt-4", "gemini-2.0-flash", "claude-3-sonnet"]
         for model in valid_models:
             # Model validation is now internal to provider config
             assert len(model) > 0
@@ -255,7 +255,7 @@ class TestGeminiProvider:
         
         gemini_provider.ui.get_input.side_effect = [
             "test-api-key",  # API key
-            "gemini-pro",    # Generation model
+            "gemini-2.0-flash",    # Generation model
             "embedding-001"  # Embedding model
         ]
         
@@ -264,7 +264,7 @@ class TestGeminiProvider:
         assert isinstance(config, ProviderConfig)
         assert config.provider_name == "gemini"
         assert config.api_key == "test-api-key"
-        assert config.model_name == "gemini-pro"
+        assert config.model_name == "gemini-2.0-flash"
         assert config.additional_config["embedding_model"] == "embedding-001"
 
     def test_validate_config_valid(self, gemini_provider):
@@ -272,7 +272,7 @@ class TestGeminiProvider:
         config = ProviderConfig(
             provider_name="gemini",
             api_key="valid-key",
-            model_name="gemini-pro"
+            model_name="gemini-2.0-flash"
         )
         
         with patch('testteller.core.config.config_wizard.validate_api_key', return_value=True):
@@ -283,7 +283,7 @@ class TestGeminiProvider:
         config = ProviderConfig(
             provider_name="gemini",
             api_key="",  # Invalid empty key
-            model_name="gemini-pro"
+            model_name="gemini-2.0-flash"
         )
         
         with patch('testteller.core.config.config_wizard.validate_api_key', return_value=False):
@@ -294,7 +294,7 @@ class TestGeminiProvider:
         config = ProviderConfig(
             provider_name="gemini",
             api_key="test-key",
-            model_name="gemini-pro",
+            model_name="gemini-2.0-flash",
             additional_config={"embedding_model": "embedding-001"}
         )
         
@@ -303,7 +303,7 @@ class TestGeminiProvider:
         expected = {
             "LLM_PROVIDER": "gemini",
             "GOOGLE_API_KEY": "test-key",
-            "GEMINI_GENERATION_MODEL": "gemini-pro",
+            "GEMINI_GENERATION_MODEL": "gemini-2.0-flash",
             "GEMINI_EMBEDDING_MODEL": "embedding-001"
         }
         assert env_dict == expected

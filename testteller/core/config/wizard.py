@@ -2,7 +2,7 @@
 Main configuration wizard orchestrator.
 
 Coordinates the entire configuration process including LLM provider setup,
-TestWriter automation configuration, and additional settings.
+TestAutomator automation configuration, and additional settings.
 """
 
 import logging
@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .ui import UIHelper, UIMode
 from .providers import get_provider_config, PROVIDER_CONFIGS
-from .automation import TestWriterWizard
+from .automation import TestAutomatorWizard
 from .writers import ConfigurationWriter
 from .validators import ConfigurationValidator
 from ..constants import SUPPORTED_LLM_PROVIDERS, DEFAULT_LLM_PROVIDER
@@ -62,8 +62,8 @@ class ConfigurationWizard:
             llm_config = self._configure_llm_provider()
             self.config_data.update(llm_config)
             
-            # Step 2: TestWriter (Automation) Configuration
-            self.ui.show_step_progress("TestWriter (Automation) Setup")
+            # Step 2: TestAutomator (Automation) Configuration
+            self.ui.show_step_progress("TestAutomator (Automation) Setup")
             automation_config = self._configure_automation()
             self.config_data.update(automation_config)
             
@@ -113,7 +113,7 @@ class ConfigurationWizard:
             llm_config["LLM_PROVIDER"] = provider
             
             # Use defaults for automation
-            automation_wizard = TestWriterWizard()
+            automation_wizard = TestAutomatorWizard()
             automation_config = automation_wizard._get_default_config()
             
             # Combine configurations
@@ -197,16 +197,16 @@ class ConfigurationWizard:
         return config
     
     def _configure_automation(self) -> Dict[str, str]:
-        """Configure TestWriter automation with user choice."""
+        """Configure TestAutomator automation with user choice."""
         try:
-            # Ask user if they want to configure TestWriter automation
+            # Ask user if they want to configure TestAutomator automation
             self.ui.show_section_header(
-                "🔧 TestWriter (Automation) Configuration",
+                "🔧 TestAutomator (Automation) Configuration",
                 "Configure automated test generation for multiple frameworks"
             )
             
             self.ui.show_info(
-                "TestWriter can generate automation code in multiple languages:",
+                "TestAutomator can generate automation code in multiple languages:",
                 [
                     "• Python (pytest, unittest, playwright)",
                     "• JavaScript (jest, mocha, playwright)",
@@ -216,17 +216,17 @@ class ConfigurationWizard:
             )
             
             configure_automation = self.ui.confirm(
-                "Would you like to configure TestWriter (Automation Agent)?", 
+                "Would you like to configure TestAutomator (Automation Agent)?", 
                 default=True
             )
             
             if configure_automation:
-                self.ui.show_info("Setting up TestWriter automation configuration...")
-                automation_wizard = TestWriterWizard()
+                self.ui.show_info("Setting up TestAutomator automation configuration...")
+                automation_wizard = TestAutomatorWizard()
                 return automation_wizard.configure(self.ui)
             else:
-                self.ui.show_info("Using default TestWriter configuration from .env.example")
-                automation_wizard = TestWriterWizard()
+                self.ui.show_info("Using default TestAutomator configuration from .env.example")
+                automation_wizard = TestAutomatorWizard()
                 default_config = automation_wizard._get_default_config()
                 
                 self.ui.show_info(
@@ -235,7 +235,7 @@ class ConfigurationWizard:
                 )
                 
                 self.ui.show_info(
-                    "💡 You can configure TestWriter later using:",
+                    "💡 You can configure TestAutomator later using:",
                     ["testteller configure --testwriter"]
                 )
                 
@@ -248,7 +248,7 @@ class ConfigurationWizard:
                 "Automation configuration failed, using defaults",
                 ["You can reconfigure later with 'testteller configure --testwriter'"]
             )
-            automation_wizard = TestWriterWizard()
+            automation_wizard = TestAutomatorWizard()
             return automation_wizard._get_default_config()
     
     def _configure_additional_settings(self, env_path: Path) -> Dict[str, str]:
@@ -410,12 +410,12 @@ def run_provider_only_setup(provider: str, ui_mode: UIMode = UIMode.CLI) -> bool
 
 
 def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
-    """Run TestWriter automation setup only."""
+    """Run TestAutomator automation setup only."""
     try:
         ui_helper = UIHelper(ui_mode)
-        ui_helper.show_header("TestWriter (Automation) Setup")
+        ui_helper.show_header("TestAutomator (Automation) Setup")
         
-        automation_wizard = TestWriterWizard()
+        automation_wizard = TestAutomatorWizard()
         config = automation_wizard.configure(ui_helper)
         
         # Write automation config to existing .env or create new one
@@ -440,7 +440,7 @@ def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
         success = writer.write_env_file(existing_config, env_path)
         
         if success:
-            ui_helper.show_success("TestWriter automation configured successfully!")
+            ui_helper.show_success("TestAutomator automation configured successfully!")
             return True
         else:
             ui_helper.show_error("Failed to save automation configuration")

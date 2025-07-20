@@ -55,7 +55,7 @@ class TestClaudeClient:
     def test_init_with_settings(self, mock_claude_env_vars, mock_settings):
         """Test Claude client initialization with settings."""
         with patch.dict(os.environ, mock_claude_env_vars):
-            with patch('testteller.core.llm.claude_client.settings', mock_settings):
+            with patch('testteller.config.settings', mock_settings):
                 with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
                     with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                         mock_anthropic.return_value = Mock()
@@ -70,7 +70,7 @@ class TestClaudeClient:
     def test_init_without_claude_api_key(self):
         """Test Claude client initialization without Claude API key."""
         with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(ValueError, match="Claude API key not found"):
+            with pytest.raises(ValueError, match="No API key found in settings or environment variable CLAUDE_API_KEY"):
                 ClaudeClient()
 
     @pytest.mark.unit
@@ -247,16 +247,14 @@ class TestClaudeClient:
     @pytest.mark.unit
     def test_get_embedding_sync_openai_provider_success(self, mock_claude_env_vars):
         """Test sync embedding with OpenAI provider - success."""
-        env_vars = mock_claude_env_vars.copy()
-        env_vars["CLAUDE_EMBEDDING_PROVIDER"] = "openai"
-
-        with patch.dict(os.environ, env_vars):
+        with patch.dict(os.environ, mock_claude_env_vars):
             with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
                 with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
                     mock_anthropic.return_value = Mock()
                     mock_async_anthropic.return_value = Mock()
 
                     client = ClaudeClient()
+                    client.embedding_provider = "openai"  # Override the provider after initialization
 
                     with patch.object(client, '_get_openai_embedding_sync') as mock_openai:
                         mock_openai.return_value = [0.1, 0.2, 0.3]

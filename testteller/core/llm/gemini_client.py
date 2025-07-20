@@ -18,9 +18,18 @@ logger = logging.getLogger(__name__)
 class GeminiClient(BaseLLMClient):
     """Client for interacting with Google's Gemini API."""
 
-    def __init__(self):
+    def __init__(self, api_key: str = None, generation_model: str = None, embedding_model: str = None):
         """Initialize the Gemini client with API key from settings or environment."""
         super().__init__("gemini")
+        
+        # Override with provided values if given
+        if api_key:
+            self.api_key = api_key
+        if generation_model:
+            self.generation_model = generation_model
+        if embedding_model:
+            self.embedding_model = embedding_model
+            
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(self.generation_model)
 

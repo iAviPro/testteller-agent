@@ -277,7 +277,7 @@ class ConfigurationWriter:
             
             # Automation section
             summary_lines.extend([
-                "TestWriter (Automation) Configuration:",
+                "TestAutomator (Automation) Configuration:",
                 f"  Language: {config.get('AUTOMATION_LANGUAGE', 'Not configured')}",
                 f"  Framework: {config.get('AUTOMATION_FRAMEWORK', 'Not configured')}",
                 f"  Base URL: {config.get('BASE_URL', 'Not configured')}",

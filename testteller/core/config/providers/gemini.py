@@ -3,7 +3,7 @@ Gemini (Google) provider configuration.
 """
 
 from typing import Dict, List
-from .base import BaseProviderConfig, ProviderInfo, ConfigurationStep, create_api_key_step, create_model_step
+from .base import BaseProviderConfig, ProviderInfo, ConfigurationStep, create_api_key_step, create_model_step, validate_api_key, validate_model_name
 from ...constants import DEFAULT_GEMINI_GENERATION_MODEL, DEFAULT_GEMINI_EMBEDDING_MODEL
 
 
@@ -61,7 +61,7 @@ class GeminiConfig(BaseProviderConfig):
         """Test connection to Gemini API."""
         try:
             # Import here to avoid circular dependencies
-            from testteller.llm.gemini_client import GeminiClient
+            from testteller.core.llm.gemini_client import GeminiClient
             
             api_key = config.get("GOOGLE_API_KEY", "")
             if not api_key:
@@ -85,13 +85,19 @@ class GeminiConfig(BaseProviderConfig):
                 
         except Exception as e:
             error_msg = str(e)
+            logger.error(f"Connection test error: {error_msg}")
             
             # Provide helpful error messages for common issues
-            if "API_KEY" in error_msg.upper() or "authentication" in error_msg.lower():
+            if "API_KEY" in error_msg.upper() or "authentication" in error_msg.lower() or "401" in error_msg:
                 return False, "Authentication failed. Please check your API key."
+            elif "invalid" in error_msg.lower() and "api" in error_msg.lower():
+                return False, "Invalid API key format. Please check your API key."
             elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
                 return False, "API quota exceeded. Please check your usage limits."
             elif "network" in error_msg.lower() or "connection" in error_msg.lower():
                 return False, "Network error. Please check your internet connection."
+            elif "404" in error_msg:
+                return False, "API endpoint not found. Please check if the model exists."
             else:
-                return False, f"Connection test failed: {error_msg}"
+                # Include more details for debugging
+                return False, f"Connection test failed: {error_msg[:200]}"

@@ -268,7 +268,7 @@ class UnifiedDocumentParser:
             try:
                 # Read first few lines for quick analysis
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    first_lines = [f.readline().strip() for _ in range(10)]
+                    first_lines = [f.readline().strip() for _ in range(100)]
                     content_sample = '\n'.join(first_lines)
                 
                 # Detect document type

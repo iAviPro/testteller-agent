@@ -186,9 +186,9 @@ class UIHelper:
         """
         while True:
             try:
-                if default:
+                if default is not None:
                     value = typer.prompt(
-                        f"\n{prompt} (default: {default})",
+                        f"\n{prompt} (default: {default if default else 'empty'})",
                         default=default,
                         show_default=False
                     )
@@ -277,9 +277,9 @@ class UIHelper:
             for key, value in llm_configs.items():
                 print(f"   • {key}: {value}")
         
-        # Show TestWriter configuration  
+        # Show TestAutomator configuration  
         if automation_configs:
-            print("\n🧪 TestWriter (Automation):")
+            print("\n🧪 TestAutomator (Automation):")
             for key, value in automation_configs.items():
                 print(f"   • {key}: {value}")
         
@@ -295,7 +295,7 @@ class UIHelper:
         print("=" * 30)
         print(f"✅ Configuration saved to: {config_path}")
         print(f"✅ LLM Provider: {provider}")
-        print(f"✅ TestWriter Automation: {'Enabled' if automation_enabled else 'Disabled'}")
+        print(f"✅ TestAutomator Automation: {'Enabled' if automation_enabled else 'Disabled'}")
         
         print("\n🚀 Next Steps:")
         print("   1. Test your configuration:")

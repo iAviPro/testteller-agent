@@ -1,5 +1,5 @@
 """
-TestWriter (Automation) Wizard configuration.
+TestAutomator (Automation) Wizard configuration.
 
 Handles configuration of test automation settings including language,
 framework, and related automation parameters.
@@ -9,8 +9,8 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
-from .ui import UIHelper, validate_url, validate_directory_path
-from ..constants import (
+from ...core.config.ui import UIHelper, validate_url, validate_directory_path
+from ...core.constants import (
     SUPPORTED_LANGUAGES, 
     SUPPORTED_FRAMEWORKS,
     DEFAULT_AUTOMATION_LANGUAGE,
@@ -21,16 +21,16 @@ from ..constants import (
 logger = logging.getLogger(__name__)
 
 
-class TestWriterWizard:
-    """TestWriter (Automation) configuration wizard."""
+class TestAutomatorWizard:
+    """TestAutomator (Automation) configuration wizard."""
     
     def __init__(self):
-        """Initialize TestWriter wizard."""
+        """Initialize TestAutomator wizard."""
         self.config_data = {}
     
     def configure(self, ui_helper: UIHelper) -> Dict[str, str]:
         """
-        Run TestWriter (Automation) configuration wizard.
+        Run TestAutomator (Automation) configuration wizard.
         
         Args:
             ui_helper: UI helper for user interaction
@@ -42,7 +42,7 @@ class TestWriterWizard:
         
         # Show section header
         ui_helper.show_section_header(
-            "🧪 TestWriter (Automation) Wizard",
+            "🧪 TestAutomator (Automation) Wizard",
             "Configure automated test code generation for multiple languages and frameworks",
             "🧪"
         )
@@ -57,7 +57,7 @@ class TestWriterWizard:
         )
         
         if not configure_automation:
-            ui_helper.show_info("TestWriter automation configuration skipped.")
+            ui_helper.show_info("TestAutomator automation configuration skipped.")
             return self._get_default_config()
         
         # Configure automation settings
@@ -72,7 +72,7 @@ class TestWriterWizard:
         is_valid, errors = self._validate_configuration(config)
         if not is_valid:
             ui_helper.show_error("Configuration validation failed:", errors)
-            raise Exception("TestWriter configuration validation failed")
+            raise Exception("TestAutomator configuration validation failed")
         
         # Show configuration summary
         self._show_configuration_summary(ui_helper, config)
@@ -85,7 +85,7 @@ class TestWriterWizard:
     def _show_automation_overview(self, ui_helper: UIHelper):
         """Show automation capabilities overview."""
         ui_helper.show_info(
-            "TestWriter can generate automated test code in multiple languages:",
+            "TestAutomator can generate automated test code in multiple languages:",
             [
                 f"🐍 Python: {', '.join(SUPPORTED_FRAMEWORKS['python'])}",
                 f"🟨 JavaScript: {', '.join(SUPPORTED_FRAMEWORKS['javascript'])}",
@@ -175,7 +175,7 @@ class TestWriterWizard:
         api_url = ui_helper.get_input(
             "API base URL (leave empty if same as base URL)",
             default="",
-            validator=lambda x: not x or validate_url(x),
+            validator=lambda x: x == "" or validate_url(x),
             error_message="Please enter a valid API URL or leave empty"
         )
         if api_url:
@@ -209,12 +209,12 @@ class TestWriterWizard:
         
         try:
             # Check if LLM enhancement is available
-            from testwriter.llm_enhancer import is_llm_enhancement_available
+            from ..llm_enhancer import is_llm_enhancement_available
             
             if is_llm_enhancement_available():
                 ui_helper.show_section_header(
                     "🤖 AI Enhancement Options",
-                    "TestWriter can use AI to enhance generated test code"
+                    "TestAutomator can use AI to enhance generated test code"
                 )
                 
                 ui_helper.show_info(
@@ -337,7 +337,7 @@ class TestWriterWizard:
             ui_helper.show_info(f"{framework.title()} features:", info)
     
     def _validate_configuration(self, config: Dict[str, str]) -> Tuple[bool, List[str]]:
-        """Validate TestWriter configuration."""
+        """Validate TestAutomator configuration."""
         errors = []
         
         # Validate language
@@ -384,7 +384,7 @@ class TestWriterWizard:
         output_dir = config.get("AUTOMATION_OUTPUT_DIR", "")
         
         ui_helper.show_success(
-            "TestWriter (Automation) configuration completed!",
+            "TestAutomator (Automation) configuration completed!",
             [
                 f"Language: {language}",
                 f"Framework: {framework}",
@@ -429,5 +429,5 @@ def validate_automation_config(config: Dict[str, str]) -> Tuple[bool, List[str]]
     Returns:
         Tuple of (is_valid, error_messages)
     """
-    wizard = TestWriterWizard()
+    wizard = TestAutomatorWizard()
     return wizard._validate_configuration(config)

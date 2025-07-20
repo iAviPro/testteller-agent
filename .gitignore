@@ -92,6 +92,7 @@ testteller-testcases.md
 test_automation_cases.md
 test_registration_cases.md
 test_sample.md
+generated_tests/
 
 # Development artifacts
 .mypy_cache/

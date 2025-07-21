@@ -380,6 +380,13 @@ def print_next_steps(language: str, framework: str, output_dir: Path):
         else:
             print("  3. npm test")
     
+    elif language == 'java':
+        print(f"  1. cd {output_dir}")
+        print("  2. mvn clean install")
+        print("  3. mvn test")
+        if framework == 'junit5':
+            print("  4. mvn surefire-report:report  # For HTML reports")
+        
     print("\n✨ RAG-Enhanced Features:")
     print("  • Tests use real application endpoints and selectors")
     print("  • Authentication flows based on discovered patterns")

@@ -622,6 +622,7 @@ def test_{category}_basic(base_url):
 
 class TestCodeValidator:
     """Validates and fixes generated test code."""
+    __test__ = False  # Tell pytest this is not a test class
     
     def __init__(self, vector_store: ChromaDBManager, llm_manager: LLMManager):
         self.vector_store = vector_store

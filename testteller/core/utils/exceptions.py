@@ -42,4 +42,5 @@ class CodeIngestionError(Exception):
 
 class TestCaseGenerationError(Exception):
     """Custom exception for errors during test case generation."""
+    __test__ = False  # Tell pytest this is not a test class
     pass

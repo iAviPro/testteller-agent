@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TestStep:
     """Represents a single test step."""
+    __test__ = False  # Tell pytest this is not a test class
     action: str
     technical_details: Optional[str] = None
     validation: Optional[str] = None
@@ -26,6 +27,7 @@ class TestStep:
 @dataclass
 class TestCase:
     """Represents a parsed test case."""
+    __test__ = False  # Tell pytest this is not a test class
     id: str
     feature: str
     type: str
@@ -55,7 +57,7 @@ class MarkdownTestCaseParser:
     
     def __init__(self):
         self.test_case_pattern = re.compile(
-            r'### Test Case (E2E_|INT_|TECH_|MOCK_)(\w+)'
+            r'### Test Case (E2E_|INT_|TECH_|MOCK_)(.+?)(?=\n|$)'
         )
         
     def parse_file(self, file_path: Path) -> List[TestCase]:

@@ -21,6 +21,7 @@ DEFAULT_COLLECTION_NAME = "test_documents_non_prod"
 
 class TestTellerAgent:
     """Agent for generating test cases using RAG approach."""
+    __test__ = False  # Tell pytest this is not a test class
 
     def __init__(
         self,

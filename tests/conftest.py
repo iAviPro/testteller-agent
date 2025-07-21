@@ -240,8 +240,8 @@ def mock_testteller_agent(
     test_collection_name: str
 ) -> TestTellerAgent:
     """Create a TestTellerAgent with mocked dependencies."""
-    with patch('testteller.agent.testteller_agent.LLMManager') as mock_llm_class:
-        with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma_class:
+    with patch('testteller.generator_agent.agent.testteller_agent.LLMManager') as mock_llm_class:
+        with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager') as mock_chroma_class:
             mock_llm_class.return_value = mock_llm_manager
             mock_chroma_class.return_value = mock_chromadb_manager
             agent = TestTellerAgent(collection_name=test_collection_name)

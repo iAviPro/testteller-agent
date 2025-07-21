@@ -20,3 +20,11 @@ except ImportError:
 
 # Update APP_VERSION in constants to use the version from here
 APP_VERSION = __version__
+
+# Import core modules for easy access
+try:
+    from . import core
+    from . import generator_agent as agent
+    from . import automator_agent
+except ImportError:
+    pass  # Modules may not be available in all environments

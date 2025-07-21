@@ -120,6 +120,13 @@ class BaseTestGenerator(ABC):
                             value = value.lower() == 'true'
                         elif value.startswith('"') and value.endswith('"'):
                             value = value[1:-1]
+                        else:
+                            # Try to parse as float
+                            try:
+                                if '.' in value:
+                                    value = float(value)
+                            except ValueError:
+                                pass  # Keep as string
                         
                         test_data[key] = value
         

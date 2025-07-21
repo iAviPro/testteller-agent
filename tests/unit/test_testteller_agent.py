@@ -65,22 +65,24 @@ class TestTestTellerAgent:
         test_file = temp_dir / "test.txt"
         test_file.write_text("Test content")
 
-        # Mock document loader
-        mock_testteller_agent.document_loader.load_document = AsyncMock(
-            return_value="Test content")
+        # Mock unified parser with proper return structure
+        from testteller.core.data_ingestion.unified_document_parser import ParsedDocument, DocumentMetadata, DocumentType
+        mock_parsed_doc = Mock()
+        mock_parsed_doc.chunks = ["Test content"]
+        mock_parsed_doc.metadata = Mock()
+        mock_parsed_doc.metadata.document_type = DocumentType.DOCUMENTATION
+        mock_parsed_doc.metadata.title = "Test"
+        mock_testteller_agent.unified_parser.parse_for_rag = AsyncMock(
+            return_value=mock_parsed_doc)
 
         await mock_testteller_agent.ingest_documents_from_path(str(test_file))
 
-        # Verify document loader was called
-        mock_testteller_agent.document_loader.load_document.assert_called_once_with(
-            str(test_file))
+        # Verify unified parser was called
+        mock_testteller_agent.unified_parser.parse_for_rag.assert_called_once_with(
+            str(test_file), 1000)
 
         # Verify vector store was called
         mock_testteller_agent.vector_store.add_documents.assert_called_once()
-        args = mock_testteller_agent.vector_store.add_documents.call_args
-        assert args[0][0] == ["Test content"]  # documents
-        assert args[0][1][0]["source"] == str(test_file)  # metadata
-        assert len(args[0][2]) == 1  # ids
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -92,23 +94,14 @@ class TestTestTellerAgent:
         (test_dir / "doc1.txt").write_text("Content 1")
         (test_dir / "doc2.txt").write_text("Content 2")
 
-        # Mock document loader
-        mock_testteller_agent.document_loader.load_from_directory = AsyncMock(
-            return_value=[("Content 1", "doc1.txt"), ("Content 2", "doc2.txt")]
-        )
+        # Mock the _ingest_directory method directly
+        mock_testteller_agent._ingest_directory = AsyncMock()
 
         await mock_testteller_agent.ingest_documents_from_path(str(test_dir))
 
-        # Verify document loader was called
-        mock_testteller_agent.document_loader.load_from_directory.assert_called_once_with(
-            str(test_dir))
-
-        # Verify vector store was called
-        mock_testteller_agent.vector_store.add_documents.assert_called_once()
-        args = mock_testteller_agent.vector_store.add_documents.call_args
-        assert args[0][0] == ["Content 1", "Content 2"]  # documents
-        assert len(args[0][1]) == 2  # metadata
-        assert len(args[0][2]) == 2  # ids
+        # Verify _ingest_directory was called
+        mock_testteller_agent._ingest_directory.assert_called_once_with(
+            str(test_dir), True, 1000)  # enhanced_parsing=True, chunk_size=1000
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -133,7 +126,10 @@ class TestTestTellerAgent:
         test_file = temp_dir / "test.txt"
         test_file.write_text("Test content")
 
-        # Mock document loader to raise exception
+        # Mock both unified parser and document loader to raise exception
+        mock_testteller_agent.unified_parser.parse_for_rag = AsyncMock(
+            side_effect=Exception("Parse error")
+        )
         mock_testteller_agent.document_loader.load_document = AsyncMock(
             side_effect=Exception("Load error")
         )

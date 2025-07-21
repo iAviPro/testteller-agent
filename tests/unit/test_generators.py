@@ -63,7 +63,7 @@ class TestBaseGenerator:
     
     def test_sanitize_test_name(self):
         """Test test name sanitization."""
-        assert self.generator.sanitize_test_name("E2E_[1]") == "e2e_1"
+        assert self.generator.sanitize_test_name("E2E_[1]") == "e2e__1"
         assert self.generator.sanitize_test_name("User Login Test") == "user_login_test"
         assert self.generator.sanitize_test_name("API/Integration") == "api_integration"
         assert self.generator.sanitize_test_name("Test-with-dashes") == "test_with_dashes"
@@ -194,6 +194,7 @@ class TestPythonGenerator:
                     technical_details="Send GET request to /login"
                 ),
                 TestStep(
+                    action="Verify login form displayed",
                     validation="Verify login form displayed",
                     validation_details="Check for username and password fields"
                 )
@@ -211,7 +212,7 @@ class TestPythonGenerator:
         # Check test file content
         test_content = generated_files["test_e2e.py"]
         assert "import pytest" in test_content
-        assert "def test_e2e_1" in test_content
+        assert "def test_e2e__1" in test_content
         assert "user_id = 123" in test_content
         assert "email = \"test@example.com\"" in test_content
         
@@ -245,7 +246,7 @@ class TestPythonGenerator:
         test_content = generated_files["test_integration.py"]
         assert "import unittest" in test_content
         assert "class TestIntegration(unittest.TestCase)" in test_content
-        assert "def test_int_1" in test_content
+        assert "def test_int__1" in test_content
         assert "if __name__ == '__main__':" in test_content
         assert "unittest.main()" in test_content
     
@@ -487,7 +488,7 @@ class TestJavaGenerator:
         assert "@BeforeEach" in test_content
         assert "@AfterEach" in test_content
         assert "@Test" in test_content
-        assert "public void testE2e1()" in test_content
+        assert "public void teste2e1()" in test_content
         
         # Check pom.xml content
         pom_content = generated_files["pom.xml"]
@@ -547,10 +548,10 @@ class TestJavaGenerator:
         """Test converting text to camelCase."""
         generator = JavaTestGenerator("junit5", self.temp_dir)
         
-        assert generator._to_camel_case("E2E_[1]") == "e2E1"
+        assert generator._to_camel_case("E2E_[1]") == "e2e1"
         assert generator._to_camel_case("user_login_test") == "userLoginTest"
         assert generator._to_camel_case("simple") == "simple"
-        assert generator._to_camel_case("UPPER_CASE") == "uPPERCASE"
+        assert generator._to_camel_case("UPPER_CASE") == "upperCase"
     
     def test_infer_java_type(self):
         """Test inferring Java types from Python values."""

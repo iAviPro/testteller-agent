@@ -15,9 +15,9 @@ from testteller.automator_agent.cli import (
     validate_framework,
     interactive_select_tests,
     parse_selection,
-    print_next_steps,
-    SUPPORTED_LANGUAGES
+    print_next_steps
 )
+from testteller.core.constants import SUPPORTED_LANGUAGES, SUPPORTED_FRAMEWORKS
 from testteller.automator_agent.parser.markdown_parser import TestCase
 
 
@@ -233,16 +233,16 @@ Verify that User Service correctly communicates with Order Service.
     @patch('typer.prompt')
     def test_automate_command_interactive_selection(self, mock_prompt):
         """Test automate command with interactive test selection."""
-        # Mock user selections: python, pytest, then test selection
-        mock_prompt.side_effect = [1, 1, "1,2"]  # Select python, pytest, then tests 1,2
+        # Mock user selections for interactive test selection
+        mock_prompt.return_value = "1,2"  # Select tests 1,2
         
         output_dir = self.temp_dir / "output"
         
         try:
             automate_command(
                 input_file=str(self.test_file),
-                language=None,
-                framework=None,
+                language="python",  # Provide explicit language
+                framework="pytest",  # Provide explicit framework
                 output_dir=str(output_dir),
                 interactive=True
             )
@@ -288,16 +288,18 @@ Verify that User Service correctly communicates with Order Service.
     @patch('typer.prompt')
     def test_automate_command_user_abort(self, mock_prompt):
         """Test automate command when user aborts selection."""
-        # Simulate KeyboardInterrupt during prompt
-        mock_prompt.side_effect = typer.Abort()
+        # Simulate user selecting 'none' in interactive mode
+        mock_prompt.return_value = "none"
         
-        with pytest.raises(typer.Exit):
+        with pytest.raises(typer.Exit) as exc_info:
             automate_command(
                 input_file=str(self.test_file),
-                language=None,
-                framework=None,
-                output_dir="./output"
+                language="python",
+                framework="pytest",
+                output_dir="./output",
+                interactive=True
             )
+        assert exc_info.value.exit_code == 1
     
     def test_automate_command_malformed_input_file(self):
         """Test automate command with malformed test cases file."""
@@ -326,20 +328,24 @@ class TestSupportedLanguages:
     
     def test_supported_languages_structure(self):
         """Test that supported languages are properly configured."""
-        assert isinstance(SUPPORTED_LANGUAGES, dict)
+        assert isinstance(SUPPORTED_LANGUAGES, list)
         
         # Check expected languages
         assert "python" in SUPPORTED_LANGUAGES
         assert "javascript" in SUPPORTED_LANGUAGES
         assert "java" in SUPPORTED_LANGUAGES
         
+        # Check frameworks structure
+        assert isinstance(SUPPORTED_FRAMEWORKS, dict)
+        
         # Check that each language has frameworks
-        for language, frameworks in SUPPORTED_LANGUAGES.items():
-            assert isinstance(frameworks, list)
-            assert len(frameworks) > 0
+        for language in SUPPORTED_LANGUAGES:
+            assert language in SUPPORTED_FRAMEWORKS
+            assert isinstance(SUPPORTED_FRAMEWORKS[language], list)
+            assert len(SUPPORTED_FRAMEWORKS[language]) > 0
         
         # Check specific frameworks
-        assert "pytest" in SUPPORTED_LANGUAGES["python"]
-        assert "unittest" in SUPPORTED_LANGUAGES["python"]
-        assert "jest" in SUPPORTED_LANGUAGES["javascript"]
-        assert "junit5" in SUPPORTED_LANGUAGES["java"]
+        assert "pytest" in SUPPORTED_FRAMEWORKS["python"]
+        assert "unittest" in SUPPORTED_FRAMEWORKS["python"]
+        assert "jest" in SUPPORTED_FRAMEWORKS["javascript"]
+        assert "junit5" in SUPPORTED_FRAMEWORKS["java"]

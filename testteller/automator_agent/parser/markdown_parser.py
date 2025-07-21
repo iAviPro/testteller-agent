@@ -369,3 +369,38 @@ class MarkdownTestCaseParser:
             test_case.test_setup['monitoring'] = self._extract_value(line, '**Monitoring:**')
         elif '**Load Profile/Attack Vector:**' in line:
             test_case.test_setup['load_profile'] = self._extract_value(line, '**Load Profile/Attack Vector:**')
+    
+    def extract_test_data(self, test_case: TestCase) -> Dict[str, Any]:
+        """Extract test data from a test case's prerequisites."""
+        test_data = {}
+        
+        if 'test_data' in test_case.prerequisites:
+            data_str = test_case.prerequisites['test_data']
+            # Remove leading bullet points and whitespace
+            data_str = data_str.lstrip('- ').strip()
+            
+            # Parse key-value pairs from the test data string
+            # Format: "key1: value1, key2: value2, ..."
+            pairs = data_str.split(',')
+            for pair in pairs:
+                pair = pair.strip()
+                if ':' in pair:
+                    key, value = pair.split(':', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    # Try to parse the value to appropriate type
+                    if value.lower() == 'true':
+                        test_data[key] = True
+                    elif value.lower() == 'false':
+                        test_data[key] = False
+                    elif value.replace('.', '').replace('-', '').isdigit():
+                        # Check if it's a number
+                        if '.' in value:
+                            test_data[key] = float(value)
+                        else:
+                            test_data[key] = int(value)
+                    else:
+                        test_data[key] = value
+        
+        return test_data

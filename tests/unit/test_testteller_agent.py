@@ -15,8 +15,8 @@ class TestTestTellerAgent:
     def test_init_with_default_params(self, mock_env_vars):
         """Test TestTellerAgent initialization with default parameters."""
         with patch.dict(os.environ, mock_env_vars):
-            with patch('testteller.agent.testteller_agent.LLMManager') as mock_llm:
-                with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma:
+            with patch('testteller.generator_agent.agent.testteller_agent.LLMManager') as mock_llm:
+                with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager') as mock_chroma:
                     mock_llm.return_value = Mock()
                     mock_chroma.return_value = Mock()
 
@@ -32,7 +32,7 @@ class TestTestTellerAgent:
     def test_init_with_custom_params(self, mock_env_vars, mock_llm_manager):
         """Test TestTellerAgent initialization with custom parameters."""
         with patch.dict(os.environ, mock_env_vars):
-            with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma:
+            with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager') as mock_chroma:
                 mock_chroma.return_value = Mock()
 
                 agent = TestTellerAgent(
@@ -47,13 +47,13 @@ class TestTestTellerAgent:
     def test_get_collection_name_from_settings(self, mock_env_vars):
         """Test getting collection name from settings."""
         with patch.dict(os.environ, mock_env_vars):
-            with patch('testteller.agent.testteller_agent.settings') as mock_settings:
+            with patch('testteller.generator_agent.agent.testteller_agent.settings') as mock_settings:
                 mock_chromadb_settings = Mock()
                 mock_chromadb_settings.default_collection_name = "settings_collection"
                 mock_settings.chromadb = mock_chromadb_settings
 
-                with patch('testteller.agent.testteller_agent.LLMManager'):
-                    with patch('testteller.agent.testteller_agent.ChromaDBManager'):
+                with patch('testteller.generator_agent.agent.testteller_agent.LLMManager'):
+                    with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager'):
                         agent = TestTellerAgent()
                         assert agent.collection_name == "settings_collection"
 
@@ -306,7 +306,7 @@ class TestTestTellerAgent:
         mock_testteller_agent.llm_manager.generate_text_async = AsyncMock(
             return_value=mock_llm_response)
 
-        with patch('testteller.agent.testteller_agent.get_test_case_generation_prompt') as mock_prompt:
+        with patch('testteller.generator_agent.agent.testteller_agent.get_test_case_generation_prompt') as mock_prompt:
             mock_prompt.return_value = "Optimized prompt"
 
             result = await mock_testteller_agent.generate_test_cases(code_context)

@@ -1,17 +1,17 @@
-"""Base class for test code generators."""
+"""Base class for RAG-enhanced test code generators."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pathlib import Path
 import logging
 
-from ..parser.markdown_parser import TestCase
+from .parser.markdown_parser import TestCase
 
 logger = logging.getLogger(__name__)
 
 
 class BaseTestGenerator(ABC):
-    """Abstract base class for test code generators."""
+    """Abstract base class for RAG-enhanced test code generators."""
     
     def __init__(self, framework: str, output_dir: Path):
         self.framework = framework

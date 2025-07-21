@@ -1,7 +1,8 @@
-"""CLI commands for TestTeller automation generation."""
+"""CLI commands for TestTeller RAG-enhanced automation generation."""
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -12,26 +13,76 @@ from typing_extensions import Annotated
 from ..core.utils.loader import with_progress_bar_sync
 from ..core.data_ingestion.unified_document_parser import UnifiedDocumentParser, DocumentType
 from ..core.constants import SUPPORTED_LANGUAGES, SUPPORTED_FRAMEWORKS
+from ..core.vector_store.chromadb_manager import ChromaDBManager
+from ..core.llm.llm_manager import LLMManager
+from ..config import settings
 
-# Import automation components  
+# Import RAG-enhanced automation components
 from .parser.markdown_parser import MarkdownTestCaseParser
-from .generators import PythonTestGenerator, JavaScriptTestGenerator, JavaTestGenerator, TypeScriptTestGenerator
+from .rag_enhanced_generator import RAGEnhancedTestGenerator
 
 logger = logging.getLogger(__name__)
 
+# Default values
+DEFAULT_COLLECTION_NAME = "test_collection"
+DEFAULT_OUTPUT_DIR = "./generated_tests"
+DEFAULT_LANGUAGE = "python"
+DEFAULT_FRAMEWORK = "pytest"
 
-def get_generator(language: str, framework: str, output_dir: Path):
-    """Get the appropriate generator based on language and framework."""
-    if language == 'python':
-        return PythonTestGenerator(framework, output_dir)
-    elif language == 'javascript':
-        return JavaScriptTestGenerator(framework, output_dir)
-    elif language == 'typescript':
-        return TypeScriptTestGenerator(framework, output_dir)
-    elif language == 'java':
-        return JavaTestGenerator(framework, output_dir)
-    else:
-        raise ValueError(f"Unsupported language: {language}")
+
+def get_collection_name(provided_name: Optional[str] = None) -> str:
+    """
+    Get the collection name to use, with the following priority:
+    1. User-provided name
+    2. Name from settings
+    3. Default fallback name
+    """
+    if provided_name:
+        return provided_name
+    
+    try:
+        if settings and settings.chromadb and settings.chromadb.default_collection_name:
+            name = settings.chromadb.default_collection_name
+            logger.info(f"Using collection name from settings: {name}")
+            return name
+    except Exception as e:
+        logger.warning(f"Failed to get collection name from settings: {e}")
+    
+    logger.info(f"Using default collection name: {DEFAULT_COLLECTION_NAME}")
+    return DEFAULT_COLLECTION_NAME
+
+
+def get_language(provided_language: Optional[str] = None) -> str:
+    """Get the programming language to use."""
+    if provided_language:
+        return provided_language
+    
+    # Try environment variable
+    env_language = os.getenv('AUTOMATION_LANGUAGE')
+    if env_language:
+        logger.info(f"Using language from environment: {env_language}")
+        return env_language
+    
+    logger.info(f"Using default language: {DEFAULT_LANGUAGE}")
+    return DEFAULT_LANGUAGE
+
+
+def get_framework(provided_framework: Optional[str] = None, language: str = DEFAULT_LANGUAGE) -> str:
+    """Get the test framework to use."""
+    if provided_framework:
+        return provided_framework
+    
+    # Try environment variable
+    env_framework = os.getenv('AUTOMATION_FRAMEWORK')
+    if env_framework:
+        logger.info(f"Using framework from environment: {env_framework}")
+        return env_framework
+    
+    # Use first supported framework for the language
+    frameworks = SUPPORTED_FRAMEWORKS.get(language, [DEFAULT_FRAMEWORK])
+    framework = frameworks[0]
+    logger.info(f"Using default framework for {language}: {framework}")
+    return framework
 
 
 def validate_framework(language: str, framework: str) -> bool:
@@ -39,72 +90,114 @@ def validate_framework(language: str, framework: str) -> bool:
     return framework in SUPPORTED_FRAMEWORKS.get(language, [])
 
 
+def initialize_vector_store(collection_name: str) -> ChromaDBManager:
+    """Initialize vector store using configuration settings."""
+    try:
+        # Use settings to get ChromaDB configuration
+        persist_directory = None
+        if settings and settings.chromadb:
+            persist_directory = getattr(settings.chromadb, 'persist_directory', None)
+        
+        # Fallback to environment variable or default
+        if not persist_directory:
+            persist_directory = os.getenv('CHROMA_DB_PERSIST_DIRECTORY', './chroma_data')
+        
+        # Expand user path
+        persist_directory = os.path.expanduser(persist_directory)
+        
+        logger.info(f"Initializing vector store at: {persist_directory}")
+        
+        # Initialize vector store with LLM manager
+        llm_manager = LLMManager()  # Uses settings configuration
+        vector_store = ChromaDBManager(llm_manager, persist_directory=persist_directory)
+        
+        # Test connectivity by listing collections
+        try:
+            collections = vector_store.list_collections()
+            logger.info(f"Vector store ready with {len(collections)} collections")
+            return vector_store
+        except Exception as e:
+            logger.warning(f"Vector store connectivity test failed: {e}")
+            return vector_store
+            
+    except Exception as e:
+        logger.error(f"Failed to initialize vector store: {e}")
+        raise typer.Exit(code=1) from e
+
+
 def automate_command(
     input_file: Annotated[str, typer.Argument(help="Path to test cases file (supports .md, .txt, .pdf, .docx, .xlsx)")],
+    collection_name: Annotated[str, typer.Option(
+        "--collection-name", "-c", help="ChromaDB collection name for application context")] = None,
     language: Annotated[str, typer.Option(
         "--language", "-l", help="Programming language for test automation")] = None,
     framework: Annotated[str, typer.Option(
         "--framework", "-F", help="Test framework to use")] = None,
     output_dir: Annotated[str, typer.Option(
-        "--output-dir", "-o", help="Output directory for generated tests")] = "./generated_tests",
+        "--output-dir", "-o", help="Output directory for generated tests")] = DEFAULT_OUTPUT_DIR,
     interactive: Annotated[bool, typer.Option(
         "--interactive", "-i", help="Interactive mode to select test cases")] = False,
-    enhance: Annotated[bool, typer.Option(
-        "--enhance", "-E", help="Use LLM to enhance generated test code")] = False,
-    llm_provider: Annotated[str, typer.Option(
-        "--llm-provider", "-p", help="LLM provider for enhancement (gemini, openai, claude, llama)")] = None
+    num_context_docs: Annotated[int, typer.Option(
+        "--num-context", "-n", min=1, max=20, help="Number of context documents to retrieve")] = 5,
+    verbose: Annotated[bool, typer.Option(
+        "--verbose", "-v", help="Enable verbose logging")] = False
 ):
-    """Generate automation code from TestTeller test cases."""
+    """Generate automation code using RAG-enhanced approach with vector store knowledge."""
+    
+    # Configure logging
+    if verbose:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    
+    print("🚀 RAG-Enhanced Test Automation Generation")
+    print("=" * 50)
     
     # Validate input file exists
     input_path = Path(input_file)
     if not input_path.exists():
-        logger.error(f"Input file not found: {input_file}")
         print(f"❌ Error: Test cases file '{input_file}' not found.")
         raise typer.Exit(code=1)
     
-    # Use defaults from environment or fallback to sensible defaults
-    if not language:
-        # Try to get from environment
-        import os
-        language = os.getenv('AUTOMATION_LANGUAGE', 'python')  # Default to python
-        print(f"💡 Using default language: {language}")
-        print("   (Use --language to specify a different language)")
+    # Resolve configuration parameters
+    collection_name = get_collection_name(collection_name)
+    language = get_language(language)
+    framework = get_framework(framework, language)
     
-    if not framework:
-        # Try to get from environment or use first supported framework for the language
-        import os
-        framework = os.getenv('AUTOMATION_FRAMEWORK')
-        if not framework:
-            frameworks = SUPPORTED_FRAMEWORKS.get(language, ['pytest'])
-            framework = frameworks[0]  # Use first available framework
-        print(f"💡 Using default framework: {framework}")
-        print("   (Use --framework to specify a different framework)")
-    
-    # Validate framework
+    # Validate framework compatibility
     if not validate_framework(language, framework):
         print(f"❌ Error: Framework '{framework}' is not supported for language '{language}'.")
         print(f"Supported frameworks for {language}: {', '.join(SUPPORTED_FRAMEWORKS[language])}")
-        print("\n💡 To configure defaults, run: testteller configure")
         raise typer.Exit(code=1)
     
-    # Show configuration summary
-    print(f"\n✅ Configuration: {language}/{framework} → {output_dir}")
-    
-    # LLM Enhancement is enabled by default (no prompting)
-    if not enhance:
-        try:
-            from .llm_enhancer import is_llm_enhancement_available
-            
-            if is_llm_enhancement_available():
-                enhance = True  # Always enable if available
-                if not llm_provider:
-                    llm_provider = None  # Use default
-        except (ImportError, Exception):
-            pass  # LLM enhancement not available, continue without it
+    # Show resolved configuration
+    print(f"✅ Configuration:")
+    print(f"   • Language: {language}")
+    print(f"   • Framework: {framework}")
+    print(f"   • Collection: {collection_name}")
+    print(f"   • Output: {output_dir}")
+    print(f"   • Context docs: {num_context_docs}")
     
     try:
-        # Parse test cases using unified parser
+        # 1. Initialize Vector Store
+        def init_vector_store():
+            return initialize_vector_store(collection_name)
+        
+        vector_store = with_progress_bar_sync(
+            init_vector_store,
+            "🔍 Initializing vector store and application context..."
+        )
+        
+        # 2. Initialize LLM Manager from settings
+        def init_llm():
+            return LLMManager()  # Uses configuration from settings
+        
+        llm_manager = with_progress_bar_sync(
+            init_llm,
+            "🤖 Initializing LLM for code generation..."
+        )
+        
+        print(f"✅ RAG system ready with LLM provider: {llm_manager.provider}")
+        
+        # 3. Parse test cases using unified parser
         file_extension = input_path.suffix.lower()
         
         if file_extension not in ['.md', '.txt', '.pdf', '.docx', '.xlsx']:
@@ -112,54 +205,42 @@ def automate_command(
             print("Supported formats: .md, .txt, .pdf, .docx, .xlsx")
             raise typer.Exit(code=1)
         
-        # Use unified parser for all formats
+        # Parse document for automation
         unified_parser = UnifiedDocumentParser()
         
-        # Parse document for automation with progress
         def parse_operation():
             return asyncio.run(unified_parser.parse_for_automation(input_path))
         
         parsed_doc = with_progress_bar_sync(
-            parse_operation, 
-            f"📖 Parsing {input_file} ({file_extension})..."
+            parse_operation,
+            f"📖 Parsing test cases from {input_path.name}..."
         )
         
         # Extract test cases
         test_cases = parsed_doc.test_cases
         
-        # If no structured test cases found, try to use content for context
-        if not test_cases:
-            if parsed_doc.metadata.document_type in [DocumentType.TEST_CASES, DocumentType.REQUIREMENTS]:
-                # For markdown files, try the legacy parser as fallback
-                if file_extension == '.md':
-                    def fallback_parse():
-                        md_parser = MarkdownTestCaseParser()
-                        return md_parser.parse_file(input_path)
-                    
-                    test_cases = with_progress_bar_sync(
-                        fallback_parse,
-                        "🔄 Trying markdown-specific parser..."
-                    )
-                
-                if not test_cases:
-                    print("❌ No test cases found in the file.")
-                    print("💡 Tip: Ensure the file contains structured test cases in the expected format.")
-                    print("   For supported formats, see: https://github.com/testteller/docs")
-                    raise typer.Exit(code=1)
-            else:
-                print("❌ This document doesn't appear to contain test cases.")
-                print(f"   Detected type: {parsed_doc.metadata.document_type.value}")
-                print("💡 Try using a file that contains structured test cases.")
-                raise typer.Exit(code=1)
+        # Fallback to markdown parser if needed
+        if not test_cases and file_extension == '.md':
+            def fallback_parse():
+                md_parser = MarkdownTestCaseParser()
+                return md_parser.parse_file(input_path)
+            
+            test_cases = with_progress_bar_sync(
+                fallback_parse,
+                "🔄 Using markdown-specific parser..."
+            )
         
-        # Show parsing results after completion
-        print(f"\n✅ Parsing complete!")
-        print(f"   • Found {len(test_cases)} test cases")
+        if not test_cases:
+            print("❌ No test cases found in the file.")
+            print("💡 Ensure the file contains structured test cases in the expected format.")
+            raise typer.Exit(code=1)
+        
+        # Show parsing results
+        print(f"\n✅ Test cases parsed successfully!")
+        print(f"   • Found: {len(test_cases)} test cases")
         if parsed_doc.metadata.title:
             print(f"   • Document: {parsed_doc.metadata.title}")
-        if parsed_doc.metadata.sections:
-            print(f"   • Sections: {len(parsed_doc.metadata.sections)}")
-        print(f"   • Content: {parsed_doc.metadata.word_count} words, {parsed_doc.metadata.character_count} characters")
+        print(f"   • Content: {parsed_doc.metadata.word_count} words")
         
         # Interactive selection if requested
         if interactive:
@@ -168,69 +249,30 @@ def automate_command(
                 print("❌ No test cases selected.")
                 raise typer.Exit(code=1)
             test_cases = selected_cases
+            print(f"✅ Selected {len(test_cases)} test cases for automation")
         
-        # Generate automation code
+        # 4. Generate automation code using RAG approach
         output_path = Path(output_dir)
-        generator = get_generator(language, framework, output_path)
         
-        # Generate with progress bar
-        def generate_operation():
+        # Create RAG-enhanced generator
+        generator = RAGEnhancedTestGenerator(
+            framework=framework,
+            output_dir=output_path,
+            vector_store=vector_store,
+            language=language,
+            llm_manager=llm_manager,
+            num_context_docs=num_context_docs
+        )
+        
+        def rag_generate_operation():
             return generator.generate(test_cases)
         
         generated_files = with_progress_bar_sync(
-            generate_operation,
-            f"🚀 Generating {language}/{framework} tests..."
+            rag_generate_operation,
+            f"🧠 Generating {language}/{framework} tests with application context..."
         )
         
-        # LLM Enhancement (optional)
-        if enhance:
-            try:
-                from .llm_enhancer import create_enhancer, is_llm_enhancement_available
-                
-                if not is_llm_enhancement_available():
-                    print("⚠️  LLM enhancement not available. Ensure LLM is configured in TestTeller.")
-                    print("   Generated code will be used without enhancement.")
-                else:
-                    enhancer = create_enhancer(provider=llm_provider)
-                    if enhancer.is_available():
-                        # Enhance with progress bar
-                        def enhance_operation():
-                            return enhancer.enhance_generated_tests(
-                                generated_files, language, framework
-                            )
-                        
-                        enhanced_files = with_progress_bar_sync(
-                            enhance_operation,
-                            f"🤖 Enhancing code with {enhancer.provider or 'AI'}..."
-                        )
-                        
-                        # Count enhanced files
-                        enhanced_count = sum(1 for filename, content in enhanced_files.items() 
-                                           if content != generated_files.get(filename, ""))
-                        
-                        if enhanced_count > 0:
-                            generated_files = enhanced_files
-                            print(f"✅ Enhanced {enhanced_count} test files using {enhancer.provider}")
-                            
-                            # Show optimization suggestions
-                            suggestions = enhancer.get_optimization_suggestions(language, framework)
-                            if suggestions:
-                                print(f"\n💡 Optimization suggestions for {language} + {framework}:")
-                                for i, suggestion in enumerate(suggestions[:5], 1):  # Show top 5
-                                    print(f"  {i}. {suggestion}")
-                        else:
-                            print("⚠️  No files were enhanced. Using original generated code.")
-                    else:
-                        print("⚠️  LLM enhancer initialization failed. Using original generated code.")
-                        
-            except ImportError:
-                print("⚠️  LLM enhancement dependencies not available. Using original generated code.")
-            except Exception as e:
-                logger.warning(f"LLM enhancement failed: {e}")
-                print(f"⚠️  LLM enhancement failed: {e}")
-                print("   Using original generated code.")
-        
-        # Write files with progress bar
+        # 5. Write files
         def write_operation():
             return generator.write_files(generated_files)
         
@@ -239,17 +281,25 @@ def automate_command(
             f"📝 Writing {len(generated_files)} files to {output_dir}..."
         )
         
-        # Summary
-        print(f"\n🎉 Automation Complete!")
-        print(f"✅ Successfully generated {len(generated_files)} files:")
-        for file_name in generated_files:
-            print(f"   • {output_path / file_name}")
+        # 6. Success Summary
+        print(f"\n🎉 Test Generation Complete!")
+        print(f"✅ Generated {len(generated_files)} files using RAG-enhanced approach:")
         
-        # Next steps
+        for file_name in sorted(generated_files.keys()):
+            file_path = output_path / file_name
+            file_size = len(generated_files[file_name])
+            print(f"   • {file_name} ({file_size:,} chars)")
+        
+        print(f"\n📁 Output directory: {output_path.absolute()}")
+        
+        # 7. Next steps
         print_next_steps(language, framework, output_path)
         
+        # 8. Quality assessment
+        assess_generated_quality(generated_files)
+        
     except Exception as e:
-        logger.error(f"Failed to generate automation code: {e}", exc_info=True)
+        logger.error(f"Test generation failed: {e}", exc_info=True)
         print(f"\n❌ Error: {e}")
         raise typer.Exit(code=1)
 
@@ -258,7 +308,8 @@ def interactive_select_tests(test_cases):
     """Interactive test case selection."""
     print("\n📋 Available test cases:")
     for i, tc in enumerate(test_cases, 1):
-        print(f"{i:3d}. [{tc.id}] {tc.objective[:60]}...")
+        objective = tc.objective[:60] + "..." if len(tc.objective) > 60 else tc.objective
+        print(f"{i:3d}. [{tc.id}] {objective}")
     
     print("\nSelect test cases to automate:")
     print("  • Enter numbers separated by commas (e.g., 1,3,5)")
@@ -305,29 +356,70 @@ def parse_selection(selection: str, max_index: int) -> list:
 
 
 def print_next_steps(language: str, framework: str, output_dir: Path):
-    """Print next steps based on language and framework."""
-    print("\n📚 Next steps:")
+    """Print next steps for generated tests."""
+    print("\n📚 Next Steps:")
     
     if language == 'python':
         print(f"  1. cd {output_dir}")
         print("  2. pip install -r requirements.txt")
         if framework == 'pytest':
-            print("  3. pytest")
+            print("  3. pytest --verbose")
+            print("  4. pytest --html=report.html  # For HTML reports")
+        elif framework == 'playwright':
+            print("  3. playwright install  # Install browsers")
+            print("  4. pytest --headed  # Run with visible browser")
         else:
-            print("  3. python -m unittest discover")
+            print("  3. python -m unittest discover -v")
     
-    elif language == 'javascript':
+    elif language in ('javascript', 'typescript'):
         print(f"  1. cd {output_dir}")
         print("  2. npm install")
-        print("  3. npm test")
+        if framework == 'playwright':
+            print("  3. npx playwright install")
+            print("  4. npm test")
+        else:
+            print("  3. npm test")
     
-    elif language == 'java':
-        print(f"  1. cd {output_dir}")
-        print("  2. mvn clean install")
-        print("  3. mvn test")
+    print("\n✨ RAG-Enhanced Features:")
+    print("  • Tests use real application endpoints and selectors")
+    print("  • Authentication flows based on discovered patterns")
+    print("  • Test data matches application schemas")
+    print("  • Framework best practices applied automatically")
+
+
+def assess_generated_quality(generated_files: dict):
+    """Assess and report on the quality of generated tests."""
+    total_lines = 0
+    todo_count = 0
+    test_function_count = 0
     
-    print("\n💡 Tips:")
-    print("  • Review and customize the generated tests")
-    print("  • Update test data and assertions")
-    print("  • Configure test environment settings")
-    print("  • Add missing test implementations marked with TODO")
+    for file_name, content in generated_files.items():
+        if file_name.endswith(('.py', '.js', '.ts')):  # Test files
+            lines = content.split('\n')
+            total_lines += len(lines)
+            
+            # Count TODOs
+            todo_count += sum(1 for line in lines if 'TODO' in line or 'FIXME' in line)
+            
+            # Count test functions
+            test_function_count += sum(1 for line in lines 
+                                     if any(pattern in line for pattern in 
+                                           ['def test_', 'it(', 'test(', 'describe(']))
+    
+    print(f"\n📊 Quality Assessment:")
+    print(f"   • Total Lines of Code: {total_lines:,}")
+    print(f"   • Test Functions: {test_function_count}")
+    print(f"   • TODO Items: {todo_count}")
+    
+    # Calculate quality score
+    quality_score = max(0, 100 - (todo_count * 10)) if test_function_count > 0 else 0
+    print(f"   • Quality Score: {quality_score}%")
+    
+    if quality_score >= 90:
+        print("   🟢 Excellent: Tests should run with minimal modifications")
+    elif quality_score >= 70:
+        print("   🟡 Good: Some minor updates may be needed")
+    elif quality_score >= 50:
+        print("   🟠 Fair: Some manual work may be required")
+    else:
+        print("   🔴 Needs work: Significant manual implementation needed")

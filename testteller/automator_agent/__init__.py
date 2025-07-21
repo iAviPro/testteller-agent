@@ -1,11 +1,11 @@
 """
-TestTeller Automator Agent Package.
+TestTeller RAG-Enhanced Automator Agent Package.
 
-This package contains all automation-specific functionality including:
-- Test automation generators for different languages and frameworks
-- Automation configuration and wizards
-- CLI commands for test automation
-- LLM enhancement for generated test code
+This package provides RAG-enhanced test automation generation using vector store knowledge:
+- Complete working test code generation (no templates or TODOs)
+- Real application context discovery from vector stores
+- Multi-language and framework support
+- Quality validation and assessment
 """
 
 from .cli import automate_command

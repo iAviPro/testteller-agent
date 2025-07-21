@@ -88,7 +88,6 @@ Thumbs.db
 
 # Test outputs
 test_*/
-testteller_output.md
 testteller-testcases.md
 test_automation_cases.md
 test_registration_cases.md
@@ -120,6 +119,5 @@ site/
 local_*/
 iavipro/
 .claude/
-test_automation*
 testteller_cli*
 EOF < /dev/null

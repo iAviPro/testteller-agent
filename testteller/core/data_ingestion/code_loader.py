@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -20,8 +21,10 @@ class CodeLoader:
 
     def __init__(self):
         """Initialize the code loader."""
-        self.clone_dir_base = Path("temp_cloned_repos")
-        self.clone_dir_base.mkdir(exist_ok=True)
+        # Use system temporary directory with testteller prefix
+        self.temp_dir = tempfile.mkdtemp(prefix="testteller_repos_")
+        self.clone_dir_base = Path(self.temp_dir)
+        logger.debug("Created temporary directory for repositories: %s", self.clone_dir_base)
 
     def _get_repo_name_from_url(self, repo_url: str) -> str:
         """Extract repository name from URL."""

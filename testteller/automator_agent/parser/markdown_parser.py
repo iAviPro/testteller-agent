@@ -55,7 +55,7 @@ class MarkdownTestCaseParser:
     
     def __init__(self):
         self.test_case_pattern = re.compile(
-            r'### Test Case (E2E_|INT_|TECH_|MOCK_)\[(\d+)\]'
+            r'### Test Case (E2E_|INT_|TECH_|MOCK_)(\w+)'
         )
         
     def parse_file(self, file_path: Path) -> List[TestCase]:
@@ -80,7 +80,7 @@ class MarkdownTestCaseParser:
                 section_content = test_case_sections[i + 2]
                 
                 test_case = self._parse_test_case(
-                    f"{prefix}[{number}]", 
+                    f"{prefix}{number}", 
                     section_content
                 )
                 if test_case:

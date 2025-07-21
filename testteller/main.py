@@ -473,6 +473,8 @@ if HAS_AUTOMATION:
     @app.command()
     def automate(
         input_file: Annotated[str, typer.Argument(help="Path to test cases file (supports .md, .txt, .pdf, .docx, .xlsx)")],
+        collection_name: Annotated[str, typer.Option(
+            "--collection-name", "-c", help="ChromaDB collection name for application context")] = None,
         language: Annotated[str, typer.Option(
             "--language", "-l", help="Programming language for test automation")] = None,
         framework: Annotated[str, typer.Option(
@@ -481,18 +483,27 @@ if HAS_AUTOMATION:
             "--output-dir", "-o", help="Output directory for generated tests")] = "./generated_tests",
         interactive: Annotated[bool, typer.Option(
             "--interactive", "-i", help="Interactive mode to select test cases")] = False,
-        enhance: Annotated[bool, typer.Option(
-            "--enhance", "-E", help="Use LLM to enhance generated test code")] = False,
-        llm_provider: Annotated[str, typer.Option(
-            "--llm-provider", "-p", help="LLM provider for enhancement (gemini, openai, claude, llama)")] = None
+        num_context_docs: Annotated[int, typer.Option(
+            "--num-context", "-n", min=1, max=20, help="Number of context documents to retrieve")] = 5,
+        verbose: Annotated[bool, typer.Option(
+            "--verbose", "-v", help="Enable verbose logging")] = False
     ):
-        """Generate automation code from TestTeller test cases."""
+        """Generate automation code using RAG-enhanced approach with vector store knowledge."""
         if not HAS_AUTOMATION:
             print("❌ Automation functionality not available. Please check your installation.")
             raise typer.Exit(code=1)
         
-        # Delegate to the consolidated automate_command
-        automate_command(input_file, language, framework, output_dir, interactive, enhance, llm_provider)
+        # Delegate to the consolidated automate_command with correct parameters
+        automate_command(
+            input_file=input_file,
+            collection_name=collection_name,
+            language=language,
+            framework=framework,
+            output_dir=output_dir,
+            interactive=interactive,
+            num_context_docs=num_context_docs,
+            verbose=verbose
+        )
 
 
 @app.callback()

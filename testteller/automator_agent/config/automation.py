@@ -208,10 +208,17 @@ class TestAutomatorWizard:
         config = {}
         
         try:
-            # Check if LLM enhancement is available
-            from ..llm_enhancer import is_llm_enhancement_available
+            # Check if LLM enhancement is available by trying to import LLM manager
+            from ...core.llm.llm_manager import LLMManager
             
-            if is_llm_enhancement_available():
+            # Test if LLM is configured
+            try:
+                llm_manager = LLMManager()
+                llm_available = llm_manager is not None
+            except:
+                llm_available = False
+            
+            if llm_available:
                 ui_helper.show_section_header(
                     "🤖 AI Enhancement Options",
                     "TestAutomator can use AI to enhance generated test code"

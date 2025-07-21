@@ -124,7 +124,7 @@ class UnifiedDocumentParser:
         
         # Document type detection patterns
         self.test_case_patterns = [
-            r'### Test Case.*\[(\d+)\]',
+            r'### Test Case.*(?:\[(\d+)\]|(\w+))',
             r'## Test.*Case',
             r'Test Steps?:',
             r'Expected.*Result:',

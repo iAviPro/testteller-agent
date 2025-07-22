@@ -81,6 +81,21 @@ services:
       - API_RETRY_ATTEMPTS=${API_RETRY_ATTEMPTS:-3}
       - API_RETRY_WAIT_SECONDS=${API_RETRY_WAIT_SECONDS:-2}
 
+      # -----------------------------------------------------------------------------
+      # Feedback Loop Configuration (NEW - Dual-Feedback RAG Architecture)
+      # -----------------------------------------------------------------------------
+      - ENABLE_TEST_CASE_FEEDBACK=${ENABLE_TEST_CASE_FEEDBACK:-true}
+      - MIN_QUALITY_SCORE_FOR_STORAGE=${MIN_QUALITY_SCORE_FOR_STORAGE:-0.7}
+      - MAX_GENERATED_TESTS_TO_STORE=${MAX_GENERATED_TESTS_TO_STORE:-1000}
+      - GENERATED_TEST_RETENTION_DAYS=${GENERATED_TEST_RETENTION_DAYS:-90}
+
+      # -----------------------------------------------------------------------------
+      # Automator Agent Configuration (RAG-Enhanced)
+      # -----------------------------------------------------------------------------
+      - AUTOMATOR_NUM_CONTEXT_DOCS=${AUTOMATOR_NUM_CONTEXT_DOCS:-5}
+      - AUTOMATOR_DEFAULT_LANGUAGE=${AUTOMATOR_DEFAULT_LANGUAGE:-python}
+      - AUTOMATOR_DEFAULT_FRAMEWORK=${AUTOMATOR_DEFAULT_FRAMEWORK:-pytest}
+
     volumes:
       # Persistent storage for app data
       - chroma_data:/app/chroma_data

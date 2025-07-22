@@ -1,0 +1,66 @@
+# Requirements Spreadsheet (Mock XLSX Content)
+
+## User Management Requirements
+
+### Functional Requirements
+
+#### REQ-001: User Registration
+As a new user
+I want to create an account
+So that I can access the system
+
+**Acceptance Criteria**:
+- Valid email required
+- Password must be 8+ characters
+- Confirmation email sent
+- Account activated upon email verification
+
+#### REQ-002: User Login
+As a registered user
+I want to log into the system
+So that I can access my dashboard
+
+**Acceptance Criteria**:
+- Authentication via email/password
+- Remember me option available
+- Account lockout after 5 failed attempts
+- Password reset functionality
+
+#### REQ-003: Profile Management
+As a logged-in user
+I want to update my profile
+So that my information stays current
+
+**Acceptance Criteria**:
+- Edit name, email, phone number
+- Change password with current password verification
+- Upload profile picture
+- Save changes with confirmation
+
+### Non-Functional Requirements
+
+#### NFR-001: Performance
+- Login response time < 2 seconds
+- Profile update response time < 1 second
+- Support 1000 concurrent users
+
+#### NFR-002: Security
+- All passwords hashed with bcrypt
+- HTTPS required for all authentication
+- Session timeout after 30 minutes inactivity
+- CSRF protection on all forms
+
+### Business Rules
+
+#### BR-001: Password Policy
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character
+
+#### BR-002: Account Management
+- Email addresses must be unique
+- Usernames must be unique
+- Account disabled after 90 days inactivity
+- Data retention for 7 years after account deletion

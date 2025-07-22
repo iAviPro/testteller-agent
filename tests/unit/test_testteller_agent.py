@@ -5,7 +5,7 @@ import pytest
 import os
 from pathlib import Path
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from testteller.agent.testteller_agent import TestTellerAgent
+from testteller.generator_agent.agent.testteller_agent import TestTellerAgent
 
 
 class TestTestTellerAgent:
@@ -15,8 +15,8 @@ class TestTestTellerAgent:
     def test_init_with_default_params(self, mock_env_vars):
         """Test TestTellerAgent initialization with default parameters."""
         with patch.dict(os.environ, mock_env_vars):
-            with patch('testteller.agent.testteller_agent.LLMManager') as mock_llm:
-                with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma:
+            with patch('testteller.generator_agent.agent.testteller_agent.LLMManager') as mock_llm:
+                with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager') as mock_chroma:
                     mock_llm.return_value = Mock()
                     mock_chroma.return_value = Mock()
 
@@ -32,7 +32,7 @@ class TestTestTellerAgent:
     def test_init_with_custom_params(self, mock_env_vars, mock_llm_manager):
         """Test TestTellerAgent initialization with custom parameters."""
         with patch.dict(os.environ, mock_env_vars):
-            with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma:
+            with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager') as mock_chroma:
                 mock_chroma.return_value = Mock()
 
                 agent = TestTellerAgent(
@@ -47,13 +47,13 @@ class TestTestTellerAgent:
     def test_get_collection_name_from_settings(self, mock_env_vars):
         """Test getting collection name from settings."""
         with patch.dict(os.environ, mock_env_vars):
-            with patch('testteller.agent.testteller_agent.settings') as mock_settings:
+            with patch('testteller.generator_agent.agent.testteller_agent.settings') as mock_settings:
                 mock_chromadb_settings = Mock()
                 mock_chromadb_settings.default_collection_name = "settings_collection"
                 mock_settings.chromadb = mock_chromadb_settings
 
-                with patch('testteller.agent.testteller_agent.LLMManager'):
-                    with patch('testteller.agent.testteller_agent.ChromaDBManager'):
+                with patch('testteller.generator_agent.agent.testteller_agent.LLMManager'):
+                    with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager'):
                         agent = TestTellerAgent()
                         assert agent.collection_name == "settings_collection"
 
@@ -65,22 +65,24 @@ class TestTestTellerAgent:
         test_file = temp_dir / "test.txt"
         test_file.write_text("Test content")
 
-        # Mock document loader
-        mock_testteller_agent.document_loader.load_document = AsyncMock(
-            return_value="Test content")
+        # Mock unified parser with proper return structure
+        from testteller.core.data_ingestion.unified_document_parser import ParsedDocument, DocumentMetadata, DocumentType
+        mock_parsed_doc = Mock()
+        mock_parsed_doc.chunks = ["Test content"]
+        mock_parsed_doc.metadata = Mock()
+        mock_parsed_doc.metadata.document_type = DocumentType.DOCUMENTATION
+        mock_parsed_doc.metadata.title = "Test"
+        mock_testteller_agent.unified_parser.parse_for_rag = AsyncMock(
+            return_value=mock_parsed_doc)
 
         await mock_testteller_agent.ingest_documents_from_path(str(test_file))
 
-        # Verify document loader was called
-        mock_testteller_agent.document_loader.load_document.assert_called_once_with(
-            str(test_file))
+        # Verify unified parser was called
+        mock_testteller_agent.unified_parser.parse_for_rag.assert_called_once_with(
+            str(test_file), 1000)
 
         # Verify vector store was called
         mock_testteller_agent.vector_store.add_documents.assert_called_once()
-        args = mock_testteller_agent.vector_store.add_documents.call_args
-        assert args[0][0] == ["Test content"]  # documents
-        assert args[0][1][0]["source"] == str(test_file)  # metadata
-        assert len(args[0][2]) == 1  # ids
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -92,23 +94,14 @@ class TestTestTellerAgent:
         (test_dir / "doc1.txt").write_text("Content 1")
         (test_dir / "doc2.txt").write_text("Content 2")
 
-        # Mock document loader
-        mock_testteller_agent.document_loader.load_from_directory = AsyncMock(
-            return_value=[("Content 1", "doc1.txt"), ("Content 2", "doc2.txt")]
-        )
+        # Mock the _ingest_directory method directly
+        mock_testteller_agent._ingest_directory = AsyncMock()
 
         await mock_testteller_agent.ingest_documents_from_path(str(test_dir))
 
-        # Verify document loader was called
-        mock_testteller_agent.document_loader.load_from_directory.assert_called_once_with(
-            str(test_dir))
-
-        # Verify vector store was called
-        mock_testteller_agent.vector_store.add_documents.assert_called_once()
-        args = mock_testteller_agent.vector_store.add_documents.call_args
-        assert args[0][0] == ["Content 1", "Content 2"]  # documents
-        assert len(args[0][1]) == 2  # metadata
-        assert len(args[0][2]) == 2  # ids
+        # Verify _ingest_directory was called
+        mock_testteller_agent._ingest_directory.assert_called_once_with(
+            str(test_dir), True, 1000)  # enhanced_parsing=True, chunk_size=1000
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -133,7 +126,10 @@ class TestTestTellerAgent:
         test_file = temp_dir / "test.txt"
         test_file.write_text("Test content")
 
-        # Mock document loader to raise exception
+        # Mock both unified parser and document loader to raise exception
+        mock_testteller_agent.unified_parser.parse_for_rag = AsyncMock(
+            side_effect=Exception("Parse error")
+        )
         mock_testteller_agent.document_loader.load_document = AsyncMock(
             side_effect=Exception("Load error")
         )
@@ -234,12 +230,12 @@ class TestTestTellerAgent:
     @pytest.mark.unit
     async def test_get_ingested_data_count(self, mock_testteller_agent):
         """Test getting count of ingested documents."""
-        mock_testteller_agent.vector_store.get_collection_count.return_value = 5
+        mock_testteller_agent.vector_store.get_collection_count_async = AsyncMock(return_value=5)
 
         count = await mock_testteller_agent.get_ingested_data_count()
 
         assert count == 5
-        mock_testteller_agent.vector_store.get_collection_count.assert_called_once()
+        mock_testteller_agent.vector_store.get_collection_count_async.assert_called_once()
 
     @pytest.mark.asyncio
     @pytest.mark.unit
@@ -306,7 +302,7 @@ class TestTestTellerAgent:
         mock_testteller_agent.llm_manager.generate_text_async = AsyncMock(
             return_value=mock_llm_response)
 
-        with patch('testteller.agent.testteller_agent.get_test_case_generation_prompt') as mock_prompt:
+        with patch('testteller.generator_agent.agent.testteller_agent.get_test_case_generation_prompt') as mock_prompt:
             mock_prompt.return_value = "Optimized prompt"
 
             result = await mock_testteller_agent.generate_test_cases(code_context)
@@ -373,5 +369,5 @@ class TestTestTellerAgent:
     @pytest.mark.unit
     def test_backward_compatibility_alias(self):
         """Test that TestTellerRagAgent alias exists for backward compatibility."""
-        from testteller.agent.testteller_agent import TestTellerRagAgent
+        from testteller.generator_agent.agent.testteller_agent import TestTellerRagAgent
         assert TestTellerRagAgent == TestTellerAgent

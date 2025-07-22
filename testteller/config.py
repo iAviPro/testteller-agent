@@ -12,10 +12,10 @@ from pydantic.v1 import BaseSettings, Field, validator
 try:
     from ._version import __version__ as APP_VERSION
 except ImportError:
-    from .constants import FALLBACK_VERSION
+    from testteller.core.constants import FALLBACK_VERSION
     APP_VERSION = FALLBACK_VERSION  # Use fallback from constants
 
-from .constants import (
+from testteller.core.constants import (
     APP_NAME,
     DEFAULT_LOG_LEVEL, DEFAULT_LOG_FORMAT,
     DEFAULT_CHROMA_HOST, DEFAULT_CHROMA_PORT, DEFAULT_CHROMA_USE_REMOTE,
@@ -51,10 +51,15 @@ def load_env():
         with open(env_path, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line and not line.startswith('#') and '=' in line:
                     key, value = line.split('=', 1)
-                    os.environ[key.strip()] = value.strip().strip(
-                        '"').strip("'")
+                    key = key.strip()
+                    value = value.strip()
+                    # Remove surrounding quotes if present
+                    if (value.startswith('"') and value.endswith('"')) or \
+                       (value.startswith("'") and value.endswith("'")):
+                        value = value[1:-1]
+                    os.environ[key] = value
 
 
 # Load .env file
@@ -328,8 +333,9 @@ class OutputSettings(BaseSettings):
     @validator("output_file_path")
     @classmethod
     def validate_output_file_path(cls, v: str) -> str:
-        if not v.endswith('.md'):
-            raise ValueError("Output file path must end with .md extension")
+        valid_extensions = ['.md', '.pdf', '.docx']
+        if not any(v.endswith(ext) for ext in valid_extensions):
+            raise ValueError(f"Output file path must end with one of {valid_extensions}")
         return v
 
 

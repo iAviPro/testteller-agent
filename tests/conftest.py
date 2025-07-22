@@ -10,10 +10,15 @@ from unittest.mock import Mock, patch
 from typing import Generator, Dict, Any, Optional
 
 import asyncio
-from testteller.agent.testteller_agent import TestTellerAgent
-from testteller.llm.llm_manager import LLMManager
-from testteller.vector_store.chromadb_manager import ChromaDBManager
+from testteller.generator_agent.agent.testteller_agent import TestTellerAgent
+from testteller.core.llm.llm_manager import LLMManager
+from testteller.core.vector_store.chromadb_manager import ChromaDBManager
 from testteller.config import settings
+from testteller.core.constants import (
+    DEFAULT_LLAMA_GENERATION_MODEL,
+    DEFAULT_LLAMA_EMBEDDING_MODEL,
+    DEFAULT_OLLAMA_BASE_URL
+)
 
 
 @pytest.fixture(scope="session")
@@ -240,8 +245,8 @@ def mock_testteller_agent(
     test_collection_name: str
 ) -> TestTellerAgent:
     """Create a TestTellerAgent with mocked dependencies."""
-    with patch('testteller.agent.testteller_agent.LLMManager') as mock_llm_class:
-        with patch('testteller.agent.testteller_agent.ChromaDBManager') as mock_chroma_class:
+    with patch('testteller.generator_agent.agent.testteller_agent.LLMManager') as mock_llm_class:
+        with patch('testteller.generator_agent.agent.testteller_agent.ChromaDBManager') as mock_chroma_class:
             mock_llm_class.return_value = mock_llm_manager
             mock_chroma_class.return_value = mock_chromadb_manager
             agent = TestTellerAgent(collection_name=test_collection_name)
@@ -318,7 +323,7 @@ def provider_specific_env_vars(llm_provider: str) -> Dict[str, str]:
         base_vars.update({
             "GOOGLE_API_KEY": "test_google_api_key_valid",
             "GEMINI_EMBEDDING_MODEL": "embedding-001",
-            "GEMINI_GENERATION_MODEL": "gemini-pro"
+            "GEMINI_GENERATION_MODEL": "gemini-2.0-flash"
         })
     elif llm_provider == "openai":
         base_vars.update({
@@ -335,9 +340,9 @@ def provider_specific_env_vars(llm_provider: str) -> Dict[str, str]:
         })
     elif llm_provider == "llama":
         base_vars.update({
-            "OLLAMA_BASE_URL": "http://localhost:11434",
-            "LLAMA_EMBEDDING_MODEL": "llama3.2:1b",
-            "LLAMA_GENERATION_MODEL": "llama3.2:1b"
+            "OLLAMA_BASE_URL": DEFAULT_OLLAMA_BASE_URL,
+            "LLAMA_EMBEDDING_MODEL": DEFAULT_LLAMA_EMBEDDING_MODEL,
+            "LLAMA_GENERATION_MODEL": DEFAULT_LLAMA_GENERATION_MODEL
         })
 
     return base_vars
@@ -516,6 +521,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "requires_api_key: marks tests that require real API keys"
     )
+    config.addinivalue_line(
+        "markers", "automation: marks tests for automation functionality"
+    )
 
 
 def pytest_collection_modifyitems(config, items):
@@ -528,6 +536,8 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.unit)
         elif "test_cli" in item.fspath.basename:
             item.add_marker(pytest.mark.cli)
+        elif "test_automation" in item.fspath.basename or "test_parser" in item.fspath.basename or "test_generators" in item.fspath.basename:
+            item.add_marker(pytest.mark.automation)
 
         # Add slow marker for tests that might be slow
         if any(keyword in item.name.lower() for keyword in ["generate", "ingest", "llm"]):

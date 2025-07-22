@@ -1,13 +1,11 @@
-# pyproject.toml
 [build-system]
-requires = ["setuptools>=65.0", "wheel>=0.40.0", "pip>=23.0"]
+requires = ["setuptools>=65.0", "wheel>=0.40.0"]
 build-backend = "setuptools.build_meta"
-# backend-path = ["."]
 
 [project]
 name = "testteller"
 dynamic = ["version"]
-description = "TestTeller : A versatile RAG AI agent for generating test cases from project documentation and code, supporting multiple LLM providers including Gemini, OpenAI, Claude, and Llama."
+description = "AI-Powered Test Agent for Test Case Generation and Automation using RAG & GenAI"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache License 2.0"}
@@ -15,7 +13,7 @@ authors = [
     {name = "Aviral Nigam"}
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: Apache Software License",
@@ -29,30 +27,114 @@ classifiers = [
 ]
 keywords = [
     "testing",
+    "ai",
     "rag",
+    "test-automation",
+    "code-generation",
     "llm",
-    "generative ai",
-    "test case generation",
+    "pytest",
     "qa",
-    "automation",
-    "testcase",
-    "testteller",
-    "ai testing",
-    "rag agent",
-    "knowledge base",
-    "document ingestion",
-    "code ingestion",
-    "testteller-rag-agent",
-    "testteller rag agent",
-    "testteller_rag_agent"
+    "quality-assurance",
+    "test-cases",
+    "vector-store",
+    "chromadb",
+    "generative-ai",
+    "openai",
+    "anthropic",
+    "claude",
+    "gemini",
+    "junit",
+    "jest",
+    "testng",
+    "automation-framework"
+]
+dependencies = [
+    "google-generativeai>=0.3.0",
+    "chromadb>=0.4.0",
+    "langchain>=0.1.0",
+    "langchain-google-genai>=1.0.0",
+    "python-docx>=0.8.11",
+    "PyMuPDF>=1.23.0",
+    "openpyxl>=3.1.0",
+    "GitPython>=3.1.0",
+    "typer[all]>=0.9.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "tenacity>=8.0.0",
+    "python-json-logger>=2.0.0",
+    "tiktoken>=0.5.0",
+    "aiofiles>=23.0.0",
+    "openai>=1.0.0",
+    "anthropic>=0.8.0",
+    "httpx>=0.24.0",
+    "markdown>=3.5.0",
+    "weasyprint>=60.0"
 ]
 
-[project.urls]
-Homepage = "https://github.com/iAviPro/testteller-rag-agent"
-"Bug Tracker" = "https://github.com/iAviPro/testteller-rag-agent/issues"
-
-[project.scripts]
-testteller = "testteller.main:app_runner"
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-xdist>=3.0.0",
+    "coverage>=7.0.0"
+]
+dev = [
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.0.0"
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.23.0"
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "testteller._version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["testteller*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+testteller = ["*.json", "*.yaml", "*.yml"]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "slow: marks tests as slow running",
+    "requires_api_key: marks tests that require API keys"
+]
+
+[tool.coverage.run]
+source = ["testteller"]
+
+[tool.mypy]
+python_version = "3.11"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "chromadb.*",
+    "langchain.*",
+    "google.generativeai.*",
+    "PyMuPDF.*",
+    "git.*"
+]
+ignore_missing_imports = true

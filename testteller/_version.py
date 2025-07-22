@@ -1,6 +1,6 @@
 """
-Version information for TestTeller RAG Agent.
+Version information for TestTeller Agent.
 This is the single source of truth for version information.
 """
 
-__version__ = "1.2.2"
+__version__ = "2.0.0"

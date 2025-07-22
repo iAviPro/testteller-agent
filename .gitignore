@@ -1,19 +1,10 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual Environment
-venv/
-.venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-
-# Instance folder (commonly used by Flask, but good to include)
-instance/
-.webassets-cache/
+# C extensions
+*.so
 
 # Distribution / packaging
 .Python
@@ -33,11 +24,10 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-iavipro/
+.env
+.env.backup*
 
 # PyInstaller
-# Usually PyInstaller files are created during distribution of executable
-# If you do not use PyInstaller, you can remove this
 *.manifest
 *.spec
 
@@ -48,101 +38,90 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
-.nox/
 .coverage
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
-.coverage
 *.cover
 .hypothesis/
 .pytest_cache/
+output/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IDE - VSCode
-.vscode/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# mypy
-.mypy_cache/
-
-
-# IDE - PyCharm
-.idea/
-
-# Operating System Files
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Environment variables
 .env
-.env.test
-.env.*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# ChromaDB Data (adjust if your path is different from default)
-# If your CHROMA_DB_PATH in config.py or .env points elsewhere, add that pattern.
+# ChromaDB data
 chroma_data/
-test_chroma_data/
-chroma_data_prod/
-chroma_data_db_persistent/
-my_vector_data/ # Example if you used this in .env
-*.chroma_data # General pattern if names vary
-testteller-tc-output.md
-testteller_output.md
-testteller-testcases.md
-.cursorignore
+chroma_data_*/
+*.sqlite3
 
-# Temporary Cloned Repositories (adjust if your path is different)
+# Temporary files
 temp_cloned_repos/
-temp_cloned_repos_prod/
-*.temp_cloned_repos # General pattern
-
-# Log files (if you configure file logging)
-*.log
-logs/
-
-# Other temporary files
 *.tmp
-*.bak
-*.swp
-*~
+*.log
 
-# Specific to this project (if any other generated files)
-# e.g., output_file.md if you commonly generate with a fixed name and don't want to commit it
-# login_tests.md
-# order_api_tests.md
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test outputs
+test_*/
+testteller-testcases.md
+test_automation_cases.md
+test_registration_cases.md
+test_sample.md
+testteller_generated_tests/
+testteller_automated_tests/
+
+
+# Development artifacts
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Generated files
+sample-outputs/automated-output/*/
+*.pyc
+*.pyo
+*.pyd
+
+# Documentation builds
+docs/_build/
+site/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Local development
+local_*/
+iavipro/
+.claude/
+testteller_cli*
+EOF < /dev/null

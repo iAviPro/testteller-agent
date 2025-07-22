@@ -1,3 +1,5 @@
+# TestTeller Agent - Dual-Feedback RAG Architecture
+# Multi-stage Docker build for next-generation AI-powered test automation platform
 # Build stage
 FROM ubuntu:22.04 AS builder
 
@@ -36,6 +38,7 @@ COPY setup.py .
 COPY README.md .
 COPY MANIFEST.in .
 COPY pyproject.toml .
+COPY testteller/ testteller/
 
 # Install dependencies and package in development mode
 RUN pip install --no-cache-dir -r requirements.txt && \
@@ -73,8 +76,12 @@ COPY --from=builder /opt/venv /opt/venv
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/chroma_data \
     /app/temp_cloned_repos \
+    /app/testteller_generated_tests \
+    /app/testteller_automated_tests \
     && chmod -R 777 /app/chroma_data \
-    && chmod -R 777 /app/temp_cloned_repos
+    && chmod -R 777 /app/temp_cloned_repos \
+    && chmod -R 777 /app/testteller_generated_tests \
+    && chmod -R 777 /app/testteller_automated_tests
 
 # Create entrypoint script with multi-LLM support and improved error handling
 RUN echo '#!/bin/bash\n\
@@ -146,14 +153,26 @@ RUN echo '#!/bin/bash\n\
     \n\
     if [ "$1" = "serve" ]; then\n\
     display_config_info\n\
+    echo "🤖 TestTeller Agent - Dual-Feedback RAG Architecture"\n\
+    echo "Next-generation self-improving test automation platform"\n\
+    echo ""\n\
     echo "Container is running. Use one of the following commands:"\n\
     echo "  docker-compose exec app testteller --help"\n\
     echo "  docker-compose exec app testteller configure"\n\
-    echo "  docker-compose exec app testteller <command> [options]"\n\
     echo ""\n\
-    echo "Multi-LLM Support:"\n\
-    echo "  Set LLM_PROVIDER environment variable to: gemini, openai, claude, or llama"\n\
-    echo "  Configure appropriate API keys based on your chosen provider"\n\
+    echo "📚 RAG-Enhanced Workflows:"\n\
+    echo "  # Ingest with enhanced parsing"\n\
+    echo "  docker-compose exec app testteller ingest-docs doc.pdf -c collection -e"\n\
+    echo "  # Generate with self-learning feedback"\n\
+    echo "  docker-compose exec app testteller generate \"API tests\" -c collection"\n\
+    echo "  # Automate with context discovery"\n\
+    echo "  docker-compose exec app testteller automate tests.md -c collection -l python -F pytest"\n\
+    echo ""\n\
+    echo "🔧 Multi-LLM Support:"\n\
+    echo "  Set LLM_PROVIDER: gemini (default), openai, claude, llama"\n\
+    echo "  Configure API keys based on your chosen provider"\n\
+    echo ""\n\
+    echo "🔄 Feedback Loop: ${ENABLE_TEST_CASE_FEEDBACK:-true} | Quality Threshold: ${MIN_QUALITY_SCORE_FOR_STORAGE:-0.7}"\n\
     # Keep container running\n\
     tail -f /dev/null\n\
     else\n\

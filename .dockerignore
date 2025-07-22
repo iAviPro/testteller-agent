@@ -1,53 +1,78 @@
-# Git files
-.git
-.gitignore
-.gitattributes
-
-# Python cache and compiled files
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-dist/
-build/
-
-# Virtual environment
-.venv
-venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
 env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-# IDE and editor specific files
-.idea/
+# Development tools
+.git/
+.gitignore
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# OS specific files
+# Test outputs
+htmlcov/
+.coverage
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Temporary files
+temp_cloned_repos/
+chroma_data/
+*.tmp
+*.log
+
+# Documentation (keep essential docs)
+docs/
+*.md
+\!README.md
+\!CHANGELOG.md
+\!high-level-design-diagram.md
+\!TESTING.md
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# Secrets and environment files (should be passed as environment variables)
-.env
-*.env.*
-!.env.example # Keep .env.example
+# IDE files
+*.sublime-*
+.vscode/
+.idea/
 
-# Local data and temporary files
-chroma_data_prod/
-chroma_data_prod_docker/ # Volume mount point for app data
-chroma_data_db_persistent/ # Volume mount point for chromadb server data
-temp_cloned_repos_prod/
-temp_cloned_repos_prod_docker/ # App container's temp clone dir
+# Node modules (if any)
+node_modules/
 
-# Test reports and coverage
-.pytest_cache/
-.coverage
-htmlcov/
-pytestdebug.log
+# Generated outputs (keep samples for reference)
+testteller_generated_tests/
+testteller_automated_tests/
+test_*/
 
-# Docker files (if they are not needed inside the image itself)
-# Dockerfile # Usually not needed inside the image
-# docker-compose.yml # Usually not needed inside the image
+# Development and configuration files
+.pre-commit-config.yaml
+.github/
+.git/
+.gitignore
+tox.ini
+setup.cfg
 
-# Other
-*.log
+# Keep essential architecture documentation in container
+\!iavipro/ARCHITECTURE.md
+\!iavipro/FEEDBACK_LOOP_ARCHITECTURE.md

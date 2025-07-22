@@ -1,16 +1,33 @@
-# Testing Guide for TestTeller RAG Agent
+# Testing Guide for TestTeller Agent
 
-This guide provides basic information about testing the TestTeller RAG Agent with all supported LLM providers.
+This guide provides comprehensive information about testing the TestTeller Agent with enhanced multi-format document support, unified parsing capabilities, and all supported LLM providers.
 
 ## Test Structure
 
 ```
 tests/
-├── conftest.py              # Pytest configuration and fixtures
-├── unit/                    # Unit tests
-├── integration/             # Integration tests
-├── cli/                     # CLI tests
-└── data/                    # Test data files
+├── conftest.py                       # Pytest configuration and fixtures
+├── unit/                            # Unit tests
+│   ├── test_parser.py               # TestWriter parser tests
+│   ├── test_generators.py           # Code generator tests
+│   ├── test_cli_automation.py       # Automation CLI tests
+│   ├── test_unified_parser.py       # NEW: Unified document parser tests
+│   ├── test_config_system.py        # NEW: Modular configuration tests
+│   └── ...                          # Other unit tests
+├── integration/                     # Integration tests
+│   ├── test_automation_integration.py # End-to-end automation tests
+│   ├── test_multiformat_workflow.py   # NEW: Multi-format document tests
+│   ├── test_enhanced_rag.py           # NEW: Enhanced RAG ingestion tests
+│   └── ...                          # Other integration tests
+├── cli/                             # CLI tests
+│   └── test_cli_commands.py         # Enhanced CLI command tests
+├── test_automation.py               # Automation functionality tests
+└── data/                            # Test data files
+    ├── sample_document.md           # Markdown test data
+    ├── test_cases.docx              # NEW: Word document test data
+    ├── requirements.xlsx            # NEW: Excel test data
+    ├── specification.pdf            # NEW: PDF test data
+    └── sample_code.py               # Code test data
 ```
 
 ## Prerequisites
@@ -33,7 +50,7 @@ pytest
 
 ### Run with Coverage
 ```bash
-pytest --cov=testteller --cov-report=html
+pytest --cov=testteller --cov=testwriter --cov-report=html
 ```
 
 ### Interactive Test Runner
@@ -44,8 +61,28 @@ python tests/test_runner.py
 ## Test Categories
 
 - **Unit Tests**: Test individual components without external dependencies
-- **Integration Tests**: Test complete workflows with real LLM providers
+- **Integration Tests**: Test complete workflows with real LLM providers  
 - **CLI Tests**: Test command-line interface functionality
+- **Automation Tests**: Test automation code generation and parsing functionality
+
+### Run Specific Test Categories
+
+```bash
+# Run unit tests only
+pytest -m "unit"
+
+# Run automation tests only  
+pytest -m "automation"
+
+# Run integration tests only
+pytest -m "integration"
+
+# Run CLI tests only
+pytest -m "cli"
+
+# Run tests for specific test type
+python tests/test_runner.py --type automation
+```
 
 ## Environment Setup
 

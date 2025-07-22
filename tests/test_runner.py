@@ -15,6 +15,13 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import shutil
 
+# Add path for testteller imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from testteller.core.constants import (
+    DEFAULT_LLAMA_GENERATION_MODEL,
+    DEFAULT_LLAMA_EMBEDDING_MODEL
+)
+
 
 class TestRunner:
     """Test runner for TestTeller RAG Agent."""
@@ -22,7 +29,7 @@ class TestRunner:
     def __init__(self):
         self.project_root = Path(__file__).parent.parent
         self.providers = ["gemini", "openai", "claude", "llama"]
-        self.test_types = ["unit", "integration", "cli", "all"]
+        self.test_types = ["unit", "integration", "cli", "automation", "all"]
 
     def setup_environment(self, provider: str, interactive: bool = True) -> Dict[str, str]:
         """Set up environment variables for testing."""
@@ -82,22 +89,22 @@ class TestRunner:
                         print("❌ Ollama not found. Please install Ollama:")
                         print("   curl -fsSL https://ollama.ai/install.sh | sh")
                         print("   ollama serve")
-                        print("   ollama pull llama3.2:1b")
-                        print("   ollama pull llama3.2:3b")
+                        print(f"   ollama pull {DEFAULT_LLAMA_EMBEDDING_MODEL}")
+                        print(f"   ollama pull {DEFAULT_LLAMA_GENERATION_MODEL}")
                         return None
 
                     # Try to run ollama list
                     result = subprocess.run(
                         [ollama_path, "list"], capture_output=True, check=True)
                     env_vars["OLLAMA_BASE_URL"] = "http://localhost:11434"
-                    env_vars["LLAMA_EMBEDDING_MODEL"] = "llama3.2:1b"
-                    env_vars["LLAMA_GENERATION_MODEL"] = "llama3.2:3b"
+                    env_vars["LLAMA_EMBEDDING_MODEL"] = DEFAULT_LLAMA_EMBEDDING_MODEL
+                    env_vars["LLAMA_GENERATION_MODEL"] = DEFAULT_LLAMA_GENERATION_MODEL
                 except (subprocess.CalledProcessError, FileNotFoundError) as e:
                     print("❌ Error running Ollama:", str(e))
                     print("Please ensure Ollama is installed and running:")
                     print("   ollama serve")
-                    print("   ollama pull llama3.2:1b")
-                    print("   ollama pull llama3.2:3b")
+                    print(f"   ollama pull {DEFAULT_LLAMA_EMBEDDING_MODEL}")
+                    print(f"   ollama pull {DEFAULT_LLAMA_GENERATION_MODEL}")
                     return None
         else:
             # Use test API keys for non-interactive mode
@@ -111,8 +118,8 @@ class TestRunner:
                 env_vars["OPENAI_API_KEY"] = "test_openai_api_key"
             elif provider == "llama":
                 env_vars["OLLAMA_BASE_URL"] = "http://localhost:11434"
-                env_vars["LLAMA_EMBEDDING_MODEL"] = "llama3.2:1b"
-                env_vars["LLAMA_GENERATION_MODEL"] = "llama3.2:3b"
+                env_vars["LLAMA_EMBEDDING_MODEL"] = DEFAULT_LLAMA_EMBEDDING_MODEL
+                env_vars["LLAMA_GENERATION_MODEL"] = DEFAULT_LLAMA_GENERATION_MODEL
 
         return env_vars
 
@@ -148,11 +155,13 @@ class TestRunner:
         cmd = [
             sys.executable, "-m", "pytest",
             "tests/unit/",
+            "tests/test_automation.py",  # Include automation tests
             "-v",
             "--cov=testteller",
+            "--cov=testteller.automator_agent",  # Include automator_agent coverage
             "--cov-report=term-missing",
             "--cov-report=html:htmlcov",
-            "-m", "unit"  # Simplified marker
+            "-m", "unit or automation"  # Include automation marker
         ]
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
@@ -190,6 +199,25 @@ class TestRunner:
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
 
+    def run_automation_tests(self, env_vars: Dict[str, str]) -> int:
+        """Run automation tests."""
+        print("\n🤖 Running Automation Tests...")
+
+        cmd = [
+            sys.executable, "-m", "pytest",
+            "tests/unit/test_parser.py",
+            "tests/unit/test_generators.py", 
+            "tests/unit/test_cli_automation.py",
+            "tests/test_automation.py",
+            "-v",
+            "--cov=testteller.automator_agent",
+            "--cov-report=term-missing",
+            "--cov-append",
+            "-m", "automation"
+        ]
+
+        return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
+
     def run_tests(self, provider: str, test_type: str, interactive: bool = True) -> int:
         """Run tests for specific provider and type."""
         print(f"\n🚀 Running {test_type} tests with {provider} provider")
@@ -212,6 +240,10 @@ class TestRunner:
 
         if test_type in ["cli", "all"]:
             result = self.run_cli_tests(env_vars)
+            total_result += result
+
+        if test_type in ["automation", "all"]:
+            result = self.run_automation_tests(env_vars)
             total_result += result
 
         return total_result
@@ -245,7 +277,7 @@ class TestRunner:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Test runner for TestTeller RAG Agent",
+        description="Test runner for TestTeller Agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -265,7 +297,7 @@ Examples:
 
     parser.add_argument(
         "--type",
-        choices=["unit", "integration", "cli", "all"],
+        choices=["unit", "integration", "cli", "automation", "all"],
         default="all",
         help="Type of tests to run (default: all)"
     )

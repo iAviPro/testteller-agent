@@ -1,7 +1,6 @@
-# MANIFEST.in
-include LICENSE
-include README.md
-include requirements.txt
-include .env.example
-include .env.docker.example
-include testteller/prompts.py
+# MANIFEST.in - TestTeller Agent Package Distribution
+include LICENSE README.md TESTING.md requirements.txt requirements-test.txt .env.example
+include testteller/_version.py testteller/config.py testteller/main.py testteller/generator_agent/prompts.py
+recursive-include testteller *.py
+recursive-exclude * __pycache__ *.py[co]
+exclude .gitignore *.log .DS_Store Thumbs.db temp_cloned_repos/* chroma_data/* venv/*

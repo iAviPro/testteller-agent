@@ -1,370 +1,115 @@
-# TestTeller RAG Agent
+# TestTeller Agent
 
 [![PyPI](https://img.shields.io/pypi/v/testteller.svg)](https://pypi.org/project/testteller/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
-[![Tests](https://github.com/iAviPro/testteller-rag-agent/actions/workflows/test-unit.yml/badge.svg)](https://github.com/iAviPro/testteller-rag-agent/actions/workflows/test-unit.yml)
+[![Tests](https://github.com/iAviPro/testteller-agent/actions/workflows/test-unit.yml/badge.svg)](https://github.com/iAviPro/testteller-agent/actions/workflows/test-unit.yml)
 [![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-TestTeller RAG Agent is a versatile CLI-based RAG (Retrieval Augmented Generation) agent designed to generate software test cases. It supports multiple LLM providers including Google Gemini, OpenAI, Anthropic Claude, and local Llama models via Ollama. The agent uses ChromaDB as a vector store and can process various input sources, including PRD documentation, API contracts, technical design documents (HLD/LLD), and code from GitHub repositories or local folders.
+**TestTeller** is the AI-powered Test architect that transforms your documentation into comprehensive test suites and executable automation code. Powered by a **dual-feedback RAG architecture** with support for multiple GenAI/LLMs (Google Gemini, OpenAI, Anthropic Claude, Local Llama), TestTeller analyzes your requirements, designs, and existing code to generate strategic test cases and automate them across **multiple programming languages** and **supported testing frameworks**.
 
-## Features
+## Why TestTeller?
 
-### Multiple LLM Provider Support
-- **Google Gemini** (Default): Fast and cost-effective with support for all Gemini models and Google embeddings
-- **OpenAI**: High-quality responses with support for all GPT models and OpenAI embeddings
-- **Anthropic Claude**: Advanced reasoning capabilities with support for all Claude models (uses Google or OpenAI for embeddings)
-- **Local Llama**: Privacy-focused local inference with support for all Llama models via Ollama
-- **Flexible Model Selection**: Configure any supported model from each provider based on your needs and use case
-- **Automatic Fallbacks**: Built-in retry mechanisms and error handling for robust performance
+Imagine feeding your product requirements document to an AI and getting back:
+- **Complete test strategies** covering E2E, integration, security, and edge cases
+- **Production-ready automation code** in Python, JavaScript, TypeScript, or Java
+- **Self-improving system** that learns from each generation cycle
 
-### Comprehensive and Strategic Test Generation
+**Real-world example**: Upload a PDF with API specifications → Get 50+ strategic test cases → Generate executable Playwright tests with proper authentication, data handling, and assertions → All in under 5 minutes.
 
-TestTeller goes beyond simple test case generation. It acts as a virtual QA architect, analyzing your provided documents and code to create a strategic and comprehensive test suite. The agent intelligently categorizes your context (product requirements, technical designs, code) to generate tests with the appropriate focus and depth.
+## Key Features
 
--   **End-to-End (E2E) Tests**: Generates detailed test cases designed to validate complete user journeys across the entire stack. These tests provide the steps to ensure that the integrated system functions correctly from the user's perspective, covering everything from UI interactions to backend data processing and event propagation.
+- **🤖 Generator Agent**: Virtual Test architect with dual-feedback RAG enhancement - analyzes docs and generates strategic test cases with intelligent categorization (E2E, integration, security, edge cases)
+- **⚡ Automator Agent**: Multi-language code generation across **Python, JavaScript, TypeScript, Java** with **20+ framework support** (pytest, Jest, JUnit, Playwright, Cypress, Cucumber, etc.)
+- **🔧 Multi-Provider GenAI/LLM**: Choose your AI provider - **Google Gemini, OpenAI, Anthropic Claude**, or run completely **local with Llama/Ollama**
+- **📄 Universal Document Intelligence**: Advanced RAG ingestion for **PDFs, DOCX, XLSX, MD, TXT** - understands context and generates appropriate test focus
+- **🔄 Self-Learning System**: Dual-feedback architecture gets smarter with each use - stores high-quality outputs and learns from automation success patterns
 
--   **Integration Tests**: Creates test scenarios to verify the contracts and interactions between components. Whether it's a Frontend-Backend connection, a service-to-service API call, or an event-driven flow, these generated tests help ensure that your system's components can communicate and cooperate as expected.
-
--   **Technical Tests**: Goes beyond standard functional testing to generate scenarios that probe system limitations, resilience, and security. TestTeller generates test ideas for:
-    -   **Performance**: Stress, load, and soak testing hypotheses.
-    -   **Resilience**: Retry policies, timeouts, and graceful degradation.
-    -   **Security**: Common vulnerabilities and access control issues.
-    -   **Edge Cases**: Concurrency, race conditions, and unexpected inputs.
-
--   **Mocked System Tests**: Produces test cases that enable service and component-level testing by outlining tests for isolated services or functions. The generated tests define clear mock behaviors for external dependencies, allowing a developer or QA engineer to validate a component's logic in isolation.
-
-#### Intelligent Test Strategy
-TestTeller doesn't just create tests; it also structures them actionably. It also ensures a healthy mix of happy path, negative, and edge-case scenarios to help you build a truly resilient application.
-
-### Document and Code Processing
-- **Multi-format Document Support**: PDF, DOCX, XLSX, MD, TXT files
-- **Code Analysis**: GitHub repositories (public/private) and local codebases
-- **Multiple Programming Languages**: Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP
-- **Advanced RAG Pipeline**: Context-aware prompt engineering and streaming responses
-
-------------------
-
-## Prerequisites
-
-- Python 3.11 or higher
-- Docker and Docker Compose (for containerized deployment)
-- At least one LLM provider API key:
-  - Google Gemini: [Get API key](https://aistudio.google.com/)
-  - OpenAI: [Get API key](https://platform.openai.com/api-keys)
-  - Anthropic Claude: [Get API key](https://console.anthropic.com/)
-  - Ollama: [Install locally](https://ollama.ai/)
-- GitHub Personal Access Token (optional, for private repositories)
-
-------------------
-
-## Installation
-
-### Option 1: Install from PyPI
-
-```bash
-pip install testteller
-```
-
-### Option 2: Install from Source
-
-```bash
-git clone https://github.com/iAviPro/testteller-rag-agent.git
-cd testteller-rag-agent
-pip install -e .
-```
-
-### Option 3: Docker Installation
-
-```bash
-git clone https://github.com/iAviPro/testteller-rag-agent.git
-cd testteller-rag-agent
-cp .env.example .env
-# Edit .env with your API keys
-docker-compose up -d
-```
-
-------------------
+→ **[View Detailed Features](FEATURES.md)** | **[Technical Architecture](ARCHITECTURE.md)**
 
 ## Quick Start
 
-1. **Configure the Agent**
+### Prerequisites
+- Python 3.11+
+- API key for at least one LLM provider:
+  - [Google Gemini](https://aistudio.google.com/) (recommended)
+  - [OpenAI](https://platform.openai.com/api-keys)
+  - [Anthropic Claude](https://console.anthropic.com/)
+  - [Ollama](https://ollama.ai/) (local or within accessible environment)
+
+### Installation
+
 ```bash
-testteller configure
+# Install from PyPI
+pip install testteller
+
+# Or install from source
+git clone https://github.com/iAviPro/testteller-agent.git
+cd testteller-agent
+pip install -e .
 ```
 
-2. **For Llama Users: Setup Ollama**
+### Basic Usage - Get Started in 2 Minutes
 
-**Local Installation:**
 ```bash
-# Install Ollama
+# 1. Configure your LLM provider (interactive wizard)
+testteller configure
+
+# 2. Ingest your documentation (any format supported)
+testteller ingest-docs requirements.pdf --collection-name my_project
+
+# 3. Generate strategic test cases from your docs
+testteller generate "Create comprehensive API integration tests" --collection-name my_project --output-file tests.pdf
+
+# 4. Generate executable automation code
+testteller automate tests.pdf --language python --framework pytest --output-dir ./tests
+```
+
+**What just happened?** TestTeller's dual-feedback RAG architecture analyzed your requirements, design, contracts and code using multiple GenAI/LLMs, generated strategic test cases covering happy paths, edge cases, and security scenarios, then created production-ready automation code across multiple languages and frameworks with proper setup, authentication, and assertions.
+
+### Try TestTeller Now
+
+**No API Keys?** No problem - use local Llama:
+```bash
+# Install Ollama (macOS/Linux)  
 curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull llama3.2
 
-# Start service and install models (example models)
-ollama serve
-ollama pull llama3.2  # or any preferred Llama model
-ollama pull <your-preferred-model>
+# Configure TestTeller for local use
+testteller configure --provider llama
 ```
 
-**Remote/Docker Ollama:**
-TestTeller supports connecting to Ollama running on Docker or remote servers. During configuration, you can specify the Ollama server URL and port separately:
-- **Local**: URL: `localhost` (default), Port: `11434` (default) → `http://localhost:11434`
-- **Docker**: URL: `docker-host` or `host.docker.internal`, Port: `11434` → `http://docker-host:11434`
-- **Remote**: URL: `remote-server`, Port: `11434` → `http://remote-server:11434`
+## Docker Support
 
-The configuration wizard will ask for URL and Port separately, then automatically form the complete URL:PORT combination.
-
-3. **Ingest Documentation or Code**
 ```bash
-# Ingest documents
-testteller ingest-docs path/to/document.pdf --collection-name my_collection
-
-# Ingest code from GitHub
-testteller ingest-code https://github.com/owner/repo.git --collection-name my_collection
-
-# Ingest local code
-testteller ingest-code ./local/code/folder --collection-name my_collection
-```
-
-4. **Generate Test Cases**
-```bash
-testteller generate "Create API integration tests for user authentication" --collection-name my_collection --output-file tests.md
-```
-
---------------------
-
-## Configuration
-
-### Environment Variables
-
-The application uses a `.env` file for configuration. Run `testteller configure` to set up interactively, or create a `.env` file manually with the following variables:
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| **LLM Provider Selection** | | | |
-| `LLM_PROVIDER` | LLM provider to use (`gemini`, `openai`, `claude`, `llama`) | `gemini` | No |
-| **Google Gemini Configuration** | | | |
-| `GOOGLE_API_KEY` | Google Gemini API key | - | Yes (for Gemini) |
-| `GEMINI_EMBEDDING_MODEL` | Gemini embedding model | Configure as needed | No |
-| `GEMINI_GENERATION_MODEL` | Gemini generation model | Configure as needed | No |
-| **OpenAI Configuration** | | | |
-| `OPENAI_API_KEY` | OpenAI API key | - | Yes (for OpenAI/Claude) |
-| `OPENAI_EMBEDDING_MODEL` | OpenAI embedding model | Configure as needed | No |
-| `OPENAI_GENERATION_MODEL` | OpenAI generation model | Configure as needed | No |
-| **Anthropic Claude Configuration** | | | |
-| `CLAUDE_API_KEY` | Anthropic Claude API key | - | Yes (for Claude) |
-| `CLAUDE_GENERATION_MODEL` | Claude generation model | Configure as needed | No |
-| `CLAUDE_EMBEDDING_PROVIDER` | Embedding provider for Claude | `google` | No |
-| **Llama/Ollama Configuration** | | | |
-| `LLAMA_EMBEDDING_MODEL` | Llama embedding model | Configure as needed | No |
-| `LLAMA_GENERATION_MODEL` | Llama generation model | Configure as needed | No |
-| `OLLAMA_BASE_URL` | Ollama server URL (local/remote/Docker) | `http://localhost:11434` | No |
-| **GitHub Integration** | | | |
-| `GITHUB_TOKEN` | GitHub Personal Access Token | - | No |
-| **ChromaDB Configuration** | | | |
-| `CHROMA_DB_HOST` | ChromaDB host | `localhost` | No |
-| `CHROMA_DB_PORT` | ChromaDB port | `8000` | No |
-| `CHROMA_DB_USE_REMOTE` | Use remote ChromaDB | `false` | No |
-| `CHROMA_DB_PERSIST_DIRECTORY` | Local ChromaDB directory | `./chroma_data` | No |
-| `DEFAULT_COLLECTION_NAME` | Default collection name | `test_collection` | No |
-| **Document Processing** | | | |
-| `CHUNK_SIZE` | Document chunk size | `1000` | No |
-| `CHUNK_OVERLAP` | Chunk overlap size | `200` | No |
-| `CODE_EXTENSIONS` | Code file extensions | `.py,.js,.ts,.java,.go,.rs,.cpp,.c,.cs,.rb,.php` | No |
-| `TEMP_CLONE_DIR_BASE` | Temporary clone directory | `./temp_cloned_repos` | No |
-| **Output Configuration** | | | |
-| `OUTPUT_FILE_PATH` | Default output file path | `testteller-testcases.md` | No |
-| **API Retry Configuration** | | | |
-| `API_RETRY_ATTEMPTS` | Number of retry attempts | `3` | No |
-| `API_RETRY_WAIT_SECONDS` | Wait time between retries | `2` | No |
-| **Logging Configuration** | | | |
-| `LOG_LEVEL` | Logging level | `INFO` | No |
-| `LOG_FORMAT` | Logging format | `json` | No |
-
-**Provider-Specific Notes:**
-- **Gemini**: Only requires `GOOGLE_API_KEY`
-- **OpenAI**: Only requires `OPENAI_API_KEY`
-- **Claude**: Requires `CLAUDE_API_KEY` and API key for selected embedding provider (Google or OpenAI)
-  - **Important**: Claude uses other providers for embeddings since it doesn't have its own embedding API
-  - If you select `google` as embedding provider, you need `GOOGLE_API_KEY`
-  - If you select `openai` as embedding provider, you need `OPENAI_API_KEY`
-  - Run `testteller configure` to set up Claude configuration interactively
-- **Llama**: No API key required, but needs Ollama installation and model downloads
-  - Supports local installation (`http://localhost:11434`) 
-  - Supports remote/Docker connections (e.g., `http://remote-server:11434`)
-  - Configure URL and Port separately via `testteller configure` (URL defaults to `localhost`, Port defaults to `11434`)
-  - Complete URL is automatically formed as `http://URL:PORT` and saved as `OLLAMA_BASE_URL` environment variable
-- **GitHub**: Only set `GITHUB_TOKEN` if accessing private repositories
-
-------------------------
-
-## Available Commands
-
-### Configuration
-```bash
-# Interactive configuration wizard
-testteller configure
-
-# Show version
-testteller --version
-
-# Show help
-testteller --help
-```
-
-### Document and Code Ingestion
-```bash
-# Ingest documents
-testteller ingest-docs path/to/document.pdf --collection-name my_collection
-testteller ingest-docs path/to/docs/directory --collection-name my_collection
-
-# Ingest code from GitHub or local folder
-testteller ingest-code https://github.com/owner/repo.git --collection-name my_collection
-testteller ingest-code ./local/code/folder --collection-name my_collection --no-cleanup-github
-```
-
-### Test Case Generation
-```bash
-# Generate test cases
-testteller generate "Create API integration tests for user authentication" --collection-name my_collection
-
-# Generate with custom output file
-testteller generate "Create technical tests for login flow" --collection-name my_collection --output-file tests.md
-
-# Generate with specific number of retrieved documents
-testteller generate "Create more than 10 end-to-end tests" --collection-name my_collection --num-retrieved 10
-```
-
-### Data Management
-```bash
-# Check collection status
-testteller status --collection-name my_collection
-
-# Clear collection data
-testteller clear-data --collection-name my_collection --force
-```
-
-------------------------
-
-## Docker Usage
-
-### Using Docker Compose (Recommended)
-
-1. **Setup**
-```bash
-git clone https://github.com/iAviPro/testteller-rag-agent.git
-cd testteller-rag-agent
-cp .env.example .env
-# Edit .env with your API keys and preferred LLM provider
-```
-
-2. **Start Services**
-```bash
-# For cloud providers (Gemini, OpenAI, Claude)
+# Clone and setup
+git clone https://github.com/iAviPro/testteller-agent.git
+cd testteller-agent
+cp .env.example .env  # Add your API keys
 docker-compose up -d
 
-# For Llama with local Docker Ollama (uncomment ollama service in docker-compose.yml first)
-docker-compose up -d
-docker-compose exec ollama ollama pull <your-preferred-model>
-docker-compose exec ollama ollama pull <your-preferred-model>
-
-# For Llama with remote Ollama (set OLLAMA_BASE_URL in .env)
-# Example: OLLAMA_BASE_URL=http://remote-server:11434
-docker-compose up -d app
-```
-
-3. **Run Commands**
-```bash
-# All commands use the same format with docker-compose exec
+# Use with Docker
 docker-compose exec app testteller configure
-docker-compose exec app testteller ingest-docs /path/to/doc.pdf --collection-name my_collection
-docker-compose exec app testteller generate "Create API tests" --collection-name my_collection
-docker-compose exec app testteller status --collection-name my_collection
+docker-compose exec app testteller ingest-docs document.pdf --collection-name project
 ```
 
-### Docker Management
-```bash
-# View logs
-docker-compose logs app
-docker-compose logs chromadb
+## Documentation
 
-# Stop services
-docker-compose down
+- **[Complete Features](FEATURES.md)** - Detailed feature descriptions and capabilities
+- **[Technical Architecture](ARCHITECTURE.md)** - System design and technical details  
+- **[Command Reference](COMMANDS.md)** - Complete CLI command documentation
+- **[Testing Guide](TESTING.md)** - Test suite and validation documentation
 
-# Remove all data
-docker-compose down -v
-```
+## Common Issues
 
-------------------------
+Run `testteller configure` if you encounter API key errors. For Docker issues, check logs with `docker-compose logs app`.
 
-## Testing
+## Contributing
 
-TestTeller includes a comprehensive test suite for all supported LLM providers.
+We welcome contributions! Please see our Contributing Guidelines for details.
 
-### Running Tests
-
-```bash
-# Install test dependencies
-pip install -r requirements-test.txt
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=testteller --cov-report=html
-
-# Interactive test runner
-python tests/test_runner.py
-```
-
-For detailed testing documentation, see [TESTING.md](TESTING.md).
-
------------------------
-
-## Troubleshooting
-
-### Common Issues
-
-**API Key Errors**
-- Ensure correct API keys are set in `.env` file
-- For Claude, `CLAUDE_API_KEY` is required plus API key for the embedding provider:
-  - If using `google` for embeddings: `GOOGLE_API_KEY` is required
-  - If using `openai` for embeddings: `OPENAI_API_KEY` is required
-- Run `testteller configure` to verify configuration and set up Claude properly
-- Common Claude error: "Google/OpenAI API key is required for embeddings when using Claude"
-
-**ChromaDB Connection Issues**
-```bash
-# Check ChromaDB health
-curl http://localhost:8000/api/v1/heartbeat
-
-# For Docker
-docker-compose logs chromadb
-docker-compose restart chromadb
-```
-
-**Ollama Issues (Llama Provider)**
-```bash
-# Check Ollama service
-ollama list
-
-# Install missing models
-ollama pull llama3.2:3b
-ollama pull llama3.2:1b
-
-# For Docker
-docker-compose exec ollama ollama list
-```
-
-**Permission Issues**
-```bash
-# Fix volume permissions
-sudo chown -R 1000:1000 ./chroma_data
-sudo chmod -R 755 ./temp_cloned_repos
-```
-
-------------------------
+---
 
 ## License
 

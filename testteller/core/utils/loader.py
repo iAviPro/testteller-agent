@@ -33,9 +33,12 @@ class LoadingProgressBar:
             elapsed = time.time() - self.start_time if self.start_time else 0
             elapsed_str = f"{elapsed:.1f}s"
 
-            # Display the progress bar
+            # Display just the progress bar (message already printed in start())
             bar_str = ''.join(bar)
-            sys.stdout.write(f"\r{self.message} [{bar_str}] {elapsed_str}")
+            output = f"\r[{bar_str}] {elapsed_str}"
+            
+            # Write output and immediately flush
+            sys.stdout.write(output)
             sys.stdout.flush()
 
             # Update position
@@ -48,13 +51,15 @@ class LoadingProgressBar:
             time.sleep(0.1)  # 100ms delay
 
         # Clear the progress bar when done
-        clear_line = ' ' * (len(self.message) + self.width + 20)
-        sys.stdout.write(f"\r{clear_line}\r")
+        sys.stdout.write("\r")
         sys.stdout.flush()
+
 
     def start(self):
         """Start the progress bar in a separate thread."""
         if not self.is_running:
+            # Print initial message on new line
+            print(f"{self.message}...")
             self.is_running = True
             self.start_time = time.time()
             self._thread = threading.Thread(target=self._animate, daemon=True)
@@ -66,6 +71,10 @@ class LoadingProgressBar:
             self.is_running = False
             if self._thread:
                 self._thread.join()
+            # Clear the progress bar line and print completion
+            sys.stdout.write("\r")
+            sys.stdout.flush()
+            print("✓ Complete")
 
 
 class DeterminateProgressBar:
@@ -85,13 +94,13 @@ class DeterminateProgressBar:
     def _display(self):
         """Display the current progress."""
         filled = int(self.width * self.progress)
-        bar = '█' * filled + '░' * (self.width - filled)
+        progress_bar = '█' * filled + '░' * (self.width - filled)
 
         elapsed = time.time() - self.start_time
         percentage = int(self.progress * 100)
 
         sys.stdout.write(
-            f"\r{self.message} [{bar}] {percentage}% ({elapsed:.1f}s)")
+            f"\r{self.message} [{progress_bar}] {percentage}% ({elapsed:.1f}s)")
         sys.stdout.flush()
 
     def finish(self):

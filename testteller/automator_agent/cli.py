@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Default values
 DEFAULT_COLLECTION_NAME = "test_collection"
-DEFAULT_OUTPUT_DIR = "./generated_tests"
+DEFAULT_OUTPUT_DIR = "./testteller_automated_tests"
 DEFAULT_LANGUAGE = "python"
 DEFAULT_FRAMEWORK = "pytest"
 
@@ -85,6 +85,26 @@ def get_framework(provided_framework: Optional[str] = None, language: str = DEFA
     return framework
 
 
+def get_output_dir(provided_output_dir: Optional[str] = None) -> str:
+    """Get the output directory to use."""
+    if provided_output_dir:
+        return provided_output_dir
+    
+    # Try environment variable
+    from_env = os.getenv('AUTOMATION_OUTPUT_DIR')
+    if from_env:
+        return from_env
+        
+    # Try from settings/config
+    try:
+        return settings.automation_output_dir
+    except:
+        pass
+    
+    # Use default
+    return DEFAULT_OUTPUT_DIR
+
+
 def validate_framework(language: str, framework: str) -> bool:
     """Validate that the framework is supported for the language."""
     return framework in SUPPORTED_FRAMEWORKS.get(language, [])
@@ -134,7 +154,7 @@ def automate_command(
     framework: Annotated[str, typer.Option(
         "--framework", "-F", help="Test framework to use")] = None,
     output_dir: Annotated[str, typer.Option(
-        "--output-dir", "-o", help="Output directory for generated tests")] = DEFAULT_OUTPUT_DIR,
+        "--output-dir", "-o", help="Output directory for generated tests")] = None,
     interactive: Annotated[bool, typer.Option(
         "--interactive", "-i", help="Interactive mode to select test cases")] = False,
     num_context_docs: Annotated[int, typer.Option(
@@ -161,6 +181,7 @@ def automate_command(
     collection_name = get_collection_name(collection_name)
     language = get_language(language)
     framework = get_framework(framework, language)
+    output_dir = get_output_dir(output_dir)
     
     # Validate framework compatibility
     if not validate_framework(language, framework):
@@ -230,6 +251,28 @@ def automate_command(
                 "🔄 Using markdown-specific parser..."
             )
         
+        # Fallback for DOCX files - parse extracted content with markdown parser
+        if not test_cases and file_extension == '.docx' and parsed_doc.content:
+            def docx_fallback_parse():
+                md_parser = MarkdownTestCaseParser()
+                return md_parser.parse_content(parsed_doc.content)
+            
+            test_cases = with_progress_bar_sync(
+                docx_fallback_parse,
+                "🔄 Using DOCX content parser..."
+            )
+        
+        # Fallback for PDF files - parse extracted content as markdown
+        if not test_cases and file_extension == '.pdf' and parsed_doc.content:
+            def pdf_fallback_parse():
+                # Parse extracted PDF content with custom PDF parser
+                return _parse_pdf_test_cases(parsed_doc.content)
+            
+            test_cases = with_progress_bar_sync(
+                pdf_fallback_parse,
+                "🔄 Using PDF content parser..."
+            )
+        
         if not test_cases:
             print("❌ No test cases found in the file.")
             print("💡 Ensure the file contains structured test cases in the expected format.")
@@ -265,7 +308,7 @@ def automate_command(
         )
         
         def rag_generate_operation():
-            return generator.generate(test_cases)
+            return asyncio.run(generator.generate(test_cases))
         
         generated_files = with_progress_bar_sync(
             rag_generate_operation,
@@ -430,3 +473,69 @@ def assess_generated_quality(generated_files: dict):
         print("   🟠 Fair: Some manual work may be required")
     else:
         print("   🔴 Needs work: Significant manual implementation needed")
+
+
+def _parse_pdf_test_cases(content: str) -> list:
+    """Parse test cases from PDF-extracted content."""
+    from .parser.markdown_parser import TestCase
+    import re
+    
+    test_cases = []
+    lines = content.split('\n')
+    
+    # Look for test case patterns in the flattened PDF content
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Look for test ID patterns (E2E_1, INT_1, TECH_1, MOCK_1)
+        if re.match(r'^(E2E_|INT_|TECH_|MOCK_)\d+$', line):
+            test_id = line
+            
+            # Collect information from following lines
+            feature = ""
+            category = ""
+            objective = ""
+            
+            # Look ahead for test case details
+            for j in range(i + 1, min(i + 10, len(lines))):
+                next_line = lines[j].strip()
+                if not next_line:
+                    continue
+                
+                # Skip common table headers and separators
+                if next_line in ['Feature', 'Category', 'Objective', 'Priority', 'High', 'Medium', 'Low', 
+                               'Happy', 'Path', 'Negative', 'Technical Area', 'Focus', 'Type', 'Component Under Test']:
+                    continue
+                
+                # Stop if we hit another test ID
+                if re.match(r'^(E2E_|INT_|TECH_|MOCK_)\d+$', next_line):
+                    break
+                
+                # Collect meaningful content
+                if not feature and len(next_line) > 3 and not next_line.isdigit():
+                    feature = next_line
+                elif not category and next_line in ['Happy', 'Negative', 'Contract', 'Error', 'Flow', 'Performance', 'Security', 'Recovery', 'Functional', 'Unit']:
+                    category = next_line
+                elif not objective and len(next_line) > 10 and 'verify' in next_line.lower():
+                    objective = next_line
+            
+            # Create test case if we have minimum required info
+            if feature or objective:
+                test_case = TestCase(
+                    id=test_id,
+                    feature=feature or "Unknown",
+                    type="Journey/Flow" if test_id.startswith("E2E_") else 
+                         "API" if test_id.startswith("INT_") else
+                         "Technical" if test_id.startswith("TECH_") else
+                         "Functional",
+                    category=category or "Happy Path",
+                    objective=objective or f"Test case for {test_id}"
+                )
+                test_cases.append(test_case)
+            
+            i = j if 'j' in locals() else i + 5  # Skip ahead
+        else:
+            i += 1
+    
+    return test_cases

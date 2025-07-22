@@ -19,6 +19,11 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
+class ConfigurationCancelledException(Exception):
+    """Exception raised when user cancels configuration."""
+    pass
+
+
 # ==================== Constants ====================
 
 # Import constants from the parent module
@@ -32,7 +37,16 @@ try:
         DEFAULT_AUTOMATION_OUTPUT_DIR,
         SUPPORTED_FRAMEWORKS,
         DEFAULT_GEMINI_GENERATION_MODEL,
-        DEFAULT_GEMINI_EMBEDDING_MODEL
+        DEFAULT_GEMINI_EMBEDDING_MODEL,
+        DEFAULT_LLAMA_GENERATION_MODEL,
+        DEFAULT_LLAMA_EMBEDDING_MODEL,
+        SUPPORTED_TEST_OUTPUT_FORMATS,
+        DEFAULT_TEST_OUTPUT_FORMAT,
+        DEFAULT_CHROMA_HOST,
+        DEFAULT_CHROMA_PORT,
+        DEFAULT_CHROMA_USE_REMOTE,
+        DEFAULT_CHROMA_PERSIST_DIRECTORY,
+        DEFAULT_BASE_URLS
     )
 except ImportError:
     # Fallback definitions if constants can't be imported
@@ -53,6 +67,27 @@ except ImportError:
 
     DEFAULT_GEMINI_GENERATION_MODEL = "gemini-2.0-flash"
     DEFAULT_GEMINI_EMBEDDING_MODEL = "text-embedding-004"
+    
+    DEFAULT_LLAMA_GENERATION_MODEL = "llama3.2:3b"
+    DEFAULT_LLAMA_EMBEDDING_MODEL = "llama3.2:1b"
+
+    # Test output format constants
+    SUPPORTED_TEST_OUTPUT_FORMATS = ["md", "pdf", "docx"]
+    DEFAULT_TEST_OUTPUT_FORMAT = "pdf"
+    
+    # ChromaDB constants
+    DEFAULT_CHROMA_HOST = "localhost"
+    DEFAULT_CHROMA_PORT = 8000
+    DEFAULT_CHROMA_USE_REMOTE = False
+    DEFAULT_CHROMA_PERSIST_DIRECTORY = "./chroma_data"
+    
+    # Base URL constants
+    DEFAULT_BASE_URLS = {
+        "python": "http://localhost:8000",
+        "javascript": "http://localhost:3000", 
+        "typescript": "http://localhost:3000",
+        "java": "http://localhost:8080"
+    }
 
 
 # ==================== UI Helpers ====================
@@ -81,14 +116,14 @@ class UIHelper:
     def show_header(self, title: str = "TestTeller Configuration Wizard"):
         """Show wizard header with branding."""
         print("\n" + "=" * 60)
-        print(f"🔧 {title}")
+        print(f"✨🤖 {title}")
         print("=" * 60)
-        print("Setting up your AI-powered test automation platform")
+        print("Setting up your AI-powered Testing Agent")
         if self._total_steps > 0:
             print(f"Progress: Step {self._step_counter}/{self._total_steps}")
         print()
 
-    def show_section_header(self, title: str, description: str = "", icon: str = "🔧"):
+    def show_section_header(self, title: str, description: str = "", icon: str = "⚙️"):
         """Show section header with description."""
         print(f"\n{icon} {title}")
         print("=" * len(f"{icon} {title}"))
@@ -262,15 +297,27 @@ class UIHelper:
         automation_configs = {}
         other_configs = {}
 
+        chromadb_configs = {}
+
+        def mask_api_key(value):
+            """Helper function to mask API keys showing first 6 characters followed by ..."""
+            if len(value) > 6:
+                return value[:6] + "..."
+            else:
+                return "***"
+
         for key, value in config.items():
-            if any(provider in key.lower() for provider in ['gemini', 'openai', 'claude', 'llama', 'ollama']):
-                if 'api_key' in key.lower():
-                    llm_configs[key] = "***" + \
-                        value[-4:] if len(value) > 4 else "***"
-                else:
-                    llm_configs[key] = value
-            elif 'automation' in key.lower() or key in ['BASE_URL', 'AUTOMATION_OUTPUT_DIR']:
+            # Check if this is an API key regardless of provider
+            if 'api_key' in key.lower() or 'token' in key.lower():
+                # Always mask API keys and put them in LLM configs
+                llm_configs[key] = mask_api_key(str(value))
+            elif any(provider in key.lower() for provider in ['gemini', 'openai', 'claude', 'llama', 'ollama']):
+                # Other LLM provider settings (models, URLs, etc.)
+                llm_configs[key] = value
+            elif 'automation' in key.lower() or key in ['BASE_URL', 'AUTOMATION_OUTPUT_DIR', 'TEST_OUTPUT_FORMAT']:
                 automation_configs[key] = value
+            elif 'chroma' in key.lower():
+                chromadb_configs[key] = value
             else:
                 other_configs[key] = value
 
@@ -280,8 +327,13 @@ class UIHelper:
                 print(f"   • {key}: {value}")
 
         if automation_configs:
-            print("\n🧪 TestAutomator (Automation):")
+            print("\n🚀 Test Automator Agent:")
             for key, value in automation_configs.items():
+                print(f"   • {key}: {value}")
+
+        if chromadb_configs:
+            print("\n🗄️ ChromaDB (Vector Database):")
+            for key, value in chromadb_configs.items():
                 print(f"   • {key}: {value}")
 
         if other_configs:
@@ -296,7 +348,7 @@ class UIHelper:
         print(f"✅ Configuration saved to: {config_path}")
         print(f"✅ LLM Provider: {provider}")
         print(
-            f"✅ TestAutomator Automation: {'Enabled' if automation_enabled else 'Disabled'}")
+            f"✅ Test Automator Agent: {'Enabled' if automation_enabled else 'Disabled'}")
 
         print("\n🚀 Next Steps:")
         print("   1. Test your configuration:")
@@ -574,8 +626,8 @@ class LlamaConfig(ProviderConfig):
         ui.show_info(
             "Available models:",
             [
-                "• llama2 - Original Llama 2 model",
-                "• llama2:13b - Larger Llama 2 model",
+                f"• {DEFAULT_LLAMA_EMBEDDING_MODEL} - Compact Llama 3.2 model",
+                f"• {DEFAULT_LLAMA_GENERATION_MODEL} - Standard Llama 3.2 model",
                 "• codellama - Optimized for code",
                 "• mistral - Fast and efficient",
                 "• Run 'ollama list' to see installed models"
@@ -584,7 +636,7 @@ class LlamaConfig(ProviderConfig):
 
         gen_model = ui.get_input(
             "Generation model",
-            default="llama2",
+            default=DEFAULT_LLAMA_GENERATION_MODEL,
             validator=lambda x: len(x) > 0,
             error_message="Model name cannot be empty"
         )
@@ -592,7 +644,7 @@ class LlamaConfig(ProviderConfig):
 
         emb_model = ui.get_input(
             "Embedding model",
-            default="llama2",
+            default=DEFAULT_LLAMA_EMBEDDING_MODEL,
             validator=lambda x: len(x) > 0,
             error_message="Model name cannot be empty"
         )
@@ -644,9 +696,9 @@ class TestAutomatorWizard:
 
             if not skip_prompt:
                 ui_helper.show_section_header(
-                    "🧪 TestAutomator (Automation) Wizard",
-                    "Configure automated test code generation for multiple languages and frameworks",
-                    "🧪"
+                    "Test Automator Wizard",
+                    "Configure automator agent which generates test automation code",
+                    "🚀"
                 )
 
                 self._show_automation_overview(ui_helper)
@@ -658,7 +710,7 @@ class TestAutomatorWizard:
 
                 if not configure_automation:
                     ui_helper.show_info(
-                        "TestAutomator automation configuration skipped.")
+                        "Test Automator Agent configuration skipped.")
                     return self._get_default_config()
 
             config.update(self._configure_language_and_framework(ui_helper))
@@ -671,7 +723,7 @@ class TestAutomatorWizard:
                 ui_helper.show_error(
                     "Configuration validation failed:", errors)
                 raise Exception(
-                    "TestAutomator configuration validation failed")
+                    "Test Automator Agent configuration validation failed")
 
             self._show_configuration_summary(ui_helper, config)
 
@@ -680,20 +732,20 @@ class TestAutomatorWizard:
             return config
 
         except (KeyboardInterrupt, typer.Abort):
-            print("\n\n🛑 TestAutomator configuration interrupted by user")
+            print("\n\n🛑 Test Automator configuration interrupted by user")
             ui_helper.show_info(
-                "TestAutomator configuration cancelled. Using defaults.")
+                "Test Automator configuration cancelled. Using defaults.")
             return self._get_default_config()
 
     def _show_automation_overview(self, ui_helper: UIHelper):
         """Show automation capabilities overview."""
         ui_helper.show_info(
-            "TestAutomator can generate automated test code in multiple languages:",
+            "Test Automator can generate automated test code in multiple languages:",
             [
-                f"🐍 Python: {', '.join(SUPPORTED_FRAMEWORKS['python'])}",
-                f"🟨 JavaScript: {', '.join(SUPPORTED_FRAMEWORKS['javascript'])}",
-                f"🔷 TypeScript: {', '.join(SUPPORTED_FRAMEWORKS['typescript'])}",
-                f"☕ Java: {', '.join(SUPPORTED_FRAMEWORKS['java'])}"
+                f"Python: {', '.join(SUPPORTED_FRAMEWORKS['python'])}",
+                f"JavaScript: {', '.join(SUPPORTED_FRAMEWORKS['javascript'])}",
+                f"TypeScript: {', '.join(SUPPORTED_FRAMEWORKS['typescript'])}",
+                f"Java: {', '.join(SUPPORTED_FRAMEWORKS['java'])}"
             ]
         )
 
@@ -763,23 +815,6 @@ class TestAutomatorWizard:
         )
         config["BASE_URL"] = base_url
 
-        timeout_str = ui_helper.get_input(
-            "Test timeout in milliseconds",
-            default="30000",
-            validator=lambda x: x.isdigit() and 1000 <= int(x) <= 300000,
-            error_message="Timeout must be between 1000 and 300000 milliseconds"
-        )
-        config["TEST_TIMEOUT"] = timeout_str
-
-        api_url = ui_helper.get_input(
-            "API base URL (leave empty if same as base URL)",
-            default="",
-            validator=lambda x: x == "" or validate_url(x),
-            error_message="Please enter a valid API URL or leave empty"
-        )
-        if api_url:
-            config["API_BASE_URL"] = api_url
-
         return config
 
     def _configure_output_settings(self, ui_helper: UIHelper) -> Dict[str, str]:
@@ -788,7 +823,8 @@ class TestAutomatorWizard:
 
         ui_helper.show_info(
             "Configure output settings:",
-            ["Where to save generated tests", "File naming conventions"]
+            ["Where to save generated tests",
+                "Test case output format", "File naming conventions"]
         )
 
         output_dir = ui_helper.get_input(
@@ -798,6 +834,27 @@ class TestAutomatorWizard:
             error_message="Please enter a valid directory path"
         )
         config["AUTOMATION_OUTPUT_DIR"] = output_dir
+
+        # Add test case output format selection
+        format_descriptions = {
+            "pdf": "PDF format - Professional, widely compatible",
+            "md": "Markdown format - Developer-friendly, version control friendly",
+            "docx": "Word document format - Business-friendly, easy to edit"
+        }
+
+        try:
+            from ...constants import SUPPORTED_TEST_OUTPUT_FORMATS, DEFAULT_TEST_OUTPUT_FORMAT
+
+            output_format = ui_helper.get_choice(
+                "Select test case output format",
+                SUPPORTED_TEST_OUTPUT_FORMATS,
+                default=DEFAULT_TEST_OUTPUT_FORMAT,
+                descriptions=format_descriptions
+            )
+            config["TEST_OUTPUT_FORMAT"] = output_format
+        except ImportError:
+            # Fallback if constants aren't available
+            config["TEST_OUTPUT_FORMAT"] = "pdf"
 
         return config
 
@@ -911,16 +968,6 @@ class TestAutomatorWizard:
         if base_url and not validate_url(base_url):
             errors.append("Invalid base URL format")
 
-        timeout = config.get("TEST_TIMEOUT", "")
-        if timeout:
-            try:
-                timeout_val = int(timeout)
-                if not (1000 <= timeout_val <= 300000):
-                    errors.append(
-                        "Test timeout must be between 1000 and 300000 milliseconds")
-            except ValueError:
-                errors.append("Test timeout must be a valid number")
-
         output_dir = config.get("AUTOMATION_OUTPUT_DIR", "")
         if output_dir and not ConfigurationValidator.validate_directory_path(output_dir):
             errors.append("Invalid output directory path")
@@ -933,15 +980,21 @@ class TestAutomatorWizard:
         framework = config.get("AUTOMATION_FRAMEWORK", "")
         base_url = config.get("BASE_URL", "")
         output_dir = config.get("AUTOMATION_OUTPUT_DIR", "")
+        output_format = config.get("TEST_OUTPUT_FORMAT", "")
+
+        summary_items = [
+            f"Language: {language}",
+            f"Framework: {framework}",
+            f"Base URL: {base_url}",
+            f"Output directory: {output_dir}"
+        ]
+
+        if output_format:
+            summary_items.append(f"Test output format: {output_format}")
 
         ui_helper.show_success(
             "TestAutomator (Automation) configuration completed!",
-            [
-                f"Language: {language}",
-                f"Framework: {framework}",
-                f"Base URL: {base_url}",
-                f"Output directory: {output_dir}"
-            ]
+            summary_items
         )
 
         ui_helper.show_info(
@@ -955,7 +1008,7 @@ class TestAutomatorWizard:
 
     def _get_default_config(self) -> Dict[str, str]:
         """Get default automation configuration."""
-        return {
+        default_config = {
             "AUTOMATION_LANGUAGE": DEFAULT_AUTOMATION_LANGUAGE,
             "AUTOMATION_FRAMEWORK": DEFAULT_AUTOMATION_FRAMEWORK,
             "BASE_URL": "http://localhost:8000",
@@ -963,6 +1016,15 @@ class TestAutomatorWizard:
             "TEST_TIMEOUT": "30000",
             "AUTOMATION_ENHANCE_BY_DEFAULT": "true"
         }
+
+        # Add test output format if available
+        try:
+            from ...constants import DEFAULT_TEST_OUTPUT_FORMAT
+            default_config["TEST_OUTPUT_FORMAT"] = DEFAULT_TEST_OUTPUT_FORMAT
+        except ImportError:
+            default_config["TEST_OUTPUT_FORMAT"] = "pdf"
+
+        return default_config
 
 
 # ==================== Configuration Writer ====================
@@ -1008,10 +1070,14 @@ class ConfigurationWriter:
                 content_lines.append("\n# Additional Configuration")
                 content_lines.append("# " + "=" * 50)
 
+                added_count = 0
                 for key, value in additional_config.items():
                     if key not in config:
                         content_lines.extend(
                             self._format_config_entry(key, value))
+                        added_count += 1
+                
+                logger.info(f"Added {added_count} additional configs out of {len(additional_config)} provided")
 
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(content_lines))
@@ -1113,8 +1179,7 @@ class ConfigurationWriter:
             '_here',
             'replace_with',
             'enter_your',
-            'api_key_placeholder',
-            'localhost:11434'
+            'api_key_placeholder'
         ]
 
         value_lower = value.lower()
@@ -1326,7 +1391,9 @@ class ConfigurationWizard:
     def __init__(self, ui_mode: UIMode = UIMode.CLI):
         """Initialize configuration wizard."""
         self.ui = UIHelper(ui_mode)
-        self.writer = ConfigurationWriter()
+        # Import the correct ConfigurationWriter from writers.py
+        from .writers import ConfigurationWriter as ProperConfigurationWriter
+        self.writer = ProperConfigurationWriter()
         self.validator = ConfigurationValidator()
         self.config_data = {}
         self.env_template = self._get_env_template()
@@ -1337,7 +1404,7 @@ class ConfigurationWizard:
             if not env_path:
                 env_path = Path.cwd() / ".env"
 
-            self.ui.set_progress(0, 4)
+            self.ui.set_progress(0, 3)
 
             if not self._check_prerequisites(env_path):
                 return False
@@ -1349,10 +1416,6 @@ class ConfigurationWizard:
             self.ui.show_step_progress("TestAutomator (Automation) Setup")
             automation_config = self._configure_automation()
             self.config_data.update(automation_config)
-
-            self.ui.show_step_progress("Additional Settings")
-            additional_config = self._configure_additional_settings(env_path)
-            self.config_data.update(additional_config)
 
             self.ui.show_step_progress("Validation and Save")
             if not self._finalize_configuration(env_path):
@@ -1368,6 +1431,9 @@ class ConfigurationWizard:
                 "Configuration cancelled gracefully. No changes were made.")
             print(
                 "💡 You can run the configuration wizard again anytime with: testteller configure")
+            return False
+        except ConfigurationCancelledException:
+            self.ui.show_info("💡 Configuration cancelled by user.")
             return False
         except Exception as e:
             logger.error(f"Configuration wizard failed: {e}")
@@ -1427,14 +1493,14 @@ class ConfigurationWizard:
 
         self.ui.show_section_header(
             "🤖 LLM Provider Selection",
-            "Choose your AI provider for test case generation"
+            "Choose your AI/LLM provider for test case generation"
         )
 
         provider_descriptions = {
-            "gemini": "Google's powerful multimodal AI (recommended)",
-            "openai": "Industry-leading GPT models",
-            "claude": "Advanced reasoning by Anthropic",
-            "llama": "Privacy-focused local deployment"
+            "Gemini": "Google's powerful multimodal AI (recommended)",
+            "OpenAI": "Industry-leading GPT models",
+            "Claude": "Advanced reasoning by Anthropic",
+            "Llama": "Privacy-focused local deployment"
         }
 
         provider = self.ui.get_choice(
@@ -1461,12 +1527,127 @@ class ConfigurationWizard:
                 else:
                     self.ui.show_warning("Connection test failed", [message])
                     if not self.ui.confirm("Continue with configuration anyway?", default=True):
-                        raise Exception(
-                            "Configuration cancelled due to connection failure")
+                        raise ConfigurationCancelledException(
+                            "Configuration cancelled by user")
 
+        except ConfigurationCancelledException:
+            # Re-raise without logging - this is user cancellation, not an error
+            raise
         except Exception as e:
             logger.error(f"Provider configuration failed: {e}")
             raise
+
+        return config
+
+    def _configure_test_output_format(self) -> Dict[str, str]:
+        """Configure preferred test case output format."""
+        config = {}
+
+        self.ui.show_section_header(
+            "📄 Test Case Output Format",
+            "Choose your preferred format for generated test cases"
+        )
+
+        self.ui.show_info(
+            "Test cases can be generated in multiple formats:",
+            [
+                "• pdf - Professional documents with tables and formatting",
+                "• md - Markdown, a developer-friendly format with table support",
+                "• docx - Microsoft Word format for business collaboration"
+            ]
+        )
+
+        # Make this optional by allowing user to press enter for default
+        format_input = self.ui.get_input(
+            f"Preferred test case output format",
+            default=DEFAULT_TEST_OUTPUT_FORMAT,
+            validator=lambda x: x == "" or x.lower(
+            ) in [f.lower() for f in SUPPORTED_TEST_OUTPUT_FORMATS],
+            error_message=f"Please enter one of: {', '.join(SUPPORTED_TEST_OUTPUT_FORMATS)} or press Enter for default"
+        )
+
+        if format_input.strip():
+            # User provided a format
+            output_format = format_input.lower()
+        else:
+            # Use default
+            output_format = DEFAULT_TEST_OUTPUT_FORMAT
+
+        config["TEST_OUTPUT_FORMAT"] = output_format
+
+        if format_input.strip():
+            self.ui.show_success(f"Test output format set to: {output_format}")
+        else:
+            self.ui.show_info(
+                f"Using default test output format: {output_format}")
+
+        return config
+
+    def _configure_chromadb(self) -> Dict[str, str]:
+        """Configure ChromaDB settings."""
+        config = {}
+
+        self.ui.show_section_header(
+            "🗄️ ChromaDB Configuration",
+            "Configure vector database for context storage and retrieval"
+        )
+
+        self.ui.show_info(
+            "ChromaDB stores and retrieves context for better test generation:",
+            [
+                "• Local - Runs on your machine (recommended for privacy)",
+                "• Remote - Connect to external ChromaDB server"
+            ]
+        )
+
+        use_remote = self.ui.confirm(
+            "Use remote ChromaDB server? (No = Local ChromaDB)",
+            default=False
+        )
+
+        config["CHROMA_DB_USE_REMOTE"] = str(use_remote).lower()
+
+        if use_remote:
+            self.ui.show_info(
+                "Configure remote ChromaDB connection:",
+                [f"• Default host: {DEFAULT_CHROMA_HOST}", f"• Default port: {DEFAULT_CHROMA_PORT}"]
+            )
+
+            host = self.ui.get_input(
+                "ChromaDB host",
+                default=DEFAULT_CHROMA_HOST,
+                validator=lambda x: len(x.strip()) > 0,
+                error_message="Host cannot be empty"
+            )
+            config["CHROMA_DB_HOST"] = host
+
+            port = self.ui.get_input(
+                "ChromaDB port",
+                default=str(DEFAULT_CHROMA_PORT),
+                validator=validate_port,
+                error_message="Please enter a valid port number (1-65535)"
+            )
+            config["CHROMA_DB_PORT"] = port
+
+            self.ui.show_success(
+                f"Remote ChromaDB configured: {host}:{port}"
+            )
+        else:
+            # Set default values for local ChromaDB
+            config["CHROMA_DB_HOST"] = DEFAULT_CHROMA_HOST
+            config["CHROMA_DB_PORT"] = str(DEFAULT_CHROMA_PORT)
+
+            persist_dir = self.ui.get_input(
+                "ChromaDB data directory (local storage)",
+                default=DEFAULT_CHROMA_PERSIST_DIRECTORY,
+                validator=validate_directory_path,
+                error_message="Please enter a valid directory path"
+            )
+            config["CHROMA_DB_PERSIST_DIRECTORY"] = persist_dir
+
+            self.ui.show_success(
+                f"Local ChromaDB configured: {persist_dir}"
+            )
 
         return config
 
@@ -1474,12 +1655,12 @@ class ConfigurationWizard:
         """Configure TestAutomator automation with user choice."""
         try:
             self.ui.show_section_header(
-                "🔧 TestAutomator (Automation) Configuration",
+                "🚀 Test Automator Agent Configuration",
                 "Configure automated test generation for multiple frameworks"
             )
 
             self.ui.show_info(
-                "TestAutomator can generate automation code in multiple languages:",
+                "Test Automator Agent can generate automation code in multiple languages:",
                 [
                     "• Python (pytest, unittest, playwright)",
                     "• JavaScript (jest, mocha, playwright)",
@@ -1489,102 +1670,71 @@ class ConfigurationWizard:
             )
 
             configure_automation = self.ui.confirm(
-                "Would you like to configure TestAutomator (Automation Agent)?",
+                "Would you like to configure Test Automator Agent?",
                 default=True
             )
 
-            if configure_automation:
-                self.ui.show_info(
-                    "Setting up TestAutomator automation configuration...")
-                automation_wizard = TestAutomatorWizard()
-                return automation_wizard.configure(self.ui, skip_prompt=True)
-            else:
-                self.ui.show_info(
-                    "Using default TestAutomator configuration from .env.example")
-                automation_wizard = TestAutomatorWizard()
-                default_config = automation_wizard._get_default_config()
+            # Get automation configuration
+            config = {}
+            try:
+                if configure_automation:
+                    self.ui.show_info(
+                        "Setting up Test Automator Agent configuration...")
+                    automation_wizard = TestAutomatorWizard()
+                    config = automation_wizard.configure(self.ui)
+                else:
+                    self.ui.show_info(
+                        "Using default Test Automator Agent configuration from .env.example")
+                    automation_wizard = TestAutomatorWizard()
+                    config = automation_wizard._get_default_config()
 
-                self.ui.show_info(
-                    "Default automation settings applied:",
-                    [f"• {key}: {value}" for key,
-                        value in default_config.items() if value]
-                )
+                    self.ui.show_info(
+                        "Default automation settings applied:",
+                        [f"• {key}: {value}" for key,
+                            value in config.items() if value]
+                    )
 
-                self.ui.show_info(
-                    "💡 You can configure TestAutomator later using:",
-                    ["testteller configure --testwriter"]
-                )
+                    self.ui.show_info(
+                        "💡 You can configure Test Automator Agent later using:",
+                        ["testteller configure --automator-agent"]
+                    )
+            except Exception as e:
+                logger.warning(f"Automation configuration failed: {e}, using minimal defaults")
+                config = {
+                    "AUTOMATION_LANGUAGE": DEFAULT_AUTOMATION_LANGUAGE,
+                    "AUTOMATION_FRAMEWORK": DEFAULT_AUTOMATION_FRAMEWORK,
+                    "BASE_URL": DEFAULT_BASE_URLS.get(DEFAULT_AUTOMATION_LANGUAGE, "http://localhost:8000")
+                }
 
-                return default_config
+            # Add test case output format configuration
+            try:
+                config.update(self._configure_test_output_format())
+            except Exception as e:
+                logger.warning(f"Test output format configuration failed: {e}, using defaults")
+                config["TEST_OUTPUT_FORMAT"] = DEFAULT_TEST_OUTPUT_FORMAT
+
+            # Add ChromaDB configuration
+            try:
+                config.update(self._configure_chromadb())
+            except Exception as e:
+                logger.warning(f"ChromaDB configuration failed: {e}, using defaults")
+                config.update({
+                    "CHROMA_DB_USE_REMOTE": str(DEFAULT_CHROMA_USE_REMOTE).lower(),
+                    "CHROMA_DB_HOST": DEFAULT_CHROMA_HOST,
+                    "CHROMA_DB_PORT": str(DEFAULT_CHROMA_PORT),
+                    "CHROMA_DB_PERSIST_DIRECTORY": DEFAULT_CHROMA_PERSIST_DIRECTORY
+                })
+
+            return config
 
         except Exception as e:
-            logger.error(f"Automation configuration failed: {e}")
+            logger.error(f"Test Automator Agent configuration failed: {e}")
             self.ui.show_warning(
                 "Automation configuration failed, using defaults",
-                ["You can reconfigure later with 'testteller configure --testwriter'"]
+                ["You can reconfigure later with 'testteller configure --automator-agent'"]
             )
             automation_wizard = TestAutomatorWizard()
             return automation_wizard._get_default_config()
-
-    def _configure_additional_settings(self, env_path: Path) -> Dict[str, str]:
-        """Configure additional settings from .env.example."""
-        config = {}
-
-        env_example_path = env_path.parent / ".env.example"
-
-        if not env_example_path.exists():
-            self.ui.show_info(
-                "No .env.example file found, skipping additional settings.")
-            return config
-
-        try:
-            general_configs, provider_specific_configs = self.writer.read_env_example(
-                env_example_path)
-
-            if general_configs:
-                self.ui.show_section_header(
-                    "📋 Additional Settings",
-                    "Optional settings from .env.example"
-                )
-
-                self.ui.show_info(
-                    f"Found {len(general_configs)} additional settings:",
-                    [f"• {key}={value}" for key, value in list(
-                        general_configs.items())[:5]]
-                )
-
-                if len(general_configs) > 5:
-                    self.ui.show_info(
-                        f"... and {len(general_configs) - 5} more")
-
-                if self.ui.confirm("Include these additional settings?", default=True):
-                    config.update(general_configs)
-                    self.ui.show_success("Additional settings included!")
-
-            current_provider = self.config_data.get("LLM_PROVIDER", "").lower()
-            relevant_provider_configs = {
-                k: v for k, v in provider_specific_configs.items()
-                if current_provider in k.lower()
-            }
-
-            if relevant_provider_configs:
-                self.ui.show_info(
-                    f"Found {len(relevant_provider_configs)} {current_provider}-specific settings:",
-                    [f"• {key}={value}" for key,
-                        value in relevant_provider_configs.items()]
-                )
-
-                if self.ui.confirm(f"Include {current_provider}-specific settings?", default=True):
-                    config.update(relevant_provider_configs)
-                    self.ui.show_success(
-                        f"{current_provider.title()} settings included!")
-
-        except Exception as e:
-            logger.warning(f"Failed to read additional settings: {e}")
-            self.ui.show_warning(
-                "Could not read additional settings from .env.example")
-
-        return config
 
     def _finalize_configuration(self, env_path: Path) -> bool:
         """Validate and write final configuration."""
@@ -1603,8 +1753,82 @@ class ConfigurationWizard:
             self.ui.show_configuration_summary(self.config_data)
 
             if not self.ui.confirm("Save this configuration?", default=True):
-                self.ui.show_info("Configuration not saved.")
+                self.ui.show_info("💡 Configuration not saved.")
                 return False
+
+            # Read additional configuration from .env.example
+            env_example_path = env_path.parent / ".env.example"
+            additional_config = {}
+
+            if env_example_path.exists():
+                self.ui.show_info(
+                    "Loading additional default configurations from .env.example...")
+                general_configs, provider_specific_configs = self.writer.read_env_example(
+                    env_example_path)
+                
+                
+
+                # Merge general configs and relevant provider configs
+                additional_config.update(general_configs)
+
+                # Add relevant provider-specific configs
+                current_provider = self.config_data.get("LLM_PROVIDER", "").lower()
+                
+                if current_provider:
+                    # Provider-specific mapping for API keys and models
+                    provider_key_mapping = {
+                        'gemini': ['GOOGLE_API_KEY', 'GEMINI_EMBEDDING_MODEL', 'GEMINI_GENERATION_MODEL'],
+                        'openai': ['OPENAI_API_KEY', 'OPENAI_EMBEDDING_MODEL', 'OPENAI_GENERATION_MODEL'],
+                        'claude': ['CLAUDE_API_KEY', 'CLAUDE_GENERATION_MODEL', 'OPENAI_API_KEY'],  # Claude needs OpenAI for embeddings
+                        'llama': ['LLAMA_EMBEDDING_MODEL', 'LLAMA_GENERATION_MODEL', 'OLLAMA_BASE_URL']
+                    }
+                    
+                    # Add configs for current provider
+                    if current_provider in provider_key_mapping:
+                        for key in provider_key_mapping[current_provider]:
+                            if key in provider_specific_configs:
+                                additional_config[key] = provider_specific_configs[key]
+                    
+                    # Include all provider configs (model names and API key placeholders for all providers)
+                    # Users should see all available options even if they're not using them now
+                    for k, v in provider_specific_configs.items():
+                        if k not in additional_config:
+                            additional_config[k] = v
+
+                # Ensure ALL general configs are included if not already set
+                for config_key, config_value in general_configs.items():
+                    if config_key not in self.config_data and config_key not in additional_config:
+                        additional_config[config_key] = config_value
+                        
+                # Ensure critical configs are always present with defaults
+                # Note: Most values should come from .env.example via the general_configs
+                # These are only used if the value is missing from .env.example
+                critical_defaults = {
+                    'TEST_OUTPUT_FORMAT': DEFAULT_TEST_OUTPUT_FORMAT,
+                    'CHROMA_DB_HOST': DEFAULT_CHROMA_HOST,
+                    'CHROMA_DB_PORT': str(DEFAULT_CHROMA_PORT), 
+                    'CHROMA_DB_USE_REMOTE': str(DEFAULT_CHROMA_USE_REMOTE).lower(),
+                    'CHROMA_DB_PERSIST_DIRECTORY': DEFAULT_CHROMA_PERSIST_DIRECTORY,
+                    'AUTOMATION_OUTPUT_DIR': DEFAULT_AUTOMATION_OUTPUT_DIR
+                    # AUTOMATION_ENHANCE_BY_DEFAULT should come from .env.example
+                }
+                
+                for config_key, default_value in critical_defaults.items():
+                    if config_key not in self.config_data and config_key not in additional_config:
+                        additional_config[config_key] = default_value
+
+                
+                if additional_config:
+                    self.ui.show_info(
+                        f"Including {len(additional_config)} additional default settings:",
+                        [f"• {key}={value}" for key, value in list(
+                            additional_config.items())[:5]]
+                    )
+                    if len(additional_config) > 5:
+                        self.ui.show_info(
+                            f"  ... and {len(additional_config) - 5} more settings")
+                else:
+                    self.ui.show_info("No additional configurations found to copy from .env.example")
 
             self.ui.show_info(f"Writing configuration to {env_path}...")
 
@@ -1612,17 +1836,22 @@ class ConfigurationWizard:
             if "AUTOMATION_ENHANCE_BY_DEFAULT" not in self.config_data:
                 self.config_data["AUTOMATION_ENHANCE_BY_DEFAULT"] = "true"
 
+            
             success = self.writer.write_env_file(
                 config=self.config_data,
                 file_path=env_path,
-                template_config=self.env_template
+                template_config=self.env_template,
+                additional_config=additional_config
             )
 
             if not success:
                 self.ui.show_error("Failed to write configuration file")
                 return False
 
-            self.ui.show_success(f"Configuration saved to {env_path}")
+            success_message = f"Configuration saved to {env_path}"
+            if additional_config:
+                success_message += f" (including {len(additional_config)} default settings)"
+            self.ui.show_success(success_message)
 
             return True
 
@@ -1673,6 +1902,34 @@ class ConfigurationWizard:
             "BASE_URL": {
                 "description": "Base URL for testing",
                 "required": False
+            },
+            "TEST_OUTPUT_FORMAT": {
+                "description": "Output format for test cases (md, pdf, docx)",
+                "required": False
+            },
+            "CHROMA_DB_HOST": {
+                "description": "ChromaDB host address",
+                "required": False
+            },
+            "CHROMA_DB_PORT": {
+                "description": "ChromaDB port number",
+                "required": False
+            },
+            "CHROMA_DB_USE_REMOTE": {
+                "description": "Use remote ChromaDB instance",
+                "required": False
+            },
+            "CHROMA_DB_PERSIST_DIRECTORY": {
+                "description": "ChromaDB persistence directory",
+                "required": False
+            },
+            "AUTOMATION_OUTPUT_DIR": {
+                "description": "Output directory for automation files",
+                "required": False
+            },
+            "AUTOMATION_ENHANCE_BY_DEFAULT": {
+                "description": "Enable automation enhancement by default",
+                "required": False
             }
         }
 
@@ -1695,7 +1952,7 @@ def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
     """Run TestAutomator automation setup only."""
     try:
         ui_helper = UIHelper(ui_mode)
-        ui_helper.show_header("TestAutomator (Automation) Setup")
+        ui_helper.show_header("Automator Agent Setup")
 
         automation_wizard = TestAutomatorWizard()
         config = automation_wizard.configure(ui_helper)
@@ -1719,7 +1976,7 @@ def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
 
         if success:
             ui_helper.show_success(
-                "TestAutomator automation configured successfully!")
+                "Automator Agent configured successfully!")
             return True
         else:
             ui_helper.show_error("Failed to save automation configuration")
@@ -1728,7 +1985,7 @@ def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
     except KeyboardInterrupt:
         print("\n\n🛑 Automation setup interrupted by user (Ctrl+C)")
         print("⚡ Automation setup cancelled gracefully. No changes were made.")
-        print("💡 You can run the automation setup again anytime with: testteller configure --testwriter")
+        print("💡 You can run the automation setup again anytime with: testteller configure --automator-agent")
         return False
     except Exception as e:
         logger.error(f"Automation-only setup failed: {e}")

@@ -36,7 +36,7 @@ class RAGEnhancedTestGenerator(BaseTestGenerator):
         )
         self.validator = TestCodeValidator(vector_store, self.llm_manager)
         
-    def generate(self, test_cases: List[TestCase]) -> Dict[str, str]:
+    async def generate(self, test_cases: List[TestCase]) -> Dict[str, str]:
         """Generate complete test code using RAG-enhanced approach."""
         logger.info(f"Starting RAG-enhanced generation for {len(test_cases)} test cases")
         
@@ -47,6 +47,12 @@ class RAGEnhancedTestGenerator(BaseTestGenerator):
             
             # 2. Generate working test files
             generated_files = {}
+            automation_results = {
+                "success": True,
+                "files": {},
+                "errors": [],
+                "test_case_ids": []
+            }
             
             # Categorize tests for better organization
             categorized_tests = self.categorize_tests(test_cases)
@@ -73,10 +79,28 @@ class RAGEnhancedTestGenerator(BaseTestGenerator):
             generated_files.update(supporting_files)
             
             logger.info(f"Generated {len(generated_files)} complete test files")
+            
+            # Track automation results for generated test cases
+            automation_results["success"] = True
+            automation_results["files"] = generated_files
+            automation_results["test_case_ids"] = [tc.id for tc in test_cases]
+            
+            # Update stored test case metadata with automation success
+            await self._enrich_test_case_metadata(test_cases, automation_results)
+            
             return generated_files
             
         except Exception as e:
             logger.error(f"RAG-enhanced generation failed: {e}", exc_info=True)
+            
+            # Track automation failure
+            automation_results["success"] = False
+            automation_results["errors"].append(str(e))
+            automation_results["test_case_ids"] = [tc.id for tc in test_cases]
+            
+            # Update stored test case metadata with automation failure
+            await self._enrich_test_case_metadata(test_cases, automation_results)
+            
             # Fallback to basic generation if RAG fails
             return self._generate_fallback_files(test_cases)
     
@@ -296,7 +320,7 @@ Do not include explanations, markdown formatting, or any text outside the code.
         return instructions.get(self.framework, "Follow standard testing best practices")
     
     def _find_similar_test_implementations(self, test_cases: List[TestCase]) -> List[str]:
-        """Find similar test implementations from the vector store."""
+        """Find similar test implementations from both original and generated tests."""
         similar_patterns = []
         
         try:
@@ -312,21 +336,36 @@ Do not include explanations, markdown formatting, or any text outside the code.
             
             query = ' '.join(filter(None, query_parts))
             
-            # Query for similar test implementations
+            # Query for similar test implementations (including generated ones)
             results = self.vector_store.query_similar(
                 query_text=query,
-                n_results=5,
+                n_results=8,  # Increased to get more results including generated ones
                 metadata_filter={
-                    "type": "code",
-                    "file_type": [".py", ".js", ".ts"],
-                    "document_type": ["test_cases", "code"]
+                    "$or": [
+                        {
+                            "type": "code",
+                            "file_type": [".py", ".js", ".ts"],
+                            "document_type": ["test_cases", "code"]
+                        },
+                        {
+                            "type": "generated_test_case"
+                        }
+                    ]
                 }
             )
             
-            if results and results.get('documents'):
-                # Filter for actual test code
-                for doc in results['documents'][0]:
-                    if self._is_test_code(doc):
+            if results and results.get('documents') and results.get('metadatas'):
+                # Process results with quality weighting
+                for i, doc in enumerate(results['documents'][0]):
+                    metadata = results['metadatas'][0][i] if i < len(results['metadatas'][0]) else {}
+                    
+                    # For generated test cases, check quality score
+                    if metadata.get('type') == 'generated_test_case':
+                        quality_score = metadata.get('quality_score', 0.5)
+                        if quality_score > 0.7:  # Only use high-quality generated tests
+                            similar_patterns.append(doc)
+                            logger.debug(f"Including generated test case with quality score {quality_score}")
+                    elif self._is_test_code(doc):
                         similar_patterns.append(doc)
                         
         except Exception as e:
@@ -618,6 +657,109 @@ def test_{category}_basic(base_url):
                 fallback_files[f"test_{category}{self.get_file_extension()}"] = fallback_content
         
         return fallback_files
+    
+    async def _enrich_test_case_metadata(self, test_cases: List[TestCase], automation_results: Dict[str, Any]) -> None:
+        """
+        Enrich stored test case metadata with automation success information.
+        
+        Args:
+            test_cases: List of test cases that were automated
+            automation_results: Results of the automation process
+        """
+        try:
+            from datetime import datetime
+            import os
+            
+            # Only enrich if feedback is enabled
+            if not os.getenv('ENABLE_TEST_CASE_FEEDBACK', 'true').lower() == 'true':
+                return
+                
+            logger.info(f"Enriching metadata for {len(test_cases)} test cases with automation results")
+            
+            # Search for generated test cases that match these test cases
+            for test_case in test_cases:
+                try:
+                    # Search for stored test cases that might correspond to this automated test case
+                    results = self.vector_store.query_similar(
+                        query_text=f"{test_case.objective} {test_case.feature} {test_case.type}",
+                        n_results=5,
+                        metadata_filter={
+                            "type": "generated_test_case"
+                        }
+                    )
+                    
+                    if results and results.get('documents') and results.get('metadatas'):
+                        # Find the best matching stored test case
+                        for i, doc in enumerate(results['documents'][0]):
+                            metadata = results['metadatas'][0][i]
+                            
+                            # Simple matching: if the stored test case contains similar keywords
+                            if self._is_matching_test_case(test_case, doc, metadata):
+                                # Get the document ID to update metadata
+                                doc_id = results['ids'][0][i] if results.get('ids') else None
+                                
+                                if doc_id:
+                                    # Prepare enrichment metadata
+                                    enrichment_metadata = {
+                                        "automation_attempted": True,
+                                        "automation_success": automation_results["success"],
+                                        "automation_timestamp": datetime.now().isoformat(),
+                                        "automation_language": self.language,
+                                        "automation_framework": self.framework,
+                                        "generated_files": list(automation_results["files"].keys()) if automation_results["success"] else [],
+                                        "automation_errors": automation_results.get("errors", []),
+                                        "practical_validation": "passed" if automation_results["success"] else "failed"
+                                    }
+                                    
+                                    # Update the metadata in vector store
+                                    # Note: ChromaDB doesn't have direct metadata update, so we'll log this for now
+                                    # In a production system, you might want to implement a metadata update mechanism
+                                    logger.info(
+                                        f"Test case '{test_case.id}' automation result: "
+                                        f"{'SUCCESS' if automation_results['success'] else 'FAILED'} "
+                                        f"(Language: {self.language}, Framework: {self.framework})"
+                                    )
+                                    
+                                    # Future enhancement: store enriched metadata
+                                    # This could be implemented as a separate metadata collection or
+                                    # by re-adding the document with updated metadata
+                                    
+                                break
+                                
+                except Exception as e:
+                    logger.warning(f"Failed to enrich metadata for test case {test_case.id}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to enrich test case metadata: {e}")
+    
+    def _is_matching_test_case(self, test_case: TestCase, stored_doc: str, stored_metadata: Dict[str, Any]) -> bool:
+        """
+        Check if a test case matches a stored document.
+        
+        Args:
+            test_case: The test case being automated
+            stored_doc: The stored document content
+            stored_metadata: The stored document metadata
+            
+        Returns:
+            True if they match, False otherwise
+        """
+        # Simple matching based on shared keywords
+        test_case_text = f"{test_case.objective} {test_case.feature} {test_case.type}".lower()
+        stored_text = stored_doc.lower()
+        
+        # Calculate word overlap
+        test_words = set(test_case_text.split())
+        stored_words = set(stored_text.split())
+        
+        if len(test_words) == 0 or len(stored_words) == 0:
+            return False
+            
+        overlap = test_words.intersection(stored_words)
+        similarity_score = len(overlap) / min(len(test_words), len(stored_words))
+        
+        # Consider it a match if >50% of words overlap
+        return similarity_score > 0.5
 
 
 class TestCodeValidator:

@@ -8,6 +8,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch, AsyncMock, call
 from typer.testing import CliRunner
 from testteller.main import app
+from testteller.core.constants import (
+    DEFAULT_LLAMA_GENERATION_MODEL,
+    DEFAULT_LLAMA_EMBEDDING_MODEL,
+    DEFAULT_OLLAMA_BASE_URL
+)
 
 
 class TestCLICommands:
@@ -377,9 +382,9 @@ class TestCLICommands:
             elif "Ollama server Port" in str(args[0]):
                 return "11434"
             elif "Llama embedding model" in str(args[0]):
-                return "llama3.2:1b"
+                return DEFAULT_LLAMA_EMBEDDING_MODEL
             elif "Llama generation model" in str(args[0]):
-                return "llama3.2:3b"
+                return DEFAULT_LLAMA_GENERATION_MODEL
             else:
                 return ""  # Default empty for all other prompts
 
@@ -410,8 +415,8 @@ class TestCLICommands:
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
-        assert 'LLAMA_EMBEDDING_MODEL="llama3.2:1b"' in written_content
-        assert 'LLAMA_GENERATION_MODEL="llama3.2:3b"' in written_content
+        assert f'LLAMA_EMBEDDING_MODEL="{DEFAULT_LLAMA_EMBEDDING_MODEL}"' in written_content
+        assert f'LLAMA_GENERATION_MODEL="{DEFAULT_LLAMA_GENERATION_MODEL}"' in written_content
 
     @pytest.mark.cli
     @patch('testteller.main.open', create=True)
@@ -428,8 +433,8 @@ class TestCLICommands:
             4,  # Select Llama (4th option)
             "docker-host",  # Custom Ollama server URL
             "11434",  # Default port
-            "llama3.2:1b",  # Llama embedding model (default)
-            "llama3.2:3b",  # Llama generation model (default)
+            DEFAULT_LLAMA_EMBEDDING_MODEL,  # Llama embedding model (default)
+            DEFAULT_LLAMA_GENERATION_MODEL,  # Llama generation model (default)
             "",  # GitHub token (skip)
             "",  # Log level (default)
             "",  # ChromaDB path (default)
@@ -461,8 +466,8 @@ class TestCLICommands:
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
-        assert 'LLAMA_EMBEDDING_MODEL="llama3.2:1b"' in written_content
-        assert 'LLAMA_GENERATION_MODEL="llama3.2:3b"' in written_content
+        assert f'LLAMA_EMBEDDING_MODEL="{DEFAULT_LLAMA_EMBEDDING_MODEL}"' in written_content
+        assert f'LLAMA_GENERATION_MODEL="{DEFAULT_LLAMA_GENERATION_MODEL}"' in written_content
 
     @pytest.mark.cli
     @patch('testteller.main.open', create=True)
@@ -480,8 +485,8 @@ class TestCLICommands:
             "remote-ollama",  # Valid URL
             "invalid-port",  # Invalid port (not a number)
             "11434",  # Valid port
-            "llama3.2:1b",  # Llama embedding model (default)
-            "llama3.2:3b",  # Llama generation model (default)
+            DEFAULT_LLAMA_EMBEDDING_MODEL,  # Llama embedding model (default)
+            DEFAULT_LLAMA_GENERATION_MODEL,  # Llama generation model (default)
             "",  # GitHub token (skip)
             "",  # Log level (default)
             "",  # ChromaDB path (default)
@@ -514,8 +519,8 @@ class TestCLICommands:
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
-        assert 'LLAMA_EMBEDDING_MODEL="llama3.2:1b"' in written_content
-        assert 'LLAMA_GENERATION_MODEL="llama3.2:3b"' in written_content
+        assert f'LLAMA_EMBEDDING_MODEL="{DEFAULT_LLAMA_EMBEDDING_MODEL}"' in written_content
+        assert f'LLAMA_GENERATION_MODEL="{DEFAULT_LLAMA_GENERATION_MODEL}"' in written_content
 
     @pytest.mark.cli
     @patch('testteller.main.open', create=True)
@@ -536,9 +541,9 @@ class TestCLICommands:
             elif "Ollama server Port" in str(args[0]):
                 return "11434"
             elif "Llama embedding model" in str(args[0]):
-                return "llama3.2:1b"  # Use default embedding model
+                return DEFAULT_LLAMA_EMBEDDING_MODEL  # Use default embedding model
             elif "Llama generation model" in str(args[0]):
-                return "llama3.2:3b"  # Use default generation model
+                return DEFAULT_LLAMA_GENERATION_MODEL  # Use default generation model
             else:
                 return ""  # Default empty for all other prompts
 
@@ -566,8 +571,8 @@ class TestCLICommands:
         mock_file.write.assert_called()
         written_content = ''.join(call.args[0]
                                   for call in mock_file.write.call_args_list)
-        assert 'LLAMA_EMBEDDING_MODEL="llama3.2:1b"' in written_content
-        assert 'LLAMA_GENERATION_MODEL="llama3.2:3b"' in written_content
+        assert f'LLAMA_EMBEDDING_MODEL="{DEFAULT_LLAMA_EMBEDDING_MODEL}"' in written_content
+        assert f'LLAMA_GENERATION_MODEL="{DEFAULT_LLAMA_GENERATION_MODEL}"' in written_content
 
     @pytest.mark.cli
     @patch('testteller.main.open', create=True)

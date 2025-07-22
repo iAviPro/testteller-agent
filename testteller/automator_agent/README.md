@@ -36,7 +36,7 @@ Following the same pattern as `testteller generate`:
 | `--collection-name` | `-c` | ChromaDB collection for app context | From config |
 | `--language` | `-l` | Programming language | python |
 | `--framework` | `-F` | Test framework | pytest |
-| `--output-dir` | `-o` | Output directory | ./generated_tests |
+| `--output-dir` | `-o` | Output directory | ./testteller_automated_tests |
 | `--interactive` | `-i` | Interactive test selection | False |
 | `--num-context` | `-n` | Context documents to retrieve | 5 |
 | `--verbose` | `-v` | Enable verbose logging | False |
@@ -74,7 +74,7 @@ testteller automate test_cases.md
 
 ### Example Structure
 ```
-generated_tests/
+testteller_automated_tests/
 ├── test_e2e.py          # End-to-end browser tests
 ├── test_integration.py  # API integration tests  
 ├── test_technical.py    # Performance/load tests
@@ -116,14 +116,14 @@ def test_user_login(page, base_url, test_data):
 
 ### Python
 ```bash
-cd generated_tests
+cd testteller_automated_tests
 pip install -r requirements.txt
 pytest --verbose
 ```
 
 ### JavaScript/TypeScript  
 ```bash
-cd generated_tests
+cd testteller_automated_tests
 npm install
 npm test
 ```

@@ -14,6 +14,11 @@ from testteller.generator_agent.agent.testteller_agent import TestTellerAgent
 from testteller.core.llm.llm_manager import LLMManager
 from testteller.core.vector_store.chromadb_manager import ChromaDBManager
 from testteller.config import settings
+from testteller.core.constants import (
+    DEFAULT_LLAMA_GENERATION_MODEL,
+    DEFAULT_LLAMA_EMBEDDING_MODEL,
+    DEFAULT_OLLAMA_BASE_URL
+)
 
 
 @pytest.fixture(scope="session")
@@ -335,9 +340,9 @@ def provider_specific_env_vars(llm_provider: str) -> Dict[str, str]:
         })
     elif llm_provider == "llama":
         base_vars.update({
-            "OLLAMA_BASE_URL": "http://localhost:11434",
-            "LLAMA_EMBEDDING_MODEL": "llama3.2:1b",
-            "LLAMA_GENERATION_MODEL": "llama3.2:1b"
+            "OLLAMA_BASE_URL": DEFAULT_OLLAMA_BASE_URL,
+            "LLAMA_EMBEDDING_MODEL": DEFAULT_LLAMA_EMBEDDING_MODEL,
+            "LLAMA_GENERATION_MODEL": DEFAULT_LLAMA_GENERATION_MODEL
         })
 
     return base_vars

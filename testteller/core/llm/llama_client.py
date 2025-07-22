@@ -68,16 +68,30 @@ class LlamaClient(BaseLLMClient):
             return None
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    f"{self.base_url}/api/embeddings",
-                    json={
-                        "model": self.embedding_model,
-                        "prompt": text
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                return result["embedding"]
+                # Use the standard /api/embeddings endpoint
+                try:
+                    response = await client.post(
+                        f"{self.base_url}/api/embeddings",
+                        json={
+                            "model": self.embedding_model,
+                            "prompt": text
+                        }
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+                    # Handle both single and batch embedding response formats
+                    if "embedding" in result:
+                        # Single embedding response
+                        return result["embedding"]
+                    elif "embeddings" in result:
+                        # Batch embedding response, get the first one
+                        embeddings = result["embeddings"]
+                        return embeddings[0] if embeddings else None
+                    else:
+                        logger.error("Unexpected response format from Ollama: %s", result)
+                        return None
+                except httpx.HTTPStatusError as e:
+                    raise
         except Exception as e:
             logger.error(
                 "Error generating embedding for text: '%s...': %s", text[:50], e, exc_info=True)
@@ -109,7 +123,17 @@ class LlamaClient(BaseLLMClient):
                 )
                 response.raise_for_status()
                 result = response.json()
-                return result["embedding"]
+                # Handle both single and batch embedding response formats
+                if "embedding" in result:
+                    # Single embedding response
+                    return result["embedding"]
+                elif "embeddings" in result:
+                    # Batch embedding response, get the first one
+                    embeddings = result["embeddings"]
+                    return embeddings[0] if embeddings else None
+                else:
+                    logger.error("Unexpected response format from Ollama: %s", result)
+                    return None
         except Exception as e:
             logger.error(
                 "Error generating embedding for text: '%s...': %s", text[:50], e, exc_info=True)
@@ -148,7 +172,17 @@ class LlamaClient(BaseLLMClient):
                     )
                     response.raise_for_status()
                     result = response.json()
-                    all_embeddings.append(result["embedding"])
+                    # Handle both single and batch embedding response formats
+                    if "embedding" in result:
+                        # Single embedding response
+                        all_embeddings.append(result["embedding"])
+                    elif "embeddings" in result:
+                        # Batch embedding response, get the first one
+                        embeddings = result["embeddings"]
+                        all_embeddings.append(embeddings[0] if embeddings else None)
+                    else:
+                        logger.error("Unexpected response format from Ollama: %s", result)
+                        all_embeddings.append(None)
                 except Exception as e:
                     logger.error(
                         "Error generating sync embedding for text at index %d ('%s...'): %s",

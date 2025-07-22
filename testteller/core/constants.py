@@ -9,7 +9,11 @@ APP_NAME = "TestTeller"
 # APP_VERSION is now imported from __init__.py to maintain single source of truth
 # Import will be handled by __init__.py
 FALLBACK_VERSION = "2.0.0"  # Fallback version when _version.py import fails
-APP_DESCRIPTION = "TestTeller: Agentic test tool for generating comprehensive test cases from project code and docs (PRDs, Design Docs),and automating testcases with multiple supported languages and frameworks, leveraging range of supported LLMs / GenAI"
+# Application Description - Single Source of Truth
+APP_DESCRIPTION = "TestTeller: Your Next-Generation AI-Powered Test Agent for Comprehensive Test Case Generation and Test Automation leveraging RAG & GenAI"
+
+# Short description for CLI and other contexts
+APP_SHORT_DESCRIPTION = "Next-Generation AI-Powered Test Agent for Test Cases Generation and Test Automation"
 
 # Default Environment Settings
 DEFAULT_LOG_LEVEL = "ERROR"
@@ -48,6 +52,12 @@ DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Document Processing Settings
 DEFAULT_CHUNK_SIZE = 1000
+
+# Feedback Loop Configuration
+ENABLE_TEST_CASE_FEEDBACK = True
+MIN_QUALITY_SCORE_FOR_STORAGE = 0.7
+MAX_GENERATED_TESTS_TO_STORE = 1000
+GENERATED_TEST_RETENTION_DAYS = 90
 DEFAULT_CHUNK_OVERLAP = 200
 
 # Code Processing Settings
@@ -69,8 +79,13 @@ DEFAULT_CODE_EXTENSIONS = [
 DEFAULT_TEMP_CLONE_DIR = "./temp_cloned_repos"
 
 # Output Settings
-DEFAULT_OUTPUT_FILE = "testteller-testcases.md"
-DEFAULT_AUTOMATION_OUTPUT_DIR = "./generated_tests"
+DEFAULT_OUTPUT_FILE = "testteller-testcases.pdf"
+DEFAULT_AUTOMATION_OUTPUT_DIR = "./testteller_automated_tests"
+DEFAULT_TEST_GENERATION_DIR = "./testteller_generated_tests"
+
+# Test Output Format Settings
+SUPPORTED_TEST_OUTPUT_FORMATS = ["md", "pdf", "docx"]
+DEFAULT_TEST_OUTPUT_FORMAT = "pdf"
 
 # Test Automation Settings - Enhanced with new frameworks
 SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "java"]
@@ -459,6 +474,7 @@ ENV_CHUNK_OVERLAP = "CHUNK_OVERLAP"
 ENV_CODE_EXTENSIONS = "CODE_EXTENSIONS"
 ENV_TEMP_CLONE_DIR_BASE = "TEMP_CLONE_DIR_BASE"
 ENV_OUTPUT_FILE_PATH = "OUTPUT_FILE_PATH"
+ENV_TEST_OUTPUT_FORMAT = "TEST_OUTPUT_FORMAT"
 ENV_API_RETRY_ATTEMPTS = "API_RETRY_ATTEMPTS"
 ENV_API_RETRY_WAIT_SECONDS = "API_RETRY_WAIT_SECONDS"
 

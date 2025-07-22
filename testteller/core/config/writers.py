@@ -58,6 +58,11 @@ class ConfigurationWriter:
                         value = config[key]
                         comment = template_config[key].get('description', '')
                         content_lines.extend(self._format_config_entry(key, value, comment))
+                
+                # Write remaining main config items not in template
+                for key, value in config.items():
+                    if key not in template_config:
+                        content_lines.extend(self._format_config_entry(key, value))
             else:
                 # Write all main config if no template
                 content_lines.append("\n# Configuration")
@@ -188,9 +193,12 @@ class ConfigurationWriter:
                         key = key.strip()
                         value = value.strip().strip('"').strip("'")
                         
-                        # Skip placeholder values
+                        # Include placeholder values for API keys and important configs
+                        # Users need to see what to configure
                         if self._is_placeholder_value(value):
-                            continue
+                            # Only skip truly meaningless placeholders, keep API key placeholders
+                            if not self._is_important_placeholder(key, value):
+                                continue
                         
                         # Categorize as provider-specific or general
                         if self._is_provider_specific(key):
@@ -207,20 +215,60 @@ class ConfigurationWriter:
     
     def _is_placeholder_value(self, value: str) -> bool:
         """Check if value is a placeholder."""
+        # Only filter out obvious placeholder values for API keys and tokens
+        # Keep structural configs like model names, URLs, etc.
         placeholder_patterns = [
             'your_',
             '_here',
             'replace_with',
             'enter_your',
-            'api_key_placeholder',
-            'localhost:11434'  # Don't copy default Ollama URL
+            'api_key_placeholder'
         ]
         
         value_lower = value.lower()
+        
+        # Special handling for specific configs we want to keep
+        if any(keep_pattern in value_lower for keep_pattern in [
+            'text-embedding',  # Keep model names
+            'gemini-',         # Keep Gemini model names
+            'claude-',         # Keep Claude model names
+            'llama',           # Keep Llama model names
+            'gpt-',            # Keep GPT model names
+            'localhost'        # Keep localhost URLs (they're not placeholders)
+        ]):
+            return False
+            
         return any(pattern in value_lower for pattern in placeholder_patterns)
+    
+    def _is_important_placeholder(self, key: str, value: str) -> bool:
+        """Check if a placeholder value represents an important config that should be included."""
+        important_keys = [
+            'api_key',
+            'token',
+            'secret',
+            'password',
+            'auth'
+        ]
+        
+        key_lower = key.lower()
+        return any(important_key in key_lower for important_key in important_keys)
     
     def _is_provider_specific(self, key: str) -> bool:
         """Check if configuration key is provider-specific."""
+        # Keys that should always be treated as general configs
+        always_general = [
+            'github_token',
+            'log_level',
+            'log_format',
+            'base_url'
+        ]
+        
+        key_lower = key.lower()
+        
+        # Check if it's in the always general list
+        if any(general_key in key_lower for general_key in always_general):
+            return False
+        
         provider_patterns = [
             'gemini', 'google',
             'openai', 'gpt',
@@ -228,7 +276,6 @@ class ConfigurationWriter:
             'llama', 'ollama'
         ]
         
-        key_lower = key.lower()
         return any(pattern in key_lower for pattern in provider_patterns)
     
     def export_configuration_summary(self, 
@@ -277,7 +324,7 @@ class ConfigurationWriter:
             
             # Automation section
             summary_lines.extend([
-                "TestAutomator (Automation) Configuration:",
+                "Automator Agent Configuration:",
                 f"  Language: {config.get('AUTOMATION_LANGUAGE', 'Not configured')}",
                 f"  Framework: {config.get('AUTOMATION_FRAMEWORK', 'Not configured')}",
                 f"  Base URL: {config.get('BASE_URL', 'Not configured')}",

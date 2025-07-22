@@ -56,8 +56,12 @@ class MarkdownTestCaseParser:
     """Parser for TestTeller markdown test case files."""
     
     def __init__(self):
+        # Enhanced pattern to match both markdown headers and plain text headers
         self.test_case_pattern = re.compile(
-            r'### Test Case (E2E_|INT_|TECH_|MOCK_)(.+?)(?=\n|$)'
+            r'(?:###\s+)?Test Case (E2E_|INT_|TECH_|MOCK_)(.+?)(?=\n|$)'
+        )
+        self.table_pattern = re.compile(
+            r'\|\s*S\.No\s*\|\s*Test ID\s*\|'
         )
         
     def parse_file(self, file_path: Path) -> List[TestCase]:
@@ -69,6 +73,134 @@ class MarkdownTestCaseParser:
     
     def parse_content(self, content: str) -> List[TestCase]:
         """Parse markdown content and extract test cases."""
+        test_cases = []
+        
+        # Check if content contains tabular format
+        if self._has_tabular_format(content):
+            logger.info("Detected tabular format, parsing tables...")
+            tabular_test_cases = self._parse_tabular_format(content)
+            test_cases.extend(tabular_test_cases)
+        
+        # Parse traditional detailed format (detailed specifications section)
+        traditional_test_cases = self._parse_traditional_format(content)
+        test_cases.extend(traditional_test_cases)
+        
+        # Remove duplicates based on test ID
+        unique_test_cases = []
+        seen_ids = set()
+        for tc in test_cases:
+            if tc.id not in seen_ids:
+                unique_test_cases.append(tc)
+                seen_ids.add(tc.id)
+        
+        logger.info(f"Parsed {len(unique_test_cases)} unique test cases")
+        return unique_test_cases
+    
+    def _has_tabular_format(self, content: str) -> bool:
+        """Check if content contains tabular format."""
+        return bool(self.table_pattern.search(content))
+    
+    def _parse_tabular_format(self, content: str) -> List[TestCase]:
+        """Parse test cases from tabular summary format."""
+        test_cases = []
+        lines = content.split('\n')
+        
+        current_table_type = None
+        table_headers = []
+        in_table = False
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            
+            # Detect table type from section headers (both markdown and plain text)
+            if ('Test Cases' in line and 
+                (line.startswith('### ') or not line.startswith('|'))):
+                if 'End-to-End' in line or 'E2E' in line:
+                    current_table_type = 'E2E'
+                elif 'Integration' in line:
+                    current_table_type = 'INT'
+                elif 'Technical' in line:
+                    current_table_type = 'TECH'
+                elif 'Mocked System' in line:
+                    current_table_type = 'MOCK'
+                continue
+            
+            # Parse table headers
+            if line.startswith('|') and 'S.No' in line and 'Test ID' in line:
+                table_headers = [header.strip() for header in line.split('|')[1:-1]]
+                in_table = True
+                continue
+            
+            # Skip table separator line
+            if in_table and line.startswith('|') and '---' in line:
+                continue
+            
+            # Parse table rows
+            if in_table and line.startswith('|') and current_table_type:
+                cells = [cell.strip() for cell in line.split('|')[1:-1]]
+                if len(cells) >= 5:  # Minimum expected columns
+                    test_case = self._create_test_case_from_table_row(
+                        current_table_type, cells, table_headers
+                    )
+                    if test_case:
+                        test_cases.append(test_case)
+                continue
+            
+            # End of table detection
+            if in_table and (not line.startswith('|') or not line):
+                in_table = False
+                current_table_type = None
+                table_headers = []
+        
+        return test_cases
+    
+    def _create_test_case_from_table_row(self, test_type: str, cells: List[str], headers: List[str]) -> Optional[TestCase]:
+        """Create a TestCase object from a table row."""
+        try:
+            # Map headers to values
+            row_data = dict(zip(headers, cells))
+            
+            # Extract common fields
+            serial_no = row_data.get('S.No', '')
+            test_id = row_data.get('Test ID', '')
+            objective = row_data.get('Objective', '')
+            priority = row_data.get('Priority', 'Medium')
+            category = row_data.get('Category', '')
+            
+            if not test_id or not objective:
+                return None
+            
+            test_case = TestCase(
+                id=test_id,
+                feature="",
+                type="",
+                category=category,
+                objective=objective
+            )
+            
+            # Set type-specific fields
+            if test_type == 'E2E':
+                test_case.feature = row_data.get('Feature', '')
+                test_case.type = 'Journey/Flow'
+            elif test_type == 'INT':
+                test_case.integration = row_data.get('Integration', '')
+                test_case.type = row_data.get('Type', 'API')
+            elif test_type == 'TECH':
+                test_case.technical_area = row_data.get('Technical Area', '')
+                test_case.focus = row_data.get('Focus', '')
+                test_case.type = 'Technical'
+            elif test_type == 'MOCK':
+                test_case.feature = row_data.get('Component Under Test', '')
+                test_case.type = row_data.get('Type', 'Functional')
+            
+            return test_case
+            
+        except Exception as e:
+            logger.error(f"Failed to create test case from table row: {e}")
+            return None
+    
+    def _parse_traditional_format(self, content: str) -> List[TestCase]:
+        """Parse test cases using traditional detailed format."""
         test_cases = []
         
         # Split content by test case headers
@@ -88,7 +220,6 @@ class MarkdownTestCaseParser:
                 if test_case:
                     test_cases.append(test_case)
         
-        logger.info(f"Parsed {len(test_cases)} test cases")
         return test_cases
     
     def _parse_test_case(self, test_id: str, content: str) -> Optional[TestCase]:
@@ -128,18 +259,18 @@ class MarkdownTestCaseParser:
             elif line.startswith('**Category:**'):
                 test_case.category = self._extract_value(line, '**Category:**')
             
-            # Parse sections
-            elif line.startswith('#### Objective'):
+            # Parse sections (both markdown headers and plain text)
+            elif line.startswith('#### Objective') or line == 'Objective':
                 current_section = 'objective'
-            elif line.startswith('#### References'):
+            elif line.startswith('#### References') or line == 'References':
                 current_section = 'references'
-            elif line.startswith('#### Prerequisites & Setup'):
+            elif line.startswith('#### Prerequisites & Setup') or line == 'Prerequisites & Setup':
                 current_section = 'prerequisites'
-            elif line.startswith('#### Test Steps'):
+            elif line.startswith('#### Test Steps') or line == 'Test Steps':
                 current_section = 'steps'
-            elif line.startswith('#### Expected Final State'):
+            elif line.startswith('#### Expected Final State') or line.startswith('Expected Final'):
                 current_section = 'expected_state'
-            elif line.startswith('#### Error Scenario Details'):
+            elif line.startswith('#### Error Scenario Details') or line == 'Error Scenario Details':
                 current_section = 'error_scenario'
             
             # Parse section content
@@ -191,20 +322,20 @@ class MarkdownTestCaseParser:
             elif line.startswith('**Category:**'):
                 test_case.category = self._extract_value(line, '**Category:**')
             
-            # Parse sections
-            elif line.startswith('#### Objective'):
+            # Parse sections (both markdown headers and plain text)
+            elif line.startswith('#### Objective') or line == 'Objective':
                 current_section = 'objective'
-            elif line.startswith('#### Technical Contract'):
+            elif line.startswith('#### Technical Contract') or line == 'Technical Contract':
                 current_section = 'contract'
                 test_case.technical_contract = {}
-            elif line.startswith('#### Test Scenario'):
+            elif line.startswith('#### Test Scenario') or line == 'Test Scenario':
                 current_section = 'scenario'
-            elif line.startswith('#### Request/Message Payload'):
+            elif line.startswith('#### Request/Message Payload') or line == 'Request/Message Payload':
                 current_section = 'payload'
-            elif line.startswith('#### Expected Response/Assertions'):
+            elif line.startswith('#### Expected Response/Assertions') or line == 'Expected Response/Assertions':
                 current_section = 'response'
                 test_case.expected_response = {}
-            elif line.startswith('#### Error Scenario Details'):
+            elif line.startswith('#### Error Scenario Details') or line == 'Error Scenario Details':
                 current_section = 'error_scenario'
             
             # Parse section content
@@ -236,15 +367,15 @@ class MarkdownTestCaseParser:
             elif line.startswith('**Focus:**'):
                 test_case.focus = self._extract_value(line, '**Focus:**')
             
-            # Parse sections
-            elif line.startswith('#### Objective'):
+            # Parse sections (both markdown headers and plain text)
+            elif line.startswith('#### Objective') or line == 'Objective':
                 current_section = 'objective'
-            elif line.startswith('#### Test Hypothesis'):
+            elif line.startswith('#### Test Hypothesis') or line == 'Test Hypothesis':
                 current_section = 'hypothesis'
-            elif line.startswith('#### Test Setup'):
+            elif line.startswith('#### Test Setup') or line == 'Test Setup':
                 current_section = 'setup'
                 test_case.test_setup = {}
-            elif line.startswith('#### Execution Steps'):
+            elif line.startswith('#### Execution Steps') or line == 'Execution Steps':
                 current_section = 'steps'
             
             # Parse section content

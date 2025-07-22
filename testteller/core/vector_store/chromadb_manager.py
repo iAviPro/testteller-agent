@@ -102,10 +102,17 @@ class ChromaDBManager:
     def _initialize_client(self) -> chromadb.Client:
         """Initialize ChromaDB client based on configuration."""
         try:
+            # Disable ChromaDB telemetry to prevent background threads
+            os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+            os.environ['CHROMA_CLIENT_AUTH_PROVIDER'] = ''
+            
             if self.use_remote:
                 return chromadb.HttpClient(host=self.host, port=self.port)
             else:
-                return chromadb.PersistentClient(path=self.persist_directory)
+                return chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=chromadb.config.Settings(anonymized_telemetry=False)
+                )
         except Exception as e:
             logger.error("Failed to initialize ChromaDB client: %s", e)
             raise
@@ -201,8 +208,29 @@ class ChromaDBManager:
                 )
 
         except Exception as e:
-            logger.error(
-                "Error adding documents to collection '%s': %s", self.collection_name, e)
+            error_msg = str(e)
+            if "expecting embedding with dimension" in error_msg and "got" in error_msg:
+                # Extract dimensions from error message
+                import re
+                match = re.search(r'dimension of (\d+), got (\d+)', error_msg)
+                if match:
+                    expected_dim = match.group(1)
+                    actual_dim = match.group(2)
+                    logger.error(
+                        "Embedding dimension mismatch in collection '%s': "
+                        "Collection expects %s-dimensional embeddings but received %s-dimensional embeddings. "
+                        "This happens when switching between embedding models with different dimensions. "
+                        "To fix: 1) Clear the collection with 'testteller clear-data -c %s', or "
+                        "2) Use a different collection name, or "
+                        "3) Use an embedding model that produces %s-dimensional embeddings.",
+                        self.collection_name, expected_dim, actual_dim, self.collection_name, expected_dim
+                    )
+                else:
+                    logger.error(
+                        "Error adding documents to collection '%s': %s", self.collection_name, e)
+            else:
+                logger.error(
+                    "Error adding documents to collection '%s': %s", self.collection_name, e)
             raise
 
     def query_similar(
@@ -404,3 +432,43 @@ class ChromaDBManager:
         except Exception as e:
             logger.error(
                 "Error clearing collection '%s': %s", self.collection_name, e, exc_info=True)
+
+    def list_collections(self) -> List[str]:
+        """List all collections in the ChromaDB client."""
+        try:
+            collections = self.client.list_collections()
+            return [col.name for col in collections]
+        except Exception as e:
+            logger.error("Error listing collections: %s", e)
+            return []
+
+    def close(self):
+        """Clean up ChromaDB resources and connections."""
+        try:
+            logger.debug("Closing ChromaDB manager for collection '%s'", self.collection_name)
+            
+            # Clear references to help garbage collection
+            if hasattr(self, 'collection'):
+                self.collection = None
+            if hasattr(self, 'embedding_function'):
+                self.embedding_function = None
+                
+            # Close client if it has a close method
+            if hasattr(self.client, 'close'):
+                self.client.close()
+            elif hasattr(self.client, '_client') and hasattr(self.client._client, 'close'):
+                # For HttpClient, try to close underlying client
+                self.client._client.close()
+                
+            self.client = None
+            logger.debug("ChromaDB manager closed successfully")
+        except Exception as e:
+            logger.debug("Error during ChromaDB cleanup: %s", e)
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with cleanup."""
+        self.close()

@@ -230,12 +230,12 @@ class TestTestTellerAgent:
     @pytest.mark.unit
     async def test_get_ingested_data_count(self, mock_testteller_agent):
         """Test getting count of ingested documents."""
-        mock_testteller_agent.vector_store.get_collection_count.return_value = 5
+        mock_testteller_agent.vector_store.get_collection_count_async = AsyncMock(return_value=5)
 
         count = await mock_testteller_agent.get_ingested_data_count()
 
         assert count == 5
-        mock_testteller_agent.vector_store.get_collection_count.assert_called_once()
+        mock_testteller_agent.vector_store.get_collection_count_async.assert_called_once()
 
     @pytest.mark.asyncio
     @pytest.mark.unit

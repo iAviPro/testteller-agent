@@ -20,6 +20,11 @@ from ..constants import SUPPORTED_LLM_PROVIDERS, DEFAULT_LLM_PROVIDER
 logger = logging.getLogger(__name__)
 
 
+class ConfigurationCancelledException(Exception):
+    """Exception raised when user cancels configuration."""
+    pass
+
+
 class ConfigurationWizard:
     """Main configuration wizard for TestTeller."""
     
@@ -51,7 +56,7 @@ class ConfigurationWizard:
             if not env_path:
                 env_path = Path.cwd() / ".env"
             
-            self.ui.set_progress(0, 4)  # 4 main steps
+            self.ui.set_progress(0, 3)  # 3 main steps
             
             # Step 0: Pre-flight checks
             if not self._check_prerequisites(env_path):
@@ -62,17 +67,12 @@ class ConfigurationWizard:
             llm_config = self._configure_llm_provider()
             self.config_data.update(llm_config)
             
-            # Step 2: TestAutomator (Automation) Configuration
+            # Step 2: Automator Agent Configuration
             self.ui.show_step_progress("TestAutomator (Automation) Setup")
             automation_config = self._configure_automation()
             self.config_data.update(automation_config)
             
-            # Step 3: Additional Configuration
-            self.ui.show_step_progress("Additional Settings")
-            additional_config = self._configure_additional_settings(env_path)
-            self.config_data.update(additional_config)
-            
-            # Step 4: Validation and Writing
+            # Step 3: Validation and Writing
             self.ui.show_step_progress("Validation and Save")
             if not self._finalize_configuration(env_path):
                 return False
@@ -84,6 +84,9 @@ class ConfigurationWizard:
             
         except KeyboardInterrupt:
             self.ui.show_info("Configuration cancelled by user.")
+            return False
+        except ConfigurationCancelledException:
+            self.ui.show_info("💡 Configuration cancelled by user.")
             return False
         except Exception as e:
             logger.error(f"Configuration wizard failed: {e}")
@@ -188,8 +191,11 @@ class ConfigurationWizard:
                 else:
                     self.ui.show_warning("Connection test failed", [message])
                     if not self.ui.confirm("Continue with configuration anyway?", default=True):
-                        raise Exception("Configuration cancelled due to connection failure")
+                        raise ConfigurationCancelledException("Configuration cancelled by user")
             
+        except ConfigurationCancelledException:
+            # Re-raise without logging - this is user cancellation, not an error
+            raise
         except Exception as e:
             logger.error(f"Provider configuration failed: {e}")
             raise
@@ -197,11 +203,11 @@ class ConfigurationWizard:
         return config
     
     def _configure_automation(self) -> Dict[str, str]:
-        """Configure TestAutomator automation with user choice."""
+        """Configure Automator Agent automation with user choice."""
         try:
             # Ask user if they want to configure TestAutomator automation
             self.ui.show_section_header(
-                "🔧 TestAutomator (Automation) Configuration",
+                "🔧 Automator Agent Configuration",
                 "Configure automated test generation for multiple frameworks"
             )
             
@@ -236,7 +242,7 @@ class ConfigurationWizard:
                 
                 self.ui.show_info(
                     "💡 You can configure TestAutomator later using:",
-                    ["testteller configure --testwriter"]
+                    ["testteller configure --automator-agent"]
                 )
                 
                 return default_config
@@ -246,67 +252,10 @@ class ConfigurationWizard:
             # Return defaults if automation configuration fails
             self.ui.show_warning(
                 "Automation configuration failed, using defaults",
-                ["You can reconfigure later with 'testteller configure --testwriter'"]
+                ["You can reconfigure later with 'testteller configure --automator-agent'"]
             )
             automation_wizard = TestAutomatorWizard()
             return automation_wizard._get_default_config()
-    
-    def _configure_additional_settings(self, env_path: Path) -> Dict[str, str]:
-        """Configure additional settings from .env.example."""
-        config = {}
-        
-        # Look for .env.example file
-        env_example_path = env_path.parent / ".env.example"
-        
-        if not env_example_path.exists():
-            self.ui.show_info("No .env.example file found, skipping additional settings.")
-            return config
-        
-        try:
-            # Read additional configurations
-            general_configs, provider_specific_configs = self.writer.read_env_example(env_example_path)
-            
-            # Handle general configurations
-            if general_configs:
-                self.ui.show_section_header(
-                    "📋 Additional Settings",
-                    "Optional settings from .env.example"
-                )
-                
-                self.ui.show_info(
-                    f"Found {len(general_configs)} additional settings:",
-                    [f"• {key}={value}" for key, value in list(general_configs.items())[:5]]
-                )
-                
-                if len(general_configs) > 5:
-                    self.ui.show_info(f"... and {len(general_configs) - 5} more")
-                
-                if self.ui.confirm("Include these additional settings?", default=True):
-                    config.update(general_configs)
-                    self.ui.show_success("Additional settings included!")
-            
-            # Handle provider-specific configurations
-            current_provider = self.config_data.get("LLM_PROVIDER", "").lower()
-            relevant_provider_configs = {
-                k: v for k, v in provider_specific_configs.items()
-                if current_provider in k.lower()
-            }
-            
-            if relevant_provider_configs:
-                self.ui.show_info(
-                    f"Found {len(relevant_provider_configs)} {current_provider}-specific settings:",
-                    [f"• {key}={value}" for key, value in relevant_provider_configs.items()]
-                )
-                
-                if self.ui.confirm(f"Include {current_provider}-specific settings?", default=True):
-                    config.update(relevant_provider_configs)
-                    self.ui.show_success(f"{current_provider.title()} settings included!")
-            
-        except Exception as e:
-            logger.warning(f"Failed to read additional settings: {e}")
-            self.ui.show_warning("Could not read additional settings from .env.example")
-        
-        return config
     
     def _finalize_configuration(self, env_path: Path) -> bool:
         """Validate and write final configuration."""
@@ -326,23 +275,55 @@ class ConfigurationWizard:
             self.ui.show_configuration_summary(self.config_data)
             
             if not self.ui.confirm("Save this configuration?", default=True):
-                self.ui.show_info("Configuration not saved.")
+                self.ui.show_info("💡 Configuration not saved.")
                 return False
             
+            # Read additional configuration from .env.example
+            env_example_path = env_path.parent / ".env.example"
+            additional_config = {}
+            
+            if env_example_path.exists():
+                self.ui.show_info("Loading additional default configurations from .env.example...")
+                general_configs, provider_specific_configs = self.writer.read_env_example(env_example_path)
+                
+                # Merge general configs and relevant provider configs
+                additional_config.update(general_configs)
+                
+                # Add relevant provider-specific configs
+                current_provider = self.config_data.get("LLM_PROVIDER", "").lower()
+                if current_provider:
+                    provider_configs = {
+                        k: v for k, v in provider_specific_configs.items()
+                        if current_provider in k.lower() or k.upper().startswith(f"{current_provider.upper()}_")
+                    }
+                    additional_config.update(provider_configs)
+                
+                if additional_config:
+                    self.ui.show_info(
+                        f"Including {len(additional_config)} additional default settings:",
+                        [f"• {key}" for key in list(additional_config.keys())[:5]]
+                    )
+                    if len(additional_config) > 5:
+                        self.ui.show_info(f"  ... and {len(additional_config) - 5} more settings")
+
             # Write configuration file
             self.ui.show_info(f"Writing configuration to {env_path}...")
             
             success = self.writer.write_env_file(
                 config=self.config_data,
                 file_path=env_path,
-                template_config=self.env_template
+                template_config=self.env_template,
+                additional_config=additional_config
             )
             
             if not success:
                 self.ui.show_error("Failed to write configuration file")
                 return False
             
-            self.ui.show_success(f"Configuration saved to {env_path}")
+            success_message = f"Configuration saved to {env_path}"
+            if additional_config:
+                success_message += f" (including {len(additional_config)} default settings)"
+            self.ui.show_success(success_message)
             
             return True
             
@@ -413,7 +394,7 @@ def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
     """Run TestAutomator automation setup only."""
     try:
         ui_helper = UIHelper(ui_mode)
-        ui_helper.show_header("TestAutomator (Automation) Setup")
+        ui_helper.show_header("Automator Agent Setup")
         
         automation_wizard = TestAutomatorWizard()
         config = automation_wizard.configure(ui_helper)
@@ -440,7 +421,7 @@ def run_automation_only_setup(ui_mode: UIMode = UIMode.CLI) -> bool:
         success = writer.write_env_file(existing_config, env_path)
         
         if success:
-            ui_helper.show_success("TestAutomator automation configured successfully!")
+            ui_helper.show_success("Automator Agent configured successfully!")
             return True
         else:
             ui_helper.show_error("Failed to save automation configuration")

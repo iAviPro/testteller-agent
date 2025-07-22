@@ -7,6 +7,11 @@ from .base import BaseProviderConfig, ProviderInfo, ConfigurationStep, validate_
 from ...constants import DEFAULT_LLAMA_GENERATION_MODEL, DEFAULT_LLAMA_EMBEDDING_MODEL, DEFAULT_OLLAMA_BASE_URL
 
 
+class ConfigurationCancelledException(Exception):
+    """Exception raised when user cancels configuration."""
+    pass
+
+
 def validate_ollama_url(url: str) -> bool:
     """Validate Ollama base URL format."""
     if not url:
@@ -123,7 +128,7 @@ class LlamaConfig(BaseProviderConfig):
             )
             
             if not ui_helper.confirm("Continue with configuration anyway?", default=True):
-                raise Exception("Configuration cancelled due to connection failure")
+                raise ConfigurationCancelledException("Configuration cancelled by user")
         else:
             ui_helper.show_success("Ollama connection successful!")
         

@@ -15,6 +15,13 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import shutil
 
+# Add path for testteller imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from testteller.core.constants import (
+    DEFAULT_LLAMA_GENERATION_MODEL,
+    DEFAULT_LLAMA_EMBEDDING_MODEL
+)
+
 
 class TestRunner:
     """Test runner for TestTeller RAG Agent."""
@@ -82,22 +89,22 @@ class TestRunner:
                         print("❌ Ollama not found. Please install Ollama:")
                         print("   curl -fsSL https://ollama.ai/install.sh | sh")
                         print("   ollama serve")
-                        print("   ollama pull llama3.2:1b")
-                        print("   ollama pull llama3.2:3b")
+                        print(f"   ollama pull {DEFAULT_LLAMA_EMBEDDING_MODEL}")
+                        print(f"   ollama pull {DEFAULT_LLAMA_GENERATION_MODEL}")
                         return None
 
                     # Try to run ollama list
                     result = subprocess.run(
                         [ollama_path, "list"], capture_output=True, check=True)
                     env_vars["OLLAMA_BASE_URL"] = "http://localhost:11434"
-                    env_vars["LLAMA_EMBEDDING_MODEL"] = "llama3.2:1b"
-                    env_vars["LLAMA_GENERATION_MODEL"] = "llama3.2:3b"
+                    env_vars["LLAMA_EMBEDDING_MODEL"] = DEFAULT_LLAMA_EMBEDDING_MODEL
+                    env_vars["LLAMA_GENERATION_MODEL"] = DEFAULT_LLAMA_GENERATION_MODEL
                 except (subprocess.CalledProcessError, FileNotFoundError) as e:
                     print("❌ Error running Ollama:", str(e))
                     print("Please ensure Ollama is installed and running:")
                     print("   ollama serve")
-                    print("   ollama pull llama3.2:1b")
-                    print("   ollama pull llama3.2:3b")
+                    print(f"   ollama pull {DEFAULT_LLAMA_EMBEDDING_MODEL}")
+                    print(f"   ollama pull {DEFAULT_LLAMA_GENERATION_MODEL}")
                     return None
         else:
             # Use test API keys for non-interactive mode
@@ -111,8 +118,8 @@ class TestRunner:
                 env_vars["OPENAI_API_KEY"] = "test_openai_api_key"
             elif provider == "llama":
                 env_vars["OLLAMA_BASE_URL"] = "http://localhost:11434"
-                env_vars["LLAMA_EMBEDDING_MODEL"] = "llama3.2:1b"
-                env_vars["LLAMA_GENERATION_MODEL"] = "llama3.2:3b"
+                env_vars["LLAMA_EMBEDDING_MODEL"] = DEFAULT_LLAMA_EMBEDDING_MODEL
+                env_vars["LLAMA_GENERATION_MODEL"] = DEFAULT_LLAMA_GENERATION_MODEL
 
         return env_vars
 
@@ -270,7 +277,7 @@ class TestRunner:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Test runner for TestTeller RAG Agent",
+        description="Test runner for TestTeller Agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

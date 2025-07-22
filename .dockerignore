@@ -40,10 +40,13 @@ chroma_data/
 *.tmp
 *.log
 
-# Documentation
+# Documentation (keep essential docs)
 docs/
 *.md
 \!README.md
+\!CHANGELOG.md
+\!high-level-design-diagram.md
+\!TESTING.md
 
 # OS files
 .DS_Store
@@ -57,7 +60,19 @@ Thumbs.db
 # Node modules (if any)
 node_modules/
 
-# Sample outputs
-sample-outputs/
+# Generated outputs (keep samples for reference)
+testteller_generated_tests/
+testteller_automated_tests/
 test_*/
-EOF < /dev/null
+
+# Development and configuration files
+.pre-commit-config.yaml
+.github/
+.git/
+.gitignore
+tox.ini
+setup.cfg
+
+# Keep essential architecture documentation in container
+\!iavipro/ARCHITECTURE.md
+\!iavipro/FEEDBACK_LOOP_ARCHITECTURE.md

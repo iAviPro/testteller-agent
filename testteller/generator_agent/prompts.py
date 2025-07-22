@@ -239,30 +239,99 @@ DOCUMENTATION IMPACT & RECOMMENDATIONS:
    - Without Either: Cannot be generated effectively.
    - Recommendation: "Mocked System Tests require technical documentation (e.g., API Contracts, Design Docs) or direct code access to be generated."
 
-OUTPUT STRUCTURE:
-1. Documentation Analysis
-   - Available Documentation Types
-   - Missing Critical Documents
-   - Impact on Test Coverage
+**IMPORTANT OUTPUT INSTRUCTIONS:**
 
-2. Test Case Distribution
-   - End-to-End Test Cases: [Count]
-   - Integration Test Cases: [Count]
-   - Technical Test Cases: [Count]
-   - Mocked System Tests: [Count]
-   - Total Test Cases: [Count]
+**FORMAT REQUIREMENT: TABULAR STRUCTURE WITH SEPARATE SECTIONS**
 
-3. Coverage Analysis
-   - Scenario Distribution
-   - Technical Depth
-   - Missing Coverage Areas
+You MUST organize the test cases in the following tabular structure with clear sections for each test type:
 
-4. Recommendations
-   - Required Documentation for Better Coverage
-   - Coverage Improvement Suggestions
-   - Technical Enhancement Suggestions
+## Test Case Summary
 
-Generate the test cases now, following all templates and requirements exactly.
+### End-to-End (E2E) Test Cases
+| S.No | Test ID | Feature | Category | Objective | Priority |
+|------|---------|---------|----------|-----------|----------|
+| 1    | E2E_1   | [Feature Name] | [Happy Path/Negative/Edge Case] | [Brief objective] | [High/Medium/Low] |
+| 2    | E2E_2   | [Feature Name] | [Category] | [Brief objective] | [Priority] |
+
+### Integration Test Cases  
+| S.No | Test ID | Integration | Type | Category | Objective | Priority |
+|------|---------|-------------|------|----------|-----------|----------|
+| 1    | INT_1   | [Source] -> [Target] | [API/Event/FE-BE] | [Contract/Flow] | [Brief objective] | [High/Medium/Low] |
+| 2    | INT_2   | [Integration] | [Type] | [Category] | [Brief objective] | [Priority] |
+
+### Technical Test Cases
+| S.No | Test ID | Technical Area | Focus | Category | Objective | Priority |
+|------|---------|----------------|-------|----------|-----------|----------|
+| 1    | TECH_1  | [Performance/Security/Resilience] | [Specific focus] | [Load/Security/Recovery] | [Brief objective] | [High/Medium/Low] |
+| 2    | TECH_2  | [Technical Area] | [Focus] | [Category] | [Brief objective] | [Priority] |
+
+### Mocked System Test Cases
+| S.No | Test ID | Component Under Test | Type | Category | Objective | Priority |
+|------|---------|---------------------|------|----------|-----------|----------|
+| 1    | MOCK_1  | [Service/Component Name] | [Functional/Error/State] | [Unit/Component] | [Brief objective] | [High/Medium/Low] |
+| 2    | MOCK_2  | [Component] | [Type] | [Category] | [Brief objective] | [Priority] |
+
+---
+
+## Detailed Test Case Specifications
+
+After the summary tables above, provide the detailed specifications for each test case using the templates previously defined. Each detailed test case MUST:
+
+1. Start with the exact header format: ### Test Case [PREFIX]_[Number]
+2. Use the correct prefixes: E2E_, INT_, TECH_, or MOCK_
+3. Follow the template structure exactly for each test case type
+4. Include all sections from the corresponding template
+5. Be complete and actionable
+
+**Example Structure:**
+
+## Test Case Summary
+
+### End-to-End (E2E) Test Cases
+| S.No | Test ID | Feature | Category | Objective | Priority |
+|------|---------|---------|----------|-----------|----------|
+| 1    | E2E_1   | User Login Flow | Happy Path | Verify successful user authentication | High |
+| 2    | E2E_2   | User Login Flow | Negative | Verify invalid credentials handling | High |
+
+### Integration Test Cases  
+| S.No | Test ID | Integration | Type | Category | Objective | Priority |
+|------|---------|-------------|------|----------|-----------|----------|
+| 1    | INT_1   | Frontend -> Auth API | API | Contract | Verify login API integration | High |
+
+### Technical Test Cases
+| S.No | Test ID | Technical Area | Focus | Category | Objective | Priority |
+|------|---------|----------------|-------|----------|-----------|----------|
+| 1    | TECH_1  | Performance | Load Testing | Performance | Verify system under concurrent load | Medium |
+
+### Mocked System Test Cases
+| S.No | Test ID | Component Under Test | Type | Category | Objective | Priority |
+|------|---------|---------------------|------|----------|-----------|----------|
+| 1    | MOCK_1  | Authentication Service | Functional | Component | Verify auth service with mocked database | Medium |
+
+---
+
+## Detailed Test Case Specifications
+
+### Test Case E2E_1
+**Feature:** User Login Flow
+**Type:** Journey/Flow
+**Category:** Happy Path
+
+#### Objective
+Verify successful user authentication through the complete login process.
+
+[Continue with full template...]
+
+---
+
+### Test Case E2E_2
+**Feature:** User Login Flow
+**Type:** Journey/Flow  
+**Category:** Negative
+
+[Continue with full template...]
+
+Generate the test cases following this EXACT tabular structure with summary tables first, then detailed specifications.
 """
 
 # Provider-specific prompt refinements
@@ -299,11 +368,12 @@ OPENAI OPTIMIZATION: Leverage structured thinking and JSON formatting.
         "context_awareness": True,
         "reasoning_emphasis": True,
         "additional_guidance": """
-CLAUDE OPTIMIZATION: Leverage analytical and contextual strengths.
-- Provide comprehensive context analysis before test generation
-- Include detailed reasoning for test case selection
+CLAUDE OPTIMIZATION: Generate detailed, well-structured test cases.
+- Generate actual test cases using the exact template format
+- Include comprehensive technical details in test steps
 - Emphasize edge cases and error scenarios
 - Use sophisticated technical language and concepts
+- Do NOT provide analysis or meta-commentary - only structured test cases
 """
     },
 
@@ -392,11 +462,11 @@ JSON STRUCTURE EMPHASIS:
 def _apply_claude_reasoning_emphasis(prompt: str) -> str:
     """Add reasoning emphasis for Claude."""
     reasoning_emphasis = """
-ANALYTICAL APPROACH:
-- Begin with thorough documentation analysis
-- Explain reasoning behind each test case selection
-- Consider system interdependencies and edge cases
-- Provide comprehensive coverage rationale
+CLAUDE SPECIFIC INSTRUCTIONS:
+- Generate actual structured test cases using the exact template format
+- Include comprehensive technical details and reasoning within test steps
+- Consider system interdependencies and edge cases in test design
+- Do NOT provide separate analysis or meta-commentary - embed reasoning within test cases
 
 """
     return reasoning_emphasis + prompt

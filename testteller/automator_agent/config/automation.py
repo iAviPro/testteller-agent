@@ -162,24 +162,6 @@ class TestAutomatorWizard:
         )
         config["BASE_URL"] = base_url
         
-        # Test timeout configuration
-        timeout_str = ui_helper.get_input(
-            "Test timeout in milliseconds",
-            default="30000",
-            validator=lambda x: x.isdigit() and 1000 <= int(x) <= 300000,
-            error_message="Timeout must be between 1000 and 300000 milliseconds"
-        )
-        config["TEST_TIMEOUT"] = timeout_str
-        
-        # API base URL (if different from main app)
-        api_url = ui_helper.get_input(
-            "API base URL (leave empty if same as base URL)",
-            default="",
-            validator=lambda x: x == "" or validate_url(x),
-            error_message="Please enter a valid API URL or leave empty"
-        )
-        if api_url:
-            config["API_BASE_URL"] = api_url
         
         return config
     
@@ -365,16 +347,6 @@ class TestAutomatorWizard:
         base_url = config.get("BASE_URL", "")
         if base_url and not validate_url(base_url):
             errors.append("Invalid base URL format")
-        
-        # Validate timeout
-        timeout = config.get("TEST_TIMEOUT", "")
-        if timeout:
-            try:
-                timeout_val = int(timeout)
-                if not (1000 <= timeout_val <= 300000):
-                    errors.append("Test timeout must be between 1000 and 300000 milliseconds")
-            except ValueError:
-                errors.append("Test timeout must be a valid number")
         
         # Validate output directory
         output_dir = config.get("AUTOMATION_OUTPUT_DIR", "")

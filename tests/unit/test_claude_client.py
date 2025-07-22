@@ -39,17 +39,18 @@ class TestClaudeClient:
     @pytest.mark.unit
     def test_init_with_default_settings(self, mock_claude_env_vars):
         """Test Claude client initialization with default settings."""
-        with patch.dict(os.environ, mock_claude_env_vars):
+        with patch.dict(os.environ, mock_claude_env_vars, clear=True):
             with patch('testteller.core.llm.claude_client.anthropic.Anthropic') as mock_anthropic:
                 with patch('testteller.core.llm.claude_client.anthropic.AsyncAnthropic') as mock_async_anthropic:
-                    mock_anthropic.return_value = Mock()
-                    mock_async_anthropic.return_value = Mock()
+                    with patch('testteller.core.llm.base_client.settings', None):  # Disable settings in base_client
+                        mock_anthropic.return_value = Mock()
+                        mock_async_anthropic.return_value = Mock()
 
-                    client = ClaudeClient()
+                        client = ClaudeClient()
 
-                    assert client.generation_model == "claude-3-5-haiku-20241022"
-                    assert client.embedding_provider == "google"
-                    assert client.api_key == "test_claude_key"
+                        assert client.generation_model == "claude-3-5-haiku-20241022"
+                        assert client.embedding_provider == "google"
+                        assert client.api_key == "test_claude_key"
 
     @pytest.mark.unit
     def test_init_with_settings(self, mock_claude_env_vars, mock_settings):
@@ -70,8 +71,9 @@ class TestClaudeClient:
     def test_init_without_claude_api_key(self):
         """Test Claude client initialization without Claude API key."""
         with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(ValueError, match="No API key found in settings or environment variable CLAUDE_API_KEY"):
-                ClaudeClient()
+            with patch('testteller.core.llm.base_client.settings', None):  # Disable settings in base_client
+                with pytest.raises(ValueError, match="No API key found in settings or environment variable CLAUDE_API_KEY"):
+                    ClaudeClient()
 
     @pytest.mark.unit
     def test_get_google_embedding_sync(self, mock_claude_env_vars):

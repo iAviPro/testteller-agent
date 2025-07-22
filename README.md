@@ -7,12 +7,12 @@
 [![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**TestTeller** is the AI-powered Test architect that transforms your documentation into comprehensive test suites and executable automation code. Powered by a **dual-feedback RAG architecture** with support for multiple GenAI/LLMs (Google Gemini, OpenAI, Anthropic Claude, Local Llama), TestTeller analyzes your requirements, designs, and existing code to generate strategic test cases and automate them across **multiple programming languages** and **supported testing frameworks**.
+**TestTeller** is the AI-powered Test agent that transforms your documentation into comprehensive test suites and executable automation code. Powered by a **dual-feedback RAG architecture** with support for multiple GenAI/LLMs (Google Gemini, OpenAI, Anthropic Claude, Local Llama), TestTeller analyzes your requirements, designs, and existing code to generate strategic test cases and automate them across **multiple programming languages** and **supported testing frameworks**.
 
 ## Why TestTeller?
 
 Imagine feeding your product requirements document to an AI and getting back:
-- **Complete test strategies** covering E2E, integration, security, and edge cases
+- **Complete test strategies** covering E2E, integration, System Tests, Technical Tests including security, and edge cases
 - **Production-ready automation code** in Python, JavaScript, TypeScript, or Java
 - **Self-improving system** that learns from each generation cycle
 

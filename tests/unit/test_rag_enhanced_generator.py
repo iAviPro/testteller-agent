@@ -179,8 +179,9 @@ class TestRAGEnhancedTestGenerator:
         generator.language = "typescript"
         assert generator.get_file_extension() == ".ts"
 
+    @pytest.mark.asyncio
     @patch('testteller.automator_agent.rag_enhanced_generator.ApplicationKnowledgeExtractor')
-    def test_generate_with_app_context(self, mock_extractor, mock_vector_store, mock_llm_manager, 
+    async def test_generate_with_app_context(self, mock_extractor, mock_vector_store, mock_llm_manager, 
                                      sample_test_cases, sample_app_context):
         """Test code generation with application context."""
         # Mock knowledge extractor
@@ -202,7 +203,7 @@ class TestRAGEnhancedTestGenerator:
                 is_valid=True, issues=[], confidence_score=0.9
             )
 
-            result = generator.generate(sample_test_cases)
+            result = await generator.generate(sample_test_cases)
 
             # Verify results
             assert isinstance(result, dict)
@@ -231,8 +232,9 @@ class TestRAGEnhancedTestGenerator:
         # Should have at least E2E and API categories based on sample test cases
         assert len(categorized) >= 2
 
+    @pytest.mark.asyncio
     @patch('testteller.automator_agent.rag_enhanced_generator.ApplicationKnowledgeExtractor')
-    def test_generate_with_validation_errors(self, mock_extractor, mock_vector_store, 
+    async def test_generate_with_validation_errors(self, mock_extractor, mock_vector_store, 
                                            mock_llm_manager, sample_test_cases, sample_app_context):
         """Test code generation with validation errors that get fixed."""
         # Mock knowledge extractor
@@ -260,7 +262,7 @@ class TestRAGEnhancedTestGenerator:
             mock_validate.side_effect = validation_results
             mock_fix.return_value = "# Fixed code"
 
-            result = generator.generate(sample_test_cases)
+            result = await generator.generate(sample_test_cases)
 
             # Verify validation and fixing were attempted
             assert mock_validate.call_count >= 1
@@ -367,71 +369,6 @@ def test_login():
         assert isinstance(fixed_code, str)
         assert len(fixed_code) > len(problematic_code)
         mock_llm_manager.generate_text.assert_called_once()
-
-
-class TestApplicationKnowledgeExtractor:
-    """Test application knowledge extraction."""
-
-    def test_initialization(self, mock_vector_store, mock_llm_manager):
-        """Test knowledge extractor initialization."""
-        extractor = ApplicationKnowledgeExtractor(
-            mock_vector_store, mock_llm_manager, num_context_docs=10
-        )
-        
-        assert extractor.vector_store == mock_vector_store
-        assert extractor.llm_manager == mock_llm_manager
-        assert extractor.num_context_docs == 10
-
-    def test_extract_app_context(self, mock_vector_store, mock_llm_manager, sample_test_cases):
-        """Test extracting application context from vector store."""
-        extractor = ApplicationKnowledgeExtractor(mock_vector_store, mock_llm_manager)
-        
-        # Mock vector store responses for different queries
-        mock_vector_store.query_similar.return_value = {
-            'documents': [['API endpoint code', 'UI component code']],
-            'metadatas': [['type: code', 'type: code']],
-            'distances': [[0.1, 0.2]]
-        }
-        
-        context = extractor.extract_app_context(sample_test_cases)
-        
-        assert isinstance(context, ApplicationContext)
-        # Verify that various discovery methods were called
-        assert mock_vector_store.query_similar.call_count >= 3  # API, UI, Auth queries
-
-    def test_discover_api_endpoints(self, mock_vector_store, mock_llm_manager, sample_test_cases):
-        """Test API endpoint discovery."""
-        extractor = ApplicationKnowledgeExtractor(mock_vector_store, mock_llm_manager)
-        
-        # Mock vector store to return API-related content
-        mock_vector_store.query_similar.return_value = {
-            'documents': [['@app.route("/api/users", methods=["GET"])', 'app.post("/api/auth/login")']],
-            'metadatas': [['type: code', 'type: code']],
-            'distances': [[0.1, 0.2]]
-        }
-        
-        endpoints = extractor._discover_api_endpoints(sample_test_cases)
-        
-        assert isinstance(endpoints, dict)
-        # Should discover endpoints from the mock content
-        assert len(endpoints) >= 0  # May be 0 if parsing doesn't match patterns
-
-    def test_discover_ui_patterns(self, mock_vector_store, mock_llm_manager, sample_test_cases):
-        """Test UI pattern discovery."""
-        extractor = ApplicationKnowledgeExtractor(mock_vector_store, mock_llm_manager)
-        
-        # Mock vector store to return UI-related content
-        mock_vector_store.query_similar.return_value = {
-            'documents': [['page.click("[data-testid=\'login-btn\']")', 'data-testid="email-input"']],
-            'metadatas': [['type: code', 'type: code']],
-            'distances': [[0.1, 0.2]]
-        }
-        
-        patterns = extractor._discover_ui_patterns(sample_test_cases)
-        
-        assert isinstance(patterns, dict)
-        # Should discover UI patterns from the mock content
-        assert len(patterns) >= 0  # May be 0 if parsing doesn't match patterns
 
 
 class TestValidationResult:

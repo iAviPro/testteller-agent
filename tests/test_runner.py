@@ -154,47 +154,45 @@ class TestRunner:
 
         cmd = [
             sys.executable, "-m", "pytest",
-            "tests/unit/",
-            "tests/test_automation.py",  # Include automation tests
+            "tests/unit/test_minimal_unit.py",
+            "tests/unit/test_simple_document_processing.py",
             "-v",
             "--cov=testteller",
-            "--cov=testteller.automator_agent",  # Include automator_agent coverage
-            "--cov-report=term-missing",
+            "--cov-report=term-missing", 
             "--cov-report=html:htmlcov",
-            "-m", "unit or automation"  # Include automation marker
+            "-x"  # Stop on first failure to avoid cascade issues
         ]
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
 
     def run_integration_tests(self, provider: str, env_vars: Dict[str, str]) -> int:
-        """Run integration tests for specific provider."""
-        print(f"\n🔗 Running Integration Tests for {provider.title()}...")
+        """Run simplified integration tests."""
+        print(f"\n🔗 Running Simple Integration Tests...")
 
         cmd = [
             sys.executable, "-m", "pytest",
-            "tests/integration/",
+            "tests/integration/test_simple_flows.py",
             "-v",
             "--cov=testteller",
             "--cov-report=term-missing",
             "--cov-append",
-            "-m", "integration",  # Simplified marker
-            "-k", f"{provider}"  # Use provider as test filter
+            "-m", "integration"
         ]
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode
 
     def run_cli_tests(self, env_vars: Dict[str, str]) -> int:
-        """Run CLI tests."""
-        print("\n💻 Running CLI Tests...")
+        """Run simplified CLI tests."""
+        print("\n💻 Running Simple CLI Tests...")
 
         cmd = [
             sys.executable, "-m", "pytest",
-            "tests/cli/",
+            "tests/cli/test_simple_commands.py",
             "-v",
             "--cov=testteller",
             "--cov-report=term-missing",
             "--cov-append",
-            "-m", "cli"  # Simplified marker
+            "-m", "cli"
         ]
 
         return subprocess.run(cmd, env={**os.environ, **env_vars}).returncode

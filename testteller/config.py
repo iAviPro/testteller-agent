@@ -110,7 +110,7 @@ class ApiKeysSettings(BaseSettings):
         description="GitHub Personal Access Token for private repos (optional)"
     )
 
-    @validator("github_token")
+    @validator("github_token", allow_reuse=True)
     @classmethod
     def validate_github_token(cls, v: Optional[str]) -> Optional[str]:
         if v == "":
@@ -227,7 +227,7 @@ class LLMSettings(BaseSettings):
         description="Ollama server base URL"
     )
 
-    @validator("provider")
+    @validator("provider", allow_reuse=True)
     @classmethod
     def validate_provider(cls, v: str) -> str:
         if v.lower() not in SUPPORTED_LLM_PROVIDERS:
@@ -304,7 +304,7 @@ class ProcessingSettings(BaseSettings):
         description="Base directory for temporary cloned repositories"
     )
 
-    @validator("code_extensions", pre=True)
+    @validator("code_extensions", pre=True, allow_reuse=True)
     @classmethod
     def parse_code_extensions(cls, v):
         """Parse comma-separated string of extensions into a list of properly formatted extensions."""
@@ -330,7 +330,7 @@ class OutputSettings(BaseSettings):
         description="Path to save the generated output"
     )
 
-    @validator("output_file_path")
+    @validator("output_file_path", allow_reuse=True)
     @classmethod
     def validate_output_file_path(cls, v: str) -> str:
         valid_extensions = ['.md', '.pdf', '.docx']
@@ -405,7 +405,7 @@ class CodeLoaderSettings(BaseSettings):
         description="Base directory for temporary cloned repositories"
     )
 
-    @validator("code_extensions", pre=True)
+    @validator("code_extensions", pre=True, allow_reuse=True)
     @classmethod
     def parse_code_extensions(cls, v):
         """Parse comma-separated string of extensions into a list of properly formatted extensions."""

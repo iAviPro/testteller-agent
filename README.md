@@ -11,12 +11,25 @@
 
 ## Why TestTeller?
 
-Imagine feeding your product requirements document to an AI and getting back:
-- **Complete test strategies** covering E2E, integration, System Tests, Technical Tests including security, and edge cases
-- **Production-ready automation code** in Python, JavaScript, TypeScript, or Java
-- **Self-improving system** that learns from each generation cycle
+TestTeller transforms documentation and code into comprehensive test strategies and executable automation. Unlike traditional testing tools, TestTeller uses dual-feedback RAG architecture to understand your requirements and generate intelligent test scenarios.
 
-**Real-world example**: Upload a PDF with API specifications → Get 50+ strategic test cases → Generate executable Playwright tests with proper authentication, data handling, and assertions → All in under 5 minutes.
+### Test Types Generated
+- **End-to-End (E2E) Tests**: Complete user journeys across frontend, middleware, and backend services
+- **Integration Tests**: Component integration (FE-BE, service-to-service, event-driven) and contract validation  
+- **Technical Tests**: Performance, security, resilience testing with infrastructure focus
+- **Mocked System Tests**: Isolated component testing with mocked dependencies
+
+### Critical Features
+- **Dual-Feedback RAG Enhancement**: Self-improving system that learns from generation cycles and stores high-quality outputs
+- **Multi-Provider LLM Support**: Works with Google Gemini, OpenAI, Anthropic Claude, and local Llama/Ollama
+- **Universal Document Intelligence**: Advanced parsing for PDFs, DOCX, XLSX, MD, TXT with context understanding
+- **Code Repository Analysis**: Ingests and analyzes code from GitHub repos or local folders.
+
+### Supported Languages & Frameworks  
+**Test Generation**: All test types with tabular summaries and detailed specifications  
+**Automation**: Python (pytest, unittest), JavaScript/TypeScript (Jest, Mocha, Cypress, Playwright), Java (JUnit, TestNG), and more
+
+**Real-world workflow**: Ingest project (PRDs/Contracts/Design/Schema etc.) documentation & project code → Generate strategic test cases covering authentication, error handling, and edge cases → Create executable Selenium/Playwright automation with proper setup and assertions → Commit your code.
 
 ## Key Features
 
@@ -56,17 +69,41 @@ pip install -e .
 # 1. Configure your LLM provider (interactive wizard)
 testteller configure
 
-# 2. Ingest your documentation (any format supported)
+# 2. Ingest your documentation (supports PDF, DOCX, XLSX, MD, TXT)
 testteller ingest-docs requirements.pdf --collection-name my_project
 
-# 3. Generate strategic test cases from your docs
+# 3. Ingest code from repository or local folder
+testteller ingest-code https://github.com/user/repo --collection-name my_project
+# OR: testteller ingest-code ./src --collection-name my_project
+
+# 4. Generate strategic test cases with RAG context
 testteller generate "Create comprehensive API integration tests" --collection-name my_project --output-file tests.pdf
 
-# 4. Generate executable automation code
+# 5. Generate executable automation code
 testteller automate tests.pdf --language python --framework pytest --output-dir ./tests
 ```
 
-**What just happened?** TestTeller's dual-feedback RAG architecture analyzed your requirements, design, contracts and code using multiple GenAI/LLMs, generated strategic test cases covering happy paths, edge cases, and security scenarios, then created production-ready automation code across multiple languages and frameworks with proper setup, authentication, and assertions.
+**Enhanced Examples:**
+
+```bash
+# E2E Testing Workflow
+testteller ingest-docs user_stories.pdf --collection-name webapp
+testteller ingest-code ./frontend --collection-name webapp  
+testteller generate "E2E user registration and checkout flow" --collection-name webapp
+testteller automate output.pdf --language javascript --framework cypress
+
+# API Testing with Security Focus
+testteller ingest-docs api_spec.pdf --collection-name api
+testteller generate "API security and integration tests" --collection-name api --output-format pdf
+testteller automate tests.pdf --language python --framework pytest
+
+# Microservices Testing
+testteller ingest-code ./services --collection-name microservices
+testteller generate "Inter-service communication and resilience tests" --collection-name microservices
+testteller automate output.pdf --language java --framework junit
+```
+
+**What happens?** TestTeller's dual-feedback RAG analyzes your ingested docs and code, generates strategic test cases using structured templates (E2E, Integration, Technical, Mocked), then creates production-ready automation with proper setup, data management, and CI/CD integration.
 
 ### Try TestTeller Now
 
@@ -105,9 +142,6 @@ docker-compose exec app testteller ingest-docs document.pdf --collection-name pr
 
 Run `testteller configure` if you encounter API key errors. For Docker issues, check logs with `docker-compose logs app`.
 
-## Contributing
-
-We welcome contributions! Please see our Contributing Guidelines for details.
 
 ---
 

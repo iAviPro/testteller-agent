@@ -95,6 +95,9 @@ docs = [
     "mkdocstrings[python]>=0.23.0"
 ]
 
+[project.scripts]
+testteller = "testteller.main:main"
+
 [tool.setuptools.dynamic]
 version = {attr = "testteller._version.__version__"}
 

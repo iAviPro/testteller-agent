@@ -1,0 +1,97 @@
+# Jekyll Configuration for TestTeller Documentation
+
+# Site settings
+title: TestTeller Documentation
+description: AI-Powered Test Generation and Automation Agent
+author: TestTeller Team
+email: 
+url: "https://iaviPro.github.io"
+baseurl: "/testteller-agent"
+
+# Theme settings
+theme: minima
+# For GitHub Pages, you can also use:
+# remote_theme: pages-themes/minimal@v0.2.0
+# remote_theme: pages-themes/cayman@v0.2.0
+# remote_theme: pages-themes/slate@v0.2.0
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+# Kramdown settings
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
+    span:
+      line_numbers: false
+    block:
+      line_numbers: false
+
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+  - jemoji
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:path
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "doc"
+
+# Navigation
+navigation:
+  - title: Home
+    url: /
+  - title: Architecture
+    url: /ARCHITECTURE
+  - title: Features
+    url: /FEATURES
+  - title: Commands
+    url: /COMMANDS
+  - title: Testing
+    url: /TESTING
+
+# External links
+github_repo: https://github.com/iAviPro/testteller-agent
+pypi_url: https://pypi.org/project/testteller/
+docker_hub: https://hub.docker.com/r/iavipro/testteller
+
+# Exclude from build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - LICENSE
+  - CNAME
+  - .gitignore
+
+# SEO
+twitter:
+  username: 
+  card: summary
+logo: /assets/images/logo.png
+
+# Google Analytics (optional)
+google_analytics: 
+
+# Disqus Comments (optional)
+disqus:
+  shortname: 

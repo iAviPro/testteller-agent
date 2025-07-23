@@ -18,6 +18,7 @@ theme: minima
 # Build settings
 markdown: kramdown
 highlighter: rouge
+permalink: pretty
 
 # Kramdown settings
 kramdown:

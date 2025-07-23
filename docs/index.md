@@ -6,13 +6,16 @@ title: TestTeller Documentation
 # TestTeller Documentation
 
 <div align="center">
-  
-  **AI-Powered Test Generation and Automation Agent**
-  
-  [![PyPI](https://img.shields.io/pypi/v/testteller)](https://pypi.org/project/testteller/)
-  [![Docker Hub](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
-  [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-  [![Python](https://img.shields.io/pypi/pyversions/testteller)](https://pypi.org/project/testteller/)
+
+**AI-Powered Test Generation and Automation Agent**
+
+<br>
+
+[![PyPI](https://img.shields.io/pypi/v/testteller)](https://pypi.org/project/testteller/)
+[![Docker Hub](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python](https://img.shields.io/pypi/pyversions/testteller)](https://pypi.org/project/testteller/)
+
 </div>
 
 ---

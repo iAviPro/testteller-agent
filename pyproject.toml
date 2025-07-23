@@ -96,7 +96,7 @@ docs = [
 ]
 
 [project.scripts]
-testteller = "testteller.main:main"
+testteller = "testteller.main:app_runner"
 
 [tool.setuptools.dynamic]
 version = {attr = "testteller._version.__version__"}

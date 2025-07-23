@@ -10,7 +10,7 @@ title: TestTeller Documentation
 **AI-Powered Test Generation and Automation Agent**
 
 [![PyPI](https://img.shields.io/pypi/v/testteller)](https://pypi.org/project/testteller/)
-[![Docker Hub](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
+[![Docker](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/pypi/pyversions/testteller)](https://pypi.org/project/testteller/)
 
@@ -21,9 +21,9 @@ title: TestTeller Documentation
 | 📖 Documentation | 🚀 Resources | 🤝 Community |
 |------------------|--------------|--------------|
 | [Architecture](ARCHITECTURE.md) | [GitHub Repository](https://github.com/iAviPro/testteller-agent) | [Issues](https://github.com/iAviPro/testteller-agent/issues) |
-| [Features](FEATURES.md) | [README](https://github.com/iAviPro/testteller-agent/blob/main/README.md) | |
+| [Features](FEATURES.md) | [README](https://github.com/iAviPro/testteller-agent/blob/main/README.md) | [License](https://github.com/iAviPro/testteller-agent/blob/main/LICENSE) |
 | [Commands](COMMANDS.md) | [PyPI Package](https://pypi.org/project/testteller/) |  |
-| [Testing Guide](TESTING.md) | [Docker Hub](https://hub.docker.com/r/iavipro/testteller) | [License](https://github.com/iAviPro/testteller-agent/blob/main/LICENSE) |
+| [Testing Guide](TESTING.md) | [Docker Hub](https://hub.docker.com/r/iavipro/testteller) | |
 
 ---
 

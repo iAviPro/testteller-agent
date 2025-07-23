@@ -18,11 +18,11 @@ services:
       # API Keys (Configure based on your chosen LLM provider)
       # -----------------------------------------------------------------------------
       # Google Gemini (required for gemini provider)
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       # OpenAI (required for openai provider, also needed for claude embeddings)
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # Anthropic Claude (required for claude provider)
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
       # GitHub token for private repos (optional - uncomment if needed)
       # - GITHUB_TOKEN=${GITHUB_TOKEN}
 
@@ -30,16 +30,16 @@ services:
       # LLM Model Configuration
       # -----------------------------------------------------------------------------
       # Gemini models (configure as needed)
-      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL}
-      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-}
+      - GEMINI_GENERATION_MODEL=${GEMINI_GENERATION_MODEL:-}
       # OpenAI models (configure as needed)
-      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL}
-      - OPENAI_GENERATION_MODEL=${OPENAI_GENERATION_MODEL}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-}
+      - OPENAI_GENERATION_MODEL=${OPENAI_GENERATION_MODEL:-}
       # Claude models (configure as needed)
-      - CLAUDE_GENERATION_MODEL=${CLAUDE_GENERATION_MODEL}
+      - CLAUDE_GENERATION_MODEL=${CLAUDE_GENERATION_MODEL:-}
       # Llama/Ollama models (configure as needed)
-      - LLAMA_EMBEDDING_MODEL=${LLAMA_EMBEDDING_MODEL}
-      - LLAMA_GENERATION_MODEL=${LLAMA_GENERATION_MODEL}
+      - LLAMA_EMBEDDING_MODEL=${LLAMA_EMBEDDING_MODEL:-}
+      - LLAMA_GENERATION_MODEL=${LLAMA_GENERATION_MODEL:-}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
       # -----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ services:
       # Logging and Debug
       # -----------------------------------------------------------------------------
       - PYTHONUNBUFFERED=1
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_LEVEL=${LOG_LEVEL:-ERROR}
       - LOG_FORMAT=${LOG_FORMAT:-json}
 
       # -----------------------------------------------------------------------------

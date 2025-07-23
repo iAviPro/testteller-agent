@@ -20,6 +20,25 @@
   <!-- Syntax Highlighting -->
   <link rel="stylesheet" href="{{ '/assets/css/syntax.css' | relative_url }}">
   
+  <!-- Mermaid Support -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'default',
+        themeVariables: {
+          primaryColor: '#2563eb',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#e2e8f0',
+          lineColor: '#64748b',
+          secondaryColor: '#f8fafc',
+          tertiaryColor: '#f1f5f9'
+        }
+      });
+    });
+  </script>
+  
   {% seo %}
   {% feed_meta %}
 </head>

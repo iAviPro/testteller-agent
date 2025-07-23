@@ -3,9 +3,11 @@ layout: default
 title: TestTeller Documentation
 ---
 
+<!-- This comment separates Jekyll front matter from content -->
+
 # TestTeller Documentation
 
-> **AI-Powered Test Generation and Automation Agent**
+**AI-Powered Test Generation and Automation Agent**
 
 [![PyPI](https://img.shields.io/pypi/v/testteller)](https://pypi.org/project/testteller/)
 [![Docker Hub](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
@@ -16,33 +18,12 @@ title: TestTeller Documentation
 
 ## Quick Navigation
 
-<table>
-  <tr>
-    <td><b>📖 Documentation</b></td>
-    <td><b>🚀 Resources</b></td>
-    <td><b>🤝 Community</b></td>
-  </tr>
-  <tr>
-    <td>
-      <a href="ARCHITECTURE.md">Architecture</a><br>
-      <a href="FEATURES.md">Features</a><br>
-      <a href="COMMANDS.md">Commands</a><br>
-      <a href="TESTING.md">Testing Guide</a>
-    </td>
-    <td>
-      <a href="https://github.com/iAviPro/testteller-agent">GitHub Repository</a><br>
-      <a href="https://github.com/iAviPro/testteller-agent/blob/main/README.md">README</a><br>
-      <a href="https://pypi.org/project/testteller/">PyPI Package</a><br>
-      <a href="https://hub.docker.com/r/iavipro/testteller">Docker Hub</a>
-    </td>
-    <td>
-      <a href="https://github.com/iAviPro/testteller-agent/issues">Issues</a><br>
-      <a href="https://github.com/iAviPro/testteller-agent/discussions">Discussions</a><br>
-      <a href="https://github.com/iAviPro/testteller-agent/blob/main/CONTRIBUTING.md">Contributing</a><br>
-      <a href="https://github.com/iAviPro/testteller-agent/blob/main/LICENSE">License</a>
-    </td>
-  </tr>
-</table>
+| 📖 Documentation | 🚀 Resources | 🤝 Community |
+|------------------|--------------|--------------|
+| [Architecture](ARCHITECTURE.md) | [GitHub Repository](https://github.com/iAviPro/testteller-agent) | [Issues](https://github.com/iAviPro/testteller-agent/issues) |
+| [Features](FEATURES.md) | [README](https://github.com/iAviPro/testteller-agent/blob/main/README.md) | |
+| [Commands](COMMANDS.md) | [PyPI Package](https://pypi.org/project/testteller/) |  |
+| [Testing Guide](TESTING.md) | [Docker Hub](https://hub.docker.com/r/iavipro/testteller) | [License](https://github.com/iAviPro/testteller-agent/blob/main/LICENSE) |
 
 ---
 
@@ -147,48 +128,14 @@ testteller automate test-cases.md --language python --framework pytest -c collec
 
 ---
 
-## Architecture Overview
-
-```mermaid
-graph TB
-    A[Input Documents] --> B[Generator Agent]
-    B --> C[Quality Assessment]
-    C --> D{Quality Score > 0.7?}
-    D -->|Yes| E[Vector Store]
-    D -->|No| F[Discard]
-    E --> G[Automator Agent]
-    G --> H[Context Discovery]
-    H --> I[Code Generation]
-    I --> J[Validation]
-    J --> K[Output]
-```
-
----
-
 ## Supported Frameworks
 
-<table>
-  <tr>
-    <th>Language</th>
-    <th>Frameworks</th>
-  </tr>
-  <tr>
-    <td><b>Python</b></td>
-    <td>pytest, unittest, behave, robot, locust</td>
-  </tr>
-  <tr>
-    <td><b>JavaScript</b></td>
-    <td>jest, mocha, cypress, playwright, puppeteer</td>
-  </tr>
-  <tr>
-    <td><b>TypeScript</b></td>
-    <td>jest, mocha, cypress, playwright</td>
-  </tr>
-  <tr>
-    <td><b>Java</b></td>
-    <td>junit, testng, selenide, restassured</td>
-  </tr>
-</table>
+| Language | Frameworks |
+|----------|------------|
+| **Python** | pytest, unittest, behave, robot, locust |
+| **JavaScript** | jest, mocha, cypress, playwright, puppeteer |
+| **TypeScript** | jest, mocha, cypress, playwright |
+| **Java** | junit, testng, selenide, restassured |
 
 ---
 
@@ -218,15 +165,7 @@ graph TB
 
 ---
 
-<p align="center">
-  <a href="https://github.com/iAviPro/testteller-agent">
-    <img src="https://img.shields.io/github/stars/iAviPro/testteller-agent?style=social" alt="GitHub Stars">
-  </a>
-  <a href="https://pypi.org/project/testteller/">
-    <img src="https://img.shields.io/pypi/dm/testteller" alt="PyPI Downloads">
-  </a>
-</p>
+[![GitHub Stars](https://img.shields.io/github/stars/iAviPro/testteller-agent?style=social)](https://github.com/iAviPro/testteller-agent)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/testteller)](https://pypi.org/project/testteller/)
 
-<p align="center">
-  <strong>TestTeller - Intelligent Test Agent for Modern Development</strong>
-</p>
+**TestTeller - Intelligent Test Agent for Modern Development**

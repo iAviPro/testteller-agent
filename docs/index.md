@@ -10,7 +10,7 @@ title: TestTeller Documentation
 **AI-Powered Test Generation and Automation Agent**
 
 [![PyPI](https://img.shields.io/pypi/v/testteller)](https://pypi.org/project/testteller/)
-[![Docker](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
+[![Docker](https://img.shields.io/docker/v/iavipro/testteller?label=docker&logo=docker)](https://hub.docker.com/r/iavipro/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/pypi/pyversions/testteller)](https://pypi.org/project/testteller/)
 

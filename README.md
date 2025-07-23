@@ -67,17 +67,17 @@ pip install testteller
 docker pull iavipro/testteller:latest
 
 # Run single commands
-docker run -it --rm \
+docker run -it \
   -e GOOGLE_API_KEY=your_api_key \
   -v $(pwd)/docs:/app/docs \
   -v $(pwd)/output:/app/output \
   iavipro/testteller:latest testteller --help
 
 # Example: Generate test cases
-docker run -it --rm \
+docker run -it \
   -e GOOGLE_API_KEY=your_api_key \
   -v $(pwd):/app/workspace \
-  iavipro/testteller:latest testteller generate "API tests" --output-file /app/workspace/tests.pdf
+  iavipro/testteller:latest testteller generate "API tests" --output-file /app/workspace/tests.pdf --collection-name my_collection
 ```
 
 **Full Development Setup (Docker Compose):**

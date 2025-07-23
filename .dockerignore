@@ -26,7 +26,9 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
+tests/
+pytest.ini
+requirements-test.txt
 
 # Build artifacts
 build/
@@ -34,19 +36,22 @@ dist/
 *.egg-info/
 .eggs/
 
-# Temporary files
+# Temporary files and data
 temp_cloned_repos/
 chroma_data/
+chroma_data_prod/
+testteller_generated_tests/
+testteller_automated_tests/
+sample-outputs/
 *.tmp
 *.log
 
-# Documentation (keep essential docs)
+# Documentation (keep only essential)
 docs/
+iavipro/
 *.md
-\!README.md
-\!CHANGELOG.md
-\!high-level-design-diagram.md
-\!TESTING.md
+!README.md
+!MANIFEST.in
 
 # OS files
 .DS_Store
@@ -57,22 +62,16 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Node modules (if any)
-node_modules/
-
-# Generated outputs (keep samples for reference)
-testteller_generated_tests/
-testteller_automated_tests/
-test_*/
-
-# Development and configuration files
+# Development files
 .pre-commit-config.yaml
 .github/
-.git/
-.gitignore
 tox.ini
 setup.cfg
+test.env
+docker-compose.test.yml
+docker-test.sh
+DOCKER_TEST_CHECKLIST.md
 
-# Keep essential architecture documentation in container
-\!iavipro/ARCHITECTURE.md
-\!iavipro/FEEDBACK_LOOP_ARCHITECTURE.md
+# Optimization files
+Dockerfile.optimized
+docker/

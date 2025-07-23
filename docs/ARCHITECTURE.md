@@ -6,7 +6,7 @@ TestTeller features a modular architecture built around a **dual-feedback RAG (R
 
 ## System Architecture Diagram
 
-```mermaid
+<pre class="mermaid">
 graph LR
     A[Generator Agent] --> B[Quality Assessment]
     B --> C[High-Quality Storage]
@@ -17,7 +17,7 @@ graph LR
     G --> H[Validation Results]
     H --> D
     D --> A
-```
+</pre>
 
 ## Core Components
 
@@ -234,3 +234,9 @@ Configuration Layers:
 - **Data Retention**: Configurable retention policies for sensitive data
 - **Metadata Control**: Fine-grained control over metadata storage and sharing
 - **Audit Trails**: Comprehensive logging for compliance and debugging
+
+<!-- Mermaid.js CDN loader -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true });
+</script>

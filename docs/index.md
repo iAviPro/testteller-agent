@@ -5,18 +5,12 @@ title: TestTeller Documentation
 
 # TestTeller Documentation
 
-<div align="center">
-
-**AI-Powered Test Generation and Automation Agent**
-
-<br>
+> **AI-Powered Test Generation and Automation Agent**
 
 [![PyPI](https://img.shields.io/pypi/v/testteller)](https://pypi.org/project/testteller/)
 [![Docker Hub](https://img.shields.io/docker/v/iavipro/testteller)](https://hub.docker.com/r/iavipro/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/pypi/pyversions/testteller)](https://pypi.org/project/testteller/)
-
-</div>
 
 ---
 
@@ -36,8 +30,8 @@ title: TestTeller Documentation
       <a href="TESTING.md">Testing Guide</a>
     </td>
     <td>
-      <a href="https://github.com/AviralNigam/testteller-agent">GitHub Repository</a><br>
-      <a href="https://github.com/AviralNigam/testteller-agent/blob/main/README.md">README</a><br>
+      <a href="https://github.com/iAviPro/testteller-agent">GitHub Repository</a><br>
+      <a href="https://github.com/iAviPro/testteller-agent/blob/main/README.md">README</a><br>
       <a href="https://pypi.org/project/testteller/">PyPI Package</a><br>
       <a href="https://hub.docker.com/r/iavipro/testteller">Docker Hub</a>
     </td>
@@ -116,7 +110,7 @@ pip install testteller
 docker pull iavipro/testteller:latest
 
 # From source
-git clone https://github.com/AviralNigam/testteller-agent.git
+git clone https://github.com/iAviPro/testteller-agent.git
 cd testteller-agent
 pip install -e .
 ```
@@ -224,15 +218,15 @@ graph TB
 
 ---
 
-<div align="center">
-  <p>
-    <a href="https://github.com/iAviPro/testteller-agent">
-      <img src="https://img.shields.io/github/stars/iAviPro/testteller-agent?style=social" alt="GitHub Stars">
-    </a>
-    <a href="https://pypi.org/project/testteller/">
-      <img src="https://img.shields.io/pypi/dm/testteller" alt="PyPI Downloads">
-    </a>
-  </p>
-  
+<p align="center">
+  <a href="https://github.com/iAviPro/testteller-agent">
+    <img src="https://img.shields.io/github/stars/iAviPro/testteller-agent?style=social" alt="GitHub Stars">
+  </a>
+  <a href="https://pypi.org/project/testteller/">
+    <img src="https://img.shields.io/pypi/dm/testteller" alt="PyPI Downloads">
+  </a>
+</p>
+
+<p align="center">
   <strong>TestTeller - Intelligent Test Agent for Modern Development</strong>
-</div>
+</p>

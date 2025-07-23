@@ -1,8 +1,8 @@
 # TestTeller Agent
 
-[![PyPI](https://img.shields.io/pypi/v/testteller.svg)](https://pypi.org/project/testteller/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
+[![PyPI](https://img.shields.io/pypi/v/testteller.svg)](https://pypi.org/project/testteller/)
+[![Docker](https://img.shields.io/docker/v/iavipro/testteller?label=docker&logo=docker)](https://hub.docker.com/r/iavipro/testteller)
 [![Tests](https://github.com/iAviPro/testteller-agent/actions/workflows/test-unit.yml/badge.svg)](https://github.com/iAviPro/testteller-agent/actions/workflows/test-unit.yml)
 [![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -53,11 +53,58 @@ TestTeller transforms documentation and code into comprehensive test strategies 
 
 ### Installation
 
+#### Option 1: PyPI Installation
 ```bash
 # Install from PyPI
 pip install testteller
+```
 
-# Or install from source
+#### Option 2: Docker Installation
+
+**Quick Testing (Docker Hub Image):**
+```bash
+# Pull and run from Docker Hub for quick testing
+docker pull iavipro/testteller:latest
+
+# Run single commands
+docker run -it \
+  -e GOOGLE_API_KEY=your_api_key \
+  -v $(pwd)/docs:/app/docs \
+  -v $(pwd)/output:/app/output \
+  iavipro/testteller:latest testteller --help
+
+# Example: Generate test cases
+docker run -it \
+  -e GOOGLE_API_KEY=your_api_key \
+  -v $(pwd):/app/workspace \
+  iavipro/testteller:latest testteller generate "API tests" --output-file /app/workspace/tests.pdf --collection-name my_collection
+```
+
+**Full Development Setup (Docker Compose):**
+```bash
+# Clone repository for complete setup with ChromaDB
+git clone https://github.com/iAviPro/testteller-agent.git
+cd testteller-agent
+
+# Setup environment variables
+cp .env.example .env
+# Edit .env file and add your API keys (GOOGLE_API_KEY, OPENAI_API_KEY, CLAUDE_API_KEY)
+
+# Start all services (TestTeller + ChromaDB)
+docker-compose up -d
+
+# Configure and use
+docker-compose exec app testteller configure
+docker-compose exec app testteller ingest-docs /path/to/document.pdf --collection-name project
+docker-compose exec app testteller generate "API integration tests" --collection-name project
+
+# Stop services
+docker-compose down
+```
+
+#### Option 3: From Source
+```bash
+# Install from source
 git clone https://github.com/iAviPro/testteller-agent.git
 cd testteller-agent
 pip install -e .

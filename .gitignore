@@ -24,8 +24,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-.env
-.env.backup*
 
 # PyInstaller
 *.manifest
@@ -57,6 +55,7 @@ venv.bak/
 
 # Environment variables
 .env
+.env.backup*
 .env.local
 .env.development.local
 .env.test.local
@@ -123,5 +122,7 @@ site/
 local_*/
 iavipro/
 .claude/
+testteller_generated_tests/
+testteller_automated_tests/
 testteller_cli*
 EOF < /dev/null

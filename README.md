@@ -39,7 +39,7 @@ TestTeller transforms documentation and code into comprehensive test strategies 
 - **📄 Universal Document Intelligence**: Advanced RAG ingestion for **PDFs, DOCX, XLSX, MD, TXT** - understands context and generates appropriate test focus
 - **🔄 Self-Learning System**: Dual-feedback architecture gets smarter with each use - stores high-quality outputs and learns from automation success patterns
 
-→ **[View Detailed Features](FEATURES.md)** | **[Technical Architecture](ARCHITECTURE.md)**
+→ **[View Detailed Features](docs/FEATURES.md)** | **[Technical Architecture](docs/ARCHITECTURE.md)**
 
 ## Quick Start
 
@@ -180,10 +180,10 @@ docker-compose exec app testteller ingest-docs document.pdf --collection-name pr
 
 ## Documentation
 
-- **[Complete Features](FEATURES.md)** - Detailed feature descriptions and capabilities
-- **[Technical Architecture](ARCHITECTURE.md)** - System design and technical details  
-- **[Command Reference](COMMANDS.md)** - Complete CLI command documentation
-- **[Testing Guide](TESTING.md)** - Test suite and validation documentation
+- **[Complete Features](docs/FEATURES.md)** - Detailed feature descriptions and capabilities
+- **[Technical Architecture](docs/ARCHITECTURE.md)** - System design and technical details  
+- **[Command Reference](docs/COMMANDS.md)** - Complete CLI command documentation
+- **[Testing Guide](docs/TESTING.md)** - Test suite and validation documentation
 
 ## Common Issues
 

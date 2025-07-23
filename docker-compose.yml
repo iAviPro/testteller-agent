@@ -23,8 +23,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       # Anthropic Claude (required for claude provider)
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
-      # GitHub token for private repos (optional)
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # GitHub token for private repos (optional - uncomment if needed)
+      # - GITHUB_TOKEN=${GITHUB_TOKEN}
 
       # -----------------------------------------------------------------------------
       # LLM Model Configuration
@@ -40,7 +40,7 @@ services:
       # Llama/Ollama models (configure as needed)
       - LLAMA_EMBEDDING_MODEL=${LLAMA_EMBEDDING_MODEL}
       - LLAMA_GENERATION_MODEL=${LLAMA_GENERATION_MODEL}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
       # -----------------------------------------------------------------------------
       # ChromaDB Configuration
@@ -108,7 +108,7 @@ services:
     depends_on:
       chromadb:
         condition: service_healthy
-      # Uncomment if using Llama provider
+      # Uncomment if using Llama provider with docker ollama service
       # ollama:
       #   condition: service_healthy
     networks:
@@ -193,6 +193,13 @@ services:
   #       reservations:
   #         cpus: '1'
   #         memory: 2G
+  #   # Pull models on startup (optional)
+  #   # command: >
+  #   #   bash -c "ollama serve & 
+  #   #   sleep 10 && 
+  #   #   ollama pull llama3.2:1b && 
+  #   #   ollama pull llama3.2:3b && 
+  #   #   wait"
 
 volumes:
   chroma_data:

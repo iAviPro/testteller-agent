@@ -166,6 +166,6 @@ testteller automate test-cases.md --language python --framework pytest -c collec
 ---
 
 [![GitHub Stars](https://img.shields.io/github/stars/iAviPro/testteller-agent?style=social)](https://github.com/iAviPro/testteller-agent)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/testteller)](https://pypi.org/project/testteller/)
+[![Downloads](https://pepy.tech/badge/testteller)](https://pepy.tech/project/testteller)
 
 **TestTeller - Intelligent Test Agent for Modern Development**

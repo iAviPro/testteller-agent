@@ -8,7 +8,7 @@ Includes constants from both testteller and testwriter packages.
 APP_NAME = "TestTeller"
 # APP_VERSION is now imported from __init__.py to maintain single source of truth
 # Import will be handled by __init__.py
-FALLBACK_VERSION = "2.0.2"  # Fallback version when _version.py import fails
+FALLBACK_VERSION = "2.0.3"  # Fallback version when _version.py import fails
 # Application Description - Single Source of Truth
 APP_DESCRIPTION = "TestTeller: Your Next-Generation AI-Powered Test Agent for Comprehensive Test Case Generation and Test Automation leveraging RAG & GenAI"
 
